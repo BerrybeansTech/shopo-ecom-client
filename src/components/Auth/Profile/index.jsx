@@ -13,6 +13,10 @@ import IcoPayment from "./icons/IcoPayment";
 import IcoPeople from "./icons/IcoPeople";
 import IcoReviewHand from "./icons/IcoReviewHand";
 import IcoSupport from "./icons/IcoSupport";
+// New icons (assuming they exist or need to be created)
+import IcoLoyalty from "./icons/IcoLoyalty";
+import IcoReferral from "./icons/IcoReferral";
+import IcoGiftCard from "./icons/IcoGiftCard";
 import AddressesTab from "./tabs/AddressesTab";
 import Dashboard from "./tabs/Dashboard";
 import OrderTab from "./tabs/OrderTab";
@@ -22,6 +26,10 @@ import ProfileTab from "./tabs/ProfileTab";
 import ReviewTab from "./tabs/ReviewTab";
 import SupportTab from "./tabs/SupportTab";
 import WishlistTab from "./tabs/WishlistTab";
+// New tab components (placeholders or full implementations based on requirements)
+import LoyaltyTab from "./tabs/LoyaltyTab";
+import ReferralTab from "./tabs/ReferralTab";
+import GiftCardTab from "./tabs/GiftCardTab";
 
 export default function Profile() {
   const [switchDashboard, setSwitchDashboard] = useState(false);
@@ -35,6 +43,13 @@ export default function Profile() {
         : "dashboard"
     );
   }, [getHashContent]);
+
+  const handleLogout = () => {
+    // Implement logout logic here (e.g., clear auth, redirect to login)
+    console.log("Logging out...");
+    window.location.href = "/login"; // Example redirect
+  };
+
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="profile-page-wrapper w-full">
@@ -76,7 +91,7 @@ export default function Profile() {
                             <IcoDashboard />
                           </span>
                           <span className=" font-normal text-base">
-                            Dashbaord
+                            Dashboard
                           </span>
                         </div>
                       </Link>
@@ -88,7 +103,7 @@ export default function Profile() {
                             <IcoPeople />
                           </span>
                           <span className=" font-normal text-base">
-                            Parsonal Info
+                            Personal Info
                           </span>
                         </div>
                       </Link>
@@ -102,6 +117,32 @@ export default function Profile() {
                           </span>
                           <span className=" font-normal text-base">
                             Payment Method
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                    {/* New: Loyalty Program */}
+                    <div className="item group">
+                      <Link to="/profile#loyalty">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoLoyalty />
+                          </span>
+                          <span className=" font-normal text-base">
+                            Loyalty Program
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                    {/* New: Referral */}
+                    <div className="item group">
+                      <Link to="/profile#referral">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoReferral />
+                          </span>
+                          <span className=" font-normal text-base">
+                            Referral
                           </span>
                         </div>
                       </Link>
@@ -124,6 +165,19 @@ export default function Profile() {
                           </span>
                           <span className=" font-normal text-base">
                             Wishlist
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                    {/* New: Gift Cards */}
+                    <div className="item group">
+                      <Link to="/profile#giftcard">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoGiftCard />
+                          </span>
+                          <span className=" font-normal text-base">
+                            Gift Cards
                           </span>
                         </div>
                       </Link>
@@ -177,16 +231,18 @@ export default function Profile() {
                       </Link>
                     </div>
                     <div className="item group">
-                      <Link to="/profile#profile">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoLogout />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Logoout
-                          </span>
-                        </div>
-                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        type="button"
+                        className="flex space-x-3 items-center text-qgray hover:text-qblack w-full text-left"
+                      >
+                        <span>
+                          <IcoLogout />
+                        </span>
+                        <span className=" font-normal text-base">
+                          Logout
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -202,6 +258,14 @@ export default function Profile() {
                       <>
                         <Payment />
                       </>
+                    ) : active === "loyalty" ? (
+                      <>
+                        <LoyaltyTab />
+                      </>
+                    ) : active === "referral" ? (
+                      <>
+                        <ReferralTab />
+                      </>
                     ) : active === "order" ? (
                       <>
                         <OrderTab />
@@ -209,6 +273,10 @@ export default function Profile() {
                     ) : active === "wishlist" ? (
                       <>
                         <WishlistTab />
+                      </>
+                    ) : active === "giftcard" ? (
+                      <>
+                        <GiftCardTab />
                       </>
                     ) : active === "address" ? (
                       <>
