@@ -1,26 +1,96 @@
-import { useState } from "react";
-import InputCom from "../../Helpers/InputCom";
+import { useState, useEffect } from "react";
 import Layout from "../../Partials/Layout";
-import Thumbnail from "./Thumbnail";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Signup() {
   const [checked, setValue] = useState(false);
+  const [formData, setFormData] = useState({
+    phone: "",
+    fname: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState({
+    phone: "",
+    fname: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { state } = location;
+
+  useEffect(() => {
+    // Pre-fill identifier if coming from Login
+    if (state?.identifier) {
+      const phoneMatch = state.identifier.match(/^\+91(\d{10})$/);
+      if (phoneMatch) {
+        setFormData((prev) => ({ ...prev, phone: phoneMatch[1] }));
+      }
+    }
+  }, [state]);
+
   const rememberMe = () => {
     setValue(!checked);
   };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    // Validation
+    if (name === "phone") {
+      const phoneRegex = /^\d{10}$/;
+      if (!phoneRegex.test(value)) {
+        setErrors({ ...errors, phone: "Mobile number must be 10 digits." });
+      } else {
+        setErrors({ ...errors, phone: "" });
+      }
+    }
+    if (name === "password") {
+      if (value.length < 6) {
+        setErrors({ ...errors, password: "Password must be at least 6 characters" });
+      } else {
+        setErrors({ ...errors, password: "" });
+      }
+    }
+    if (name === "fname") {
+      if (value.trim() === "") {
+        setErrors({ ...errors, fname: "Name is required" });
+      } else {
+        setErrors({ ...errors, fname: "" });
+      }
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!errors.phone && !errors.password && !errors.fname && formData.fname.trim()) {
+      const identifier = `+91${formData.phone}`;
+      console.log("Account created with:", { ...formData, identifier });
+      // Navigate to VerifyOTP for mobile verification
+      navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}`);
+    } else {
+      console.log("Form has errors");
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="login-page-wrapper w-full py-10">
+      <div className="login-page-wrapper w-full py-20 bg-gradient-to-br from-gray-50 via-gray-100 to-[#FFF7ED] min-h-screen">
         <div className="container-x mx-auto">
-          <div className="lg:flex items-center relative">
-            <div className="lg:w-[572px] w-full lg:h-[783px] bg-white flex flex-col justify-center sm:p-10 p-5 border border-[#E0E0E0]">
-              <div className="w-full">
-                <div className="title-area flex flex-col justify-center items-center relative text-center mb-7">
-                  <h1 className="text-[34px] font-bold leading-[74px] text-qblack">
+          <div className="lg:flex items-center justify-center relative">
+            <div className="lg:w-[572px] w-full bg-white p-12 rounded-2xl shadow-xl border border-gray-100 backdrop-blur-sm">
+              <div className="w-full max-w-md mx-auto">
+                <div className="title-area flex flex-col justify-center items-center relative text-center mb-10">
+                  <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
                     Create Account
                   </h1>
-                  <div className="shape -mt-6">
+                  <div className="shape mt-2">
                     <svg
                       width="354"
                       height="30"
@@ -30,179 +100,91 @@ export default function Signup() {
                     >
                       <path
                         d="M1 28.8027C17.6508 20.3626 63.9476 8.17089 113.509 17.8802C166.729 28.3062 341.329 42.704 353 1"
-                        stroke="#FFBB38"
-                        strokeWidth="2"
+                        stroke="#FF9900"
+                        strokeWidth="3"
                         strokeLinecap="round"
                       />
                     </svg>
                   </div>
                 </div>
-                <div className="input-area">
-                  <div className="flex sm:flex-row flex-col space-y-5 sm:space-y-0 sm:space-x-5 mb-5">
-                    <InputCom
-                      placeholder="Demo Name"
-                      label="Frist Name*"
-                      name="fname"
-                      type="text"
-                      inputClasses="h-[50px]"
-                    />
-
-                    <InputCom
-                      placeholder="Demo Name"
-                      label="Last Name*"
-                      name="lname"
-                      type="text"
-                      inputClasses="h-[50px]"
-                    />
-                  </div>
-                  <div className="flex sm:flex-row flex-col space-y-5 sm:space-y-0 sm:space-x-5 mb-5">
-                    <InputCom
-                      placeholder="Demo@gmail.com"
-                      label="Email Address*"
-                      name="email"
-                      type="email"
-                      inputClasses="h-[50px]"
-                    />
-
-                    <InputCom
-                      placeholder="0213 *********"
-                      label="Phone*"
+                <form onSubmit={handleSubmit} className="input-area space-y-7">
+                  <div className="w-full">
+                    <label className="text-gray-800 text-sm font-bold block mb-2">
+                      Mobile Number
+                    </label>
+                    <input
+                      placeholder="Enter your Mobile Number"
                       name="phone"
                       type="text"
-                      inputClasses="h-[50px]"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
                     />
+                    {errors.phone && (
+                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.phone}</p>
+                    )}
                   </div>
-
-                  <div className="input-item mb-5">
-                    <h6 className="input-label text-qgray capitalize text-[13px] font-normal block mb-2 ">
-                      Country*
-                    </h6>
-                    <div className="w-full h-[50px] border border-[#EDEDED] px-5 flex justify-between items-center mb-2">
-                      <span className="text-[13px] text-qgraytwo">
-                        Select Country
-                      </span>
-                      <span>
-                        <svg
-                          width="11"
-                          height="7"
-                          viewBox="0 0 11 7"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M5.4 6.8L0 1.4L1.4 0L5.4 4L9.4 0L10.8 1.4L5.4 6.8Z"
-                            fill="#222222"
-                          />
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="input-item mb-5">
-                    <InputCom
-                      placeholder="Your address Here"
-                      label="Address*"
-                      name="address"
+                  <div className="w-full">
+                    <label className="text-gray-800 text-sm font-bold block mb-2">
+                      Name
+                    </label>
+                    <input
+                      placeholder="First Name and Last Name"
+                      name="fname"
                       type="text"
-                      inputClasses="h-[50px]"
+                      value={formData.fname}
+                      onChange={handleInputChange}
+                      className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
                     />
+                    {errors.fname && (
+                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.fname}</p>
+                    )}
                   </div>
-                  <div className="flex sm:flex-row flex-col space-y-5 sm:space-y-0 sm:space-x-5 mb-5">
-                    <div className="w-1/2">
-                      <h6 className="input-label text-qgray capitalize text-[13px] font-normal block mb-2 ">
-                        Town / City*
-                      </h6>
-                      <div className="w-full h-[50px] border border-[#EDEDED] px-5 flex justify-between items-center mb-2">
-                        <span className="text-[13px] text-qgraytwo">
-                          Maiyami
-                        </span>
-                        <span>
-                          <svg
-                            width="11"
-                            height="7"
-                            viewBox="0 0 11 7"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M5.4 6.8L0 1.4L1.4 0L5.4 4L9.4 0L10.8 1.4L5.4 6.8Z"
-                              fill="#222222"
-                            />
-                          </svg>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="w-full h-[50px] mb-5 sm:mb-0">
-                        <InputCom
-                          label="Postcode / ZIP*"
-                          inputClasses="w-full h-full"
-                          type="text"
-                          placeholder="00000"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="forgot-password-area mb-7">
-                    <div className="remember-checkbox flex items-center space-x-2.5">
+                  <div className="w-full">
+                    <label className="text-gray-800 text-sm font-bold block mb-2">
+                      Password*
+                    </label>
+                    <div className="relative w-full">
+                      <input
+                        placeholder="Your Password Here"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 pr-12 shadow-sm"
+                      />
                       <button
-                        onClick={rememberMe}
                         type="button"
-                        className="w-5 h-5 text-qblack flex justify-center items-center border border-light-gray"
+                        onClick={togglePasswordVisibility}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 flex items-center justify-center h-full transition duration-200"
                       >
-                        {checked && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
+                        {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                       </button>
-                      <span
-                        onClick={rememberMe}
-                        className="text-base text-black"
-                      >
-                        I agree all
-                        <span className="text-qblack">tarm and condition</span>
-                        in BigShop.
-                      </span>
                     </div>
+                    {errors.password && (
+                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.password}</p>
+                    )}
                   </div>
                   <div className="signin-area mb-3">
                     <div className="flex justify-center">
                       <button
-                        type="button"
-                        className="black-btn text-sm text-white w-full h-[50px] font-semibold flex justify-center bg-purple items-center"
+                        type="submit"
+                        className="bg-[#FF9900] hover:bg-[#e68a00] text-white h-[52px] w-full rounded-lg font-bold text-base tracking-wide transition duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={errors.phone || errors.password || errors.fname || !formData.fname.trim()}
                       >
-                        <span>Create Account</span>
+                        <span>Verify mobile number</span>
                       </button>
                     </div>
                   </div>
-
                   <div className="signup-area flex justify-center">
-                    <p className="text-base text-qgraytwo font-normal">
-                      Alrady have an Account?
-                      <Link to="/login" className="ml-2 text-qblack">
+                    <p className="text-base text-gray-600 font-semibold">
+                      Already have an Account?
+                      <Link to="/login" className="ml-2 text-[#FF9900] font-extrabold hover:underline hover:text-[#e68a00] transition duration-200">
                         Log In
                       </Link>
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 lg:flex hidden transform scale-60 xl:scale-100   xl:justify-center">
-              <div
-                className="absolute xl:-right-20 -right-[138px]"
-                style={{ top: "calc(50% - 258px)" }}
-              >
-                <Thumbnail />
+                </form>
               </div>
             </div>
           </div>

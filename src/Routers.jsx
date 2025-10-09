@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import About from "./components/About";
 import AllProductPage from "./components/AllProductPage";
 import Login from "./components/Auth/Login/index";
+import SignIn from "./components/Auth/Login/SignIn";
 import Profile from "./components/Auth/Profile";
 import Signup from "./components/Auth/Signup";
 import BecomeSaller from "./components/BecomeSaller";
@@ -26,6 +27,9 @@ import Wishlist from "./components/Wishlist";
 import HomeThree from "./components/HomeThree";
 import HomeFour from "./components/HomeFour";
 import HomeFive from "./components/HomeFive";
+import VerifyOTP from "./components/Auth/VerifyOTP/VerifyOTP.jsx";
+import ForgotPassword from "./components/Auth/VerifyOTP/ForgotPassword.jsx";
+import ResetPassword from "./components/Auth/VerifyOTP/ResetPassword.jsx";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -49,11 +53,15 @@ const router = createBrowserRouter([
   { path: "/contact", element: <Contact /> },
   { path: "/faq", element: <Faq /> },
   { path: "/login", element: <Login /> },
+  { path: "/signin", element: <SignIn /> },
+  { path: "/verify-otp", element: <VerifyOTP /> },
   { path: "/signup", element: <Signup /> },
   { path: "/profile", element: <Profile /> },
   { path: "/become-saller", element: <BecomeSaller /> },
   { path: "/privacy-policy", element: <PrivacyPolicy /> },
   { path: "/terms-condition", element: <TermsCondition /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
   { path: "*", element: <FourZeroFour /> },
 ]);
 
