@@ -10,21 +10,21 @@ export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get identifier from location.state
-  const identifier = location.state?.identifier;
+  // Get identifier, editField, and userData from location.state
+  const { identifier, editField, userData } = location.state || {};
 
   // Check if identifier is a phone number
   const isPhoneNumber = (identifier) => {
-    const phoneRegex = /^\+91 \d{10}$/;
+    const phoneRegex = /^\+91\d{10}$/;
     return phoneRegex.test(identifier);
   };
 
-  // Redirect to /login if no identifier is provided
+  // Redirect to /login if no identifier or userData
   useEffect(() => {
-    if (!identifier) {
+    if (!identifier || !userData) {
       navigate("/login", { replace: true });
     }
-  }, [identifier, navigate]);
+  }, [identifier, userData, navigate]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -47,9 +47,21 @@ export default function SignIn() {
       return;
     }
     try {
-      if (formData.password === "password123") {
-        console.log("Logging in with:", { identifier, password: formData.password });
-        navigate("/");
+      // Simulate authentication
+      if (formData.password === userData.password) {
+        if (editField) {
+          if (editField === "password") {
+            navigate("/reset-password", {
+              state: { identifier, userData },
+            });
+          } else {
+            navigate("/profile#profile", {
+              state: { isAuthenticated: true, editField, userData },
+            });
+          }
+        } else {
+          navigate("/");
+        }
       } else {
         setError("Invalid password.");
       }
@@ -64,37 +76,47 @@ export default function SignIn() {
         <div className="container-x mx-auto">
           <div className="flex items-center justify-center">
             <div className="lg:w-[480px] w-full bg-white p-12 rounded-xl shadow-lg border border-gray-100">
-              {/* Title */}
               <div className="title-area text-center mb-10">
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                  Sign In
+                  {editField ? `Authenticate to Edit ${editField}` : "Sign In"}
                 </h1>
                 <p className="text-sm text-gray-500 mt-3 font-medium">
-                  Enter your password to access your account
+                  Enter your password to {editField ? "edit your profile" : "access your account"}
                 </p>
               </div>
 
-              {/* Error Message */}
               {error && (
-                <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2" aria-live="polite">
+                <div
+                  className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2"
+                  aria-live="polite"
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   {error}
                 </div>
               )}
 
-              {/* Form */}
               <form onSubmit={handleSignIn} className="space-y-6">
                 <div>
                   <p className="text-sm text-gray-600 mb-4 font-medium">
-                    Signing in as{" "}
-                    <span className="font-semibold">{identifier}</span> |{" "}
-                    <Link to="/login" className="text-[#FF9900] hover:underline font-medium">
+                    Signing in as <span className="font-semibold">{identifier}</span> |{" "}
+                    <Link
+                      to="/login"
+                      className="text-[#FF9900] hover:underline font-medium"
+                    >
                       Change
                     </Link>
                   </p>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Password
                   </label>
                   <div className="relative">
@@ -120,6 +142,7 @@ export default function SignIn() {
                 <div className="flex justify-between items-center">
                   <Link
                     to={`/forgot-password?identifier=${encodeURIComponent(identifier || "")}`}
+                    state={{ userData }}
                     className="text-sm text-[#FF9900] hover:underline font-medium"
                   >
                     Forgot your password?
@@ -129,11 +152,10 @@ export default function SignIn() {
                   type="submit"
                   className="w-full bg-[#FF9900] hover:bg-[#e68a00] text-white h-[50px] rounded-lg font-semibold tracking-wide transition duration-200"
                 >
-                  Sign In
+                  {editField ? "Authenticate" : "Sign In"}
                 </button>
               </form>
 
-              {/* Divider */}
               {identifier && isPhoneNumber(identifier) && (
                 <div className="my-8 flex items-center">
                   <hr className="flex-grow border-t border-gray-200" />
@@ -142,11 +164,11 @@ export default function SignIn() {
                 </div>
               )}
 
-              {/* OTP Sign-In */}
               <div className="text-center">
                 {identifier && isPhoneNumber(identifier) ? (
                   <Link
                     to={`/verify-otp?identifier=${encodeURIComponent(identifier)}&type=signin`}
+                    state={{ userData }}
                     className="w-full flex items-center justify-center space-x-3 h-[50px] border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition duration-200"
                     aria-label="Sign in with OTP"
                   >
@@ -168,8 +190,7 @@ export default function SignIn() {
                   </Link>
                 ) : (
                   identifier && (
-                    <p className="text-sm text-gray-600 font-medium">
-                    </p>
+                    <p className="text-sm text-gray-600 font-medium"></p>
                   )
                 )}
               </div>

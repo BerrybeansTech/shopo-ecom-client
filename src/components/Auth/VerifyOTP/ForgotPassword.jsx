@@ -9,6 +9,7 @@ export default function ForgotPassword() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const prefilled = searchParams.get("identifier") || "";
+  const { userData } = location.state || {};
 
   useEffect(() => {
     setIdentifier(prefilled);
@@ -17,7 +18,7 @@ export default function ForgotPassword() {
   // Validate identifier
   const isValidIdentifier = (identifier) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+91 \d{10}$/; // Updated to allow space after +91
+    const phoneRegex = /^\+91\d{10}$/;
     return emailRegex.test(identifier) || phoneRegex.test(identifier);
   };
 
@@ -28,12 +29,14 @@ export default function ForgotPassword() {
       return;
     }
     if (!isValidIdentifier(identifier)) {
-      setError("Invalid email or mobile number. Phone number must start with +91 and have 10 digits with a space after +91.");
+      setError("Invalid email or mobile number. Phone number must start with +91 and have 10 digits.");
       return;
     }
     // Simulate sending OTP
     console.log("Sending OTP to:", identifier);
-    navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}&type=reset`);
+    navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}&type=reset`, {
+      state: { userData },
+    });
   };
 
   return (
@@ -42,7 +45,6 @@ export default function ForgotPassword() {
         <div className="container-x mx-auto">
           <div className="flex items-center justify-center">
             <div className="lg:w-[480px] w-full bg-white p-12 rounded-xl shadow-lg border border-gray-100">
-              {/* Title */}
               <div className="title-area text-center mb-10">
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                   Password Assistance
@@ -52,7 +54,6 @@ export default function ForgotPassword() {
                 </p>
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2" aria-live="polite">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,7 +63,6 @@ export default function ForgotPassword() {
                 </div>
               )}
 
-              {/* Form */}
               <form onSubmit={handleContinue} className="space-y-6">
                 <div>
                   <label
@@ -77,7 +77,13 @@ export default function ForgotPassword() {
                     type="text"
                     value={identifier}
                     onChange={(e) => {
-                      setIdentifier(e.target.value);
+                      let value = e.target.value;
+                      if (/^\d/.test(value) || value.startsWith("+91")) {
+                        value = value.replace(/\D/g, "");
+                        if (value.length > 10) value = value.slice(0, 10);
+                        value = `+91${value}`;
+                      }
+                      setIdentifier(value);
                       setError("");
                     }}
                     placeholder="Enter email or mobile number"
@@ -92,13 +98,12 @@ export default function ForgotPassword() {
                 </button>
               </form>
 
-              {/* Back to Sign In */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600 font-medium">
                   Remember your password?{" "}
                   <Link
                     to="/signin"
-                    state={{ identifier }}
+                    state={{ identifier, userData }}
                     className="text-[#FF9900] hover:underline font-medium"
                   >
                     Sign in

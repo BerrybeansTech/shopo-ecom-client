@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import Layout from "../../Partials/Layout";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import Layout from "../../Partials/Layout";
 
 export default function Signup() {
   const [checked, setValue] = useState(false);
@@ -21,7 +21,6 @@ export default function Signup() {
   const { state } = location;
 
   useEffect(() => {
-    // Pre-fill identifier if coming from Login
     if (state?.identifier) {
       const phoneMatch = state.identifier.match(/^\+91(\d{10})$/);
       if (phoneMatch) {
@@ -36,26 +35,32 @@ export default function Signup() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    let newValue = value;
+
+    if (name === "phone") {
+      newValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+
+    setFormData({ ...formData, [name]: newValue });
 
     // Validation
     if (name === "phone") {
       const phoneRegex = /^\d{10}$/;
-      if (!phoneRegex.test(value)) {
+      if (!phoneRegex.test(newValue)) {
         setErrors({ ...errors, phone: "Mobile number must be 10 digits." });
       } else {
         setErrors({ ...errors, phone: "" });
       }
     }
     if (name === "password") {
-      if (value.length < 6) {
+      if (newValue.length < 6) {
         setErrors({ ...errors, password: "Password must be at least 6 characters" });
       } else {
         setErrors({ ...errors, password: "" });
       }
     }
     if (name === "fname") {
-      if (value.trim() === "") {
+      if (newValue.trim() === "") {
         setErrors({ ...errors, fname: "Name is required" });
       } else {
         setErrors({ ...errors, fname: "" });
@@ -67,9 +72,14 @@ export default function Signup() {
     e.preventDefault();
     if (!errors.phone && !errors.password && !errors.fname && formData.fname.trim()) {
       const identifier = `+91${formData.phone}`;
-      console.log("Account created with:", { ...formData, identifier });
-      // Navigate to VerifyOTP for mobile verification
-      navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}`);
+      const userData = {
+        phone: identifier,
+        name: formData.fname,
+        password: formData.password,
+        email: "",
+      };
+      console.log("Account created with:", userData);
+      navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}`, { state: { userData } });
     } else {
       console.log("Form has errors");
     }
@@ -81,7 +91,7 @@ export default function Signup() {
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="login-page-wrapper w-full py-20 bg-gradient-to-br from-gray-50 via-gray-100 to-[#FFF7ED] min-h-screen">
+      <div className="login-page-wrapper w-full py-20 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
         <div className="container-x mx-auto">
           <div className="lg:flex items-center justify-center relative">
             <div className="lg:w-[572px] w-full bg-white p-12 rounded-2xl shadow-xl border border-gray-100 backdrop-blur-sm">
@@ -112,14 +122,17 @@ export default function Signup() {
                     <label className="text-gray-800 text-sm font-bold block mb-2">
                       Mobile Number
                     </label>
-                    <input
-                      placeholder="Enter your Mobile Number"
-                      name="phone"
-                      type="text"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700">+91</span>
+                      <input
+                        placeholder="Enter 10-digit mobile number"
+                        name="phone"
+                        type="text"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="h-[52px] w-full pl-12 pr-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
+                      />
+                    </div>
                     {errors.phone && (
                       <p className="text-red-600 text-sm mt-2 font-semibold">{errors.phone}</p>
                     )}
