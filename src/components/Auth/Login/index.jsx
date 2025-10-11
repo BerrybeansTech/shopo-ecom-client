@@ -10,17 +10,11 @@ export default function Login() {
   const handleInputChange = (e) => {
     let value = e.target.value;
 
-    // If user types a number and input doesn't start with +91, add +91
-    if (/^\d/.test(value) && !value.startsWith("+91 ")) {
-      value = "+91 " + value;
-    }
-
-    // Ensure it always starts with "+91 " if user deletes
-    if (value.startsWith("+91")) {
-      // Remove any non-digit after +91 and space
-      let digits = value.slice(4).replace(/\D/g, "");
-      if (digits.length > 10) digits = digits.slice(0, 10);
-      value = "+91 " + digits;
+    // Standardize phone number: remove spaces, ensure +91 prefix
+    if (/^\d/.test(value) || value.startsWith("+91")) {
+      value = value.replace(/\D/g, "");
+      if (value.length > 10) value = value.slice(0, 10);
+      value = `+91${value}`;
     }
 
     setFormData({ identifier: value });
@@ -29,13 +23,16 @@ export default function Login() {
 
   const isValidIdentifier = (identifier) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+91 \d{10}$/;
+    const phoneRegex = /^\+91\d{10}$/;
     return emailRegex.test(identifier) || phoneRegex.test(identifier);
   };
 
   const isExistingAccount = (identifier) => {
-    const existingIdentifiers = ["+91 9952699123", "admin@gmail.com"];
-    return existingIdentifiers.includes(identifier);
+    const existingAccounts = [
+      { identifier: "admin@gmail.com", password: "admin@123" },
+      { identifier: "+919952699123", password: "password123" },
+    ];
+    return existingAccounts.find((account) => account.identifier === identifier);
   };
 
   const handleContinue = (e) => {
@@ -48,8 +45,19 @@ export default function Login() {
       setError("Invalid email or mobile number. Phone number must start with +91 and have 10 digits.");
       return;
     }
-    if (isExistingAccount(formData.identifier)) {
-      navigate("/signin", { state: { identifier: formData.identifier } });
+    const account = isExistingAccount(formData.identifier);
+    if (account) {
+      navigate("/signin", {
+        state: {
+          identifier: formData.identifier,
+          userData: {
+            email: formData.identifier.includes("@") ? formData.identifier : "",
+            phone: formData.identifier.includes("+91") ? formData.identifier : "",
+            password: account.password,
+            name: "Shuvo khan", // Default name for existing account
+          },
+        },
+      });
     } else {
       navigate("/signup", { state: { identifier: formData.identifier } });
     }

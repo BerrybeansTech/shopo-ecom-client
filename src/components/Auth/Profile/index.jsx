@@ -8,25 +8,17 @@ import IcoCart from "./icons/IcoCart";
 import IcoDashboard from "./icons/IcoDashboard";
 import IcoLogout from "./icons/IcoLogout";
 import IcoLove from "./icons/IcoLove";
-import IcoPassword from "./icons/IcoPassword";
-import IcoPayment from "./icons/IcoPayment";
 import IcoPeople from "./icons/IcoPeople";
 import IcoReviewHand from "./icons/IcoReviewHand";
-import IcoSupport from "./icons/IcoSupport";
-// New icons (assuming they exist or need to be created)
 import IcoLoyalty from "./icons/IcoLoyalty";
 import IcoReferral from "./icons/IcoReferral";
 import IcoGiftCard from "./icons/IcoGiftCard";
 import AddressesTab from "./tabs/AddressesTab";
 import Dashboard from "./tabs/Dashboard";
 import OrderTab from "./tabs/OrderTab";
-import PasswordTab from "./tabs/PasswordTab";
-import Payment from "./tabs/Payment";
-import ProfileTab from "./tabs/ProfileTab";
+import LoginSecurityTab from "./tabs/LoginSecurityTab";
 import ReviewTab from "./tabs/ReviewTab";
-import SupportTab from "./tabs/SupportTab";
 import WishlistTab from "./tabs/WishlistTab";
-// New tab components (placeholders or full implementations based on requirements)
 import LoyaltyTab from "./tabs/LoyaltyTab";
 import ReferralTab from "./tabs/ReferralTab";
 import GiftCardTab from "./tabs/GiftCardTab";
@@ -36,6 +28,7 @@ export default function Profile() {
   const location = useLocation();
   const getHashContent = location.hash.split("#");
   const [active, setActive] = useState("dashboard");
+
   useEffect(() => {
     setActive(
       getHashContent && getHashContent.length > 1
@@ -45,9 +38,8 @@ export default function Profile() {
   }, [getHashContent]);
 
   const handleLogout = () => {
-    // Implement logout logic here (e.g., clear auth, redirect to login)
     console.log("Logging out...");
-    window.location.href = "/login"; // Example redirect
+    window.location.href = "/login";
   };
 
   return (
@@ -66,20 +58,6 @@ export default function Profile() {
                 <h1 className="text-[22px] font-bold text-qblack">
                   Your Dashboard
                 </h1>
-                <div className="switch-dashboard flex space-x-3 items-center">
-                  <p className="text-qgray text-base">Switch Dashboard</p>
-                  <button
-                    onClick={() => setSwitchDashboard(!switchDashboard)}
-                    type="button"
-                    className="w-[73px] h-[31px] border border-[#D9D9D9] rounded-full relative "
-                  >
-                    <div
-                      className={`w-[23px] h-[23px] bg-qblack rounded-full absolute top-[3px] transition-all duration-300 ease-in-out ${
-                        switchDashboard ? "left-[44px]" : "left-[4px]"
-                      }`}
-                    ></div>
-                  </button>
-                </div>
               </div>
               <div className="profile-wrapper w-full mt-8 flex space-x-10">
                 <div className="w-[236px] min-h-[600px] border-r border-[rgba(0, 0, 0, 0.1)]">
@@ -90,7 +68,7 @@ export default function Profile() {
                           <span>
                             <IcoDashboard />
                           </span>
-                          <span className=" font-normal text-base">
+                          <span className="font-normal text-base">
                             Dashboard
                           </span>
                         </div>
@@ -102,82 +80,8 @@ export default function Profile() {
                           <span>
                             <IcoPeople />
                           </span>
-                          <span className=" font-normal text-base">
-                            Personal Info
-                          </span>
-                        </div>
-                      </Link>
-                    </div>
-
-                    <div className="item group">
-                      <Link to="/profile#payment">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoPayment />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Payment Method
-                          </span>
-                        </div>
-                      </Link>
-                    </div>
-                    {/* New: Loyalty Program */}
-                    <div className="item group">
-                      <Link to="/profile#loyalty">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoLoyalty />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Loyalty Program
-                          </span>
-                        </div>
-                      </Link>
-                    </div>
-                    {/* New: Referral */}
-                    <div className="item group">
-                      <Link to="/profile#referral">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoReferral />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Referral
-                          </span>
-                        </div>
-                      </Link>
-                    </div>
-                    <div className="item group">
-                      <Link to="/profile#order">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoCart />
-                          </span>
-                          <span className=" font-normal text-base">Order</span>
-                        </div>
-                      </Link>
-                    </div>
-                    <div className="item group">
-                      <Link to="/profile#wishlist">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoLove />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Wishlist
-                          </span>
-                        </div>
-                      </Link>
-                    </div>
-                    {/* New: Gift Cards */}
-                    <div className="item group">
-                      <Link to="/profile#giftcard">
-                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
-                          <span>
-                            <IcoGiftCard />
-                          </span>
-                          <span className=" font-normal text-base">
-                            Gift Cards
+                          <span className="font-normal text-base">
+                            Login & Security
                           </span>
                         </div>
                       </Link>
@@ -188,8 +92,30 @@ export default function Profile() {
                           <span>
                             <IcoAdress />
                           </span>
-                          <span className=" font-normal text-base">
+                          <span className="font-normal text-base">
                             Address
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                    <div className="item group">
+                      <Link to="/profile#order">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoCart />
+                          </span>
+                          <span className="font-normal text-base">Order</span>
+                        </div>
+                      </Link>
+                    </div>
+                    <div className="item group">
+                      <Link to="/profile#wishlist">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoLove />
+                          </span>
+                          <span className="font-normal text-base">
+                            Wishlist
                           </span>
                         </div>
                       </Link>
@@ -200,32 +126,44 @@ export default function Profile() {
                           <span>
                             <IcoReviewHand />
                           </span>
-                          <span className=" font-normal text-base">
+                          <span className="font-normal text-base">
                             Reviews
                           </span>
                         </div>
                       </Link>
                     </div>
                     <div className="item group">
-                      <Link to="/profile#password">
+                      <Link to="/profile#loyalty">
                         <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
                           <span>
-                            <IcoPassword />
+                            <IcoLoyalty />
                           </span>
-                          <span className=" font-normal text-base">
-                            Change Password
+                          <span className="font-normal text-base">
+                            Loyalty Program
                           </span>
                         </div>
                       </Link>
                     </div>
                     <div className="item group">
-                      <Link to="/profile#support">
+                      <Link to="/profile#referral">
                         <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
                           <span>
-                            <IcoSupport />
+                            <IcoReferral />
                           </span>
-                          <span className=" font-normal text-base">
-                            Support Ticket
+                          <span className="font-normal text-base">
+                            Referral
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                    <div className="item group">
+                      <Link to="/profile#giftcard">
+                        <div className="flex space-x-3 items-center text-qgray hover:text-qblack">
+                          <span>
+                            <IcoGiftCard />
+                          </span>
+                          <span className="font-normal text-base">
+                            Gift Card
                           </span>
                         </div>
                       </Link>
@@ -239,7 +177,7 @@ export default function Profile() {
                         <span>
                           <IcoLogout />
                         </span>
-                        <span className=" font-normal text-base">
+                        <span className="font-normal text-base">
                           Logout
                         </span>
                       </button>
@@ -251,51 +189,23 @@ export default function Profile() {
                     {active === "dashboard" ? (
                       <Dashboard />
                     ) : active === "profile" ? (
-                      <>
-                        <ProfileTab />
-                      </>
-                    ) : active === "payment" ? (
-                      <>
-                        <Payment />
-                      </>
-                    ) : active === "loyalty" ? (
-                      <>
-                        <LoyaltyTab />
-                      </>
-                    ) : active === "referral" ? (
-                      <>
-                        <ReferralTab />
-                      </>
-                    ) : active === "order" ? (
-                      <>
-                        <OrderTab />
-                      </>
-                    ) : active === "wishlist" ? (
-                      <>
-                        <WishlistTab />
-                      </>
-                    ) : active === "giftcard" ? (
-                      <>
-                        <GiftCardTab />
-                      </>
+                      <LoginSecurityTab />
                     ) : active === "address" ? (
-                      <>
-                        <AddressesTab />
-                      </>
-                    ) : active === "password" ? (
-                      <>
-                        <PasswordTab />
-                      </>
-                    ) : active === "support" ? (
-                      <>
-                        <SupportTab />
-                      </>
+                      <AddressesTab />
+                    ) : active === "order" ? (
+                      <OrderTab />
+                    ) : active === "wishlist" ? (
+                      <WishlistTab />
                     ) : active === "review" ? (
-                      <>
-                        <ReviewTab products={datas.products} />
-                      </>
+                      <ReviewTab products={datas.products} />
+                    ) : active === "loyalty" ? (
+                      <LoyaltyTab />
+                    ) : active === "referral" ? (
+                      <ReferralTab />
+                    ) : active === "giftcard" ? (
+                      <GiftCardTab />
                     ) : (
-                      ""
+                      <Dashboard />
                     )}
                   </div>
                 </div>

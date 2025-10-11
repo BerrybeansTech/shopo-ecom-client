@@ -1,5 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-// import plugin from "tailwindcss/line-clamp";
 export default {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
@@ -19,6 +18,9 @@ export default {
         "qh5-bwhite": "#95D7DE",
         "qh3-blue": "#1868D5",
       },
+      fontFamily: {
+        inter: ["Inter", "sans-serif"],
+      },
       scale: {
         60: "0.6",
       },
@@ -30,5 +32,5 @@ export default {
       borderStyle: ["last"],
     },
   },
-  // plugins: [plugin],
+  plugins: [],
 };

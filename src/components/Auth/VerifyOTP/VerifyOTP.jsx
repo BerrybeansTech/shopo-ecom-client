@@ -9,7 +9,8 @@ export default function VerifyOTP() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const identifier = searchParams.get("identifier") || "";
-  const type = searchParams.get("type") || ""; // 'reset' or 'signin'
+  const type = searchParams.get("type") || "";
+  const { userData } = location.state || {};
 
   // Validate OTP (exactly 6 digits)
   const isValidOTP = (otp) => {
@@ -25,12 +26,11 @@ export default function VerifyOTP() {
     if (otp === "123456") {
       console.log("OTP verified for:", identifier);
       if (type === "reset") {
-        navigate(`/reset-password?identifier=${encodeURIComponent(identifier)}`); // Redirect to ResetPassword
+        navigate(`/reset-password`, { state: { identifier, userData, fromForgotPassword: true } });
       } else if (type === "signin") {
-        console.log("Sign-in successful with OTP for:", identifier);
-        navigate("/"); // Redirect to Home for OTP sign-in
+        navigate("/");
       } else {
-        navigate("/"); // Default for new user verification
+        navigate("/"); // New user verification
       }
     } else {
       setError("Invalid OTP. Please try again.");
@@ -39,7 +39,7 @@ export default function VerifyOTP() {
 
   // Handle OTP input change
   const handleOtpChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 6); // Allow only digits, max 6
+    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
     setOtp(value);
     setError("");
   };
@@ -56,13 +56,13 @@ export default function VerifyOTP() {
 
   useEffect(() => {
     if (!identifier) {
-      navigate("/login"); // Redirect to login if no identifier
+      navigate("/login");
     }
   }, [identifier, navigate]);
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="login-page-wrapper w-full py-12 bg-gray-50 min-h-7">
+      <div className="login-page-wrapper w-full py-12 bg-gradient-to-br from-gray-50 to-gray-100 min-h-7">
         <div className="container-x mx-auto">
           <div className="flex items-center justify-center">
             <div className="lg:w-[450px] w-full bg-white p-10 rounded-lg shadow-lg border border-gray-100">
@@ -76,7 +76,10 @@ export default function VerifyOTP() {
               </div>
 
               {error && (
-                <div className="mb-6 p-3 bg-red-100 text-red-700 text-sm rounded-md">
+                <div className="mb-6 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   {error}
                 </div>
               )}
@@ -97,12 +100,12 @@ export default function VerifyOTP() {
                     value={otp}
                     onChange={handleOtpChange}
                     maxLength={6}
-                    className="w-full h-[48px] px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+                    className="w-full h-[50px] px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-200 text-gray-900 placeholder-gray-400"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-[#FF9900] hover:bg-[#e68a00] text-white h-[48px] rounded-md font-semibold transition duration-200"
+                  className="w-full bg-[#FF9900] hover:bg-[#e68a00] text-white h-[50px] rounded-lg font-semibold transition duration-200"
                 >
                   Verify OTP
                 </button>
