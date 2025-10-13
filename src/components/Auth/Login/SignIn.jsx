@@ -104,15 +104,6 @@ export default function SignIn() {
 
               <form onSubmit={handleSignIn} className="space-y-6">
                 <div>
-                  <p className="text-sm text-gray-600 mb-4 font-medium">
-                    Signing in as <span className="font-semibold">{identifier}</span> |{" "}
-                    <Link
-                      to="/login"
-                      className="text-[#FF9900] hover:underline font-medium"
-                    >
-                      Change
-                    </Link>
-                  </p>
                   <label
                     htmlFor="password"
                     className="block text-sm font-medium text-gray-700 mb-2"

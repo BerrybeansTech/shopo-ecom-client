@@ -34,7 +34,7 @@ export default function Dashboard() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       ),
-      link: "/wishlist",
+      link: "/profile#wishlist",
     },
     {
       id: 4,
@@ -126,25 +126,6 @@ export default function Dashboard() {
             </div>
           </a>
         ))}
-      </div>
-
-      {/* Help Section */}
-      <div className="mt-8 bg-primarygray border-l-4 border-qyellow rounded-lg p-6">
-        <div className="flex items-start space-x-3">
-          <svg className="w-6 h-6 text-qyellow flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <h3 className="font-semibold text-qblack mb-1">Need Help?</h3>
-            <p className="text-sm text-qgray leading-relaxed">
-              If you need assistance with your orders or account, feel free to{" "}
-              <a href="/contact" className="text-qyellow hover:underline font-medium">
-                contact our support team
-              </a>
-              . We're here to help!
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
