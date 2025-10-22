@@ -657,13 +657,13 @@ export default function OrderTab() {
                   <h3 className="font-bold text-xl text-qblack">
                     Order #{order.id}
                   </h3>
-                  <span
+                  {/* <span
                     className={`text-sm font-medium ${getStatusColor(
                       order.status
                     )} px-3 py-1 rounded-full w-fit`}
                   >
                     {order.status}
-                  </span>
+                  </span> */}
                 </div>
                 <p className="text-sm text-qgray">
                   By Alex John | {order.date}
