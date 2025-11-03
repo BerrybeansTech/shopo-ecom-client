@@ -1,5 +1,5 @@
 import { useState } from "react";
-import DiscountBanner from "../Home/DiscountBanner";
+import FooterCategory from "../Home/FooterCategory";
 import Drawer from "../Mobile/Drawer";
 import Footer from "./Footers/Footer";
 import Header from "./Headers/HeaderOne";
@@ -14,7 +14,7 @@ export default function Layout({ children, childrenClasses }) {
         <div className={`w-full  ${childrenClasses || "pt-[30px] pb-[60px]"}`}>
           {children && children}
         </div>
-        <DiscountBanner />
+        <FooterCategory />
         <Footer />
       </div>
     </>

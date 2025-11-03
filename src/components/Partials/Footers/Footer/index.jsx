@@ -5,181 +5,181 @@ import Youtube from "../../../Helpers/icons/Youtube";
 
 export default function Footer({ type }) {
   return (
-    <footer className="footer-section-wrapper bg-white print:hidden">
-      <div className="container-x block mx-auto pt-[56px]">
-        <div className="w-full flex flex-col items-center mb-[50px]">
-          {/* logo area */}
-          <div className="mb-[40px]">
-            {type === 3 ? (
-              <Link to="/">
-                <img
-                  width="152"
-                  height="36"
-                  src={`${
-                    import.meta.env.VITE_PUBLIC_URL
-                  }/assets/images/logo-3.svg`}
-                  alt="logo"
-                />
-              </Link>
-            ) : (
-              <Link to="/">
-                <img
-                  width="152"
-                  height="36"
-                  src={`${
-                    import.meta.env.VITE_PUBLIC_URL
-                  }/assets/images/logo.svg`}
-                  alt="logo"
-                />
-              </Link>
-            )}
+    <footer className="footer-section-wrapper bg-black text-white print:hidden">
+      <div className="container-x block mx-auto pt-10 pb-5">
+        {/* Main Footer Content */}
+        <div className="lg:flex lg:gap-12 justify-between mb-10">
+          {/* 1. Get To Know Us */}
+          <div className="lg:w-1/4 w-full mb-10 lg:mb-0">
+            <div className="mb-6">
+              <h6 className="text-xl font-semibold text-white tracking-wide mb-2">
+                Get To Know Us
+              </h6>
+              <div className="w-12 h-0.5 bg-gray-700"></div>
+            </div>
+            <ul className="flex flex-col space-y-3">
+              {[
+                { name: "Home", path: "/" },
+                { name: "About Us", path: "/about" },
+                { name: "Press", path: "/press" },
+                { name: "Contact Us", path: "/contact" },
+                { name: "Referral", path: "/referral" },
+                { name: "Loyalty Program", path: "/loyalty" },
+              ].map((link, index) => (
+                <li key={index}>
+                  <Link to={link.path} className="group flex items-center">
+                    <span className="text-gray-300 text-[15px] hover:text-white border-b border-transparent hover:border-white transition-all duration-300 cursor-pointer capitalize">
+                      {link.name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="w-full h-[1px] bg-[#E9E9E9]"></div>
-        </div>
-        <div className="lg:flex justify-between mb-[50px]">
-          <div className="lg:w-[424px]  ml-0 w-full mb-10 lg:mb-0">
-            <h1 className="text-[18] font-500 text-[#2F2F2F] mb-5">About Us</h1>
-            <p className="text-[#9A9A9A] text-[15px] w-[247px] leading-[28px]">
-              We know there are a lot of threa developers our but we pride into
-              a firm in the industry.
-            </p>
-          </div>
-          <div className="flex-1 lg:flex">
-            <div className="lg:w-1/3 w-full mb-10 lg:mb-0">
-              <div className="mb-5">
-                <h6 className="text-[18] font-500 text-[#2F2F2F]">Feature</h6>
-              </div>
-              <div>
-                <ul className="flex flex-col space-y-4 ">
-                  <li>
-                    <Link to="/about">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                        About Us
-                      </span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/terms-condition">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                        Terms Condition
-                      </span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/all-products">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                        Best Products
-                      </span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
+
+          {/* 2. Work Inquiries - Extra Space */}
+          <div className="lg:w-1/4 w-full mb-10 lg:mb-0 lg:pr-8">
+            <div className="mb-6">
+              <h6 className="text-xl font-semibold text-white tracking-wide mb-2">
+                Let Us Help You
+              </h6>
+              <div className="w-12 h-0.5 bg-gray-700"></div>
             </div>
-            <div className="lg:w-1/3 lg:flex lg:flex-col items-center w-full mb-10 lg:mb-0 ">
-              <div>
-                <div className="mb-5">
-                  <h6 className="text-[18] font-500 text-[#2F2F2F]">
-                    General Links
-                  </h6>
-                </div>
-                <div>
-                  <ul className="flex flex-col space-y-4 ">
-                    <li>
-                      <Link to="/blogs">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          Blog
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/tracking-order">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          Tracking Order
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/become-saller">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          Become Seller
-                        </span>
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
+            <div className="text-gray-300 text-[15px] leading-[28px] space-y-4">
+              <p className="text-[15px]">
+                Interested in working with us?
+              </p>
+              <div className="space-y-2">
+                <a
+                  href="mailto:atcarabia21@gmail.com"
+                  className="block text-[15px] text-gray-300 hover:text-white transition-colors"
+                >
+                  atcarabia21@gmail.com
+                </a>
+                <a
+                  href="mailto:sales@atc-arabia.com"
+                  className="block text-[15px] text-gray-300 hover:text-white transition-colors"
+                >
+                  sales@atc-arabia.com
+                </a>
               </div>
-            </div>
-            <div className="lg:w-1/3 lg:flex lg:flex-col items-center w-full mb-10 lg:mb-0">
-              <div>
-                <div className="mb-5">
-                  <h6 className="text-[18] font-500 text-[#2F2F2F]">Helpful</h6>
-                </div>
-                <div>
-                  <ul className="flex flex-col space-y-4 ">
-                    <li>
-                      <Link to="/flash-sale">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          Flash Sale
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/faq">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          FAQ
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/about">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
-                          Support
-                        </span>
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bottom-bar border-t border-qgray-border lg:h-[82px] lg:flex justify-between items-center">
-          <div className="flex lg:space-x-5 justify-between items-center mb-3">
-            <div className="flex space-x-5 items-center">
-              <a href="#">
-                <Instagram className="fill-current text-qgray hover:text-qblack" />
-              </a>
-              <a href="#">
-                <Facebook className="fill-current text-qgray hover:text-qblack" />
-              </a>
-              <a href="#">
-                <Youtube className="fill-current text-qgray hover:text-qblack" />
-              </a>
-            </div>
-            <span className="sm:text-base text-[10px] text-qgray font-300">
-              ©2022
+              <p className="text-[15px] mt-6">
+                Have questions? We're here to help!
+              </p>
               <a
-                href="https://quomodosoft.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="font-500 text-qblack mx-1"
+                href="mailto:contact@atc-arabia.com"
+                className="block text-[15px] text-gray-300 hover:text-white transition-colors font-medium"
               >
-                Quomodosoft
+                contact@atc-arabia.com
+              </a>
+            </div>
+          </div>
+
+          {/* 3. Let Us Help You */}
+          <div className="lg:w-1/4 w-full mb-10 lg:mb-0">
+            <div className="mb-6">
+              <h6 className="text-xl font-semibold text-white tracking-wide mb-2">
+                Special Collections
+              </h6>
+              <div className="w-12 h-0.5 bg-gray-700"></div>
+            </div>
+            <ul className="flex flex-col space-y-3">
+              {[
+                { name: "Winter Wear", path: "/winter-wear" },
+                { name: "Summer Essentials", path: "/summer-essentials" },
+                { name: "Festive / Designer Drop", path: "/festive-designer" },
+                { name: "Co-ords / Matching Sets", path: "/co-ords" },
+              ].map((link, index) => (
+                <li key={index}>
+                  <Link to={link.path} className="group flex items-center">
+                    <span className="text-gray-300 text-[15px] hover:text-white border-b border-transparent hover:border-white transition-all duration-300 cursor-pointer capitalize">
+                      {link.name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 4. Accessories + Follow Us */}
+          <div className="lg:w-1/4 w-full mb-10 lg:mb-0">
+            <div className="mb-6">
+              <h6 className="text-xl font-semibold text-white tracking-wide mb-2">
+                Accessories
+              </h6>
+              <div className="w-12 h-0.5 bg-gray-700"></div>
+            </div>
+            <ul className="flex flex-col space-y-3 mb-6">
+              {[
+                { name: "Sunglasses", path: "/sunglasses" },
+                { name: "Scarves / Mufflers", path: "/scarves-mufflers" },
+                { name: "Socks", path: "/socks" },
+                { name: "Towels", path: "/towels" },
+              ].map((link, index) => (
+                <li key={index}>
+                  <Link to={link.path} className="group flex items-center">
+                    <span className="text-gray-300 text-[15px] hover:text-white border-b border-transparent hover:border-white transition-all duration-300 cursor-pointer capitalize">
+                      {link.name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            {/* Follow Us */}
+            <div>
+              <p className="text-[15px] text-gray-300 font-medium mb-3">Follow Us</p>
+              <div className="flex space-x-6 items-center">
+                <a href="#" className="group" aria-label="Instagram">
+                  <Instagram className="fill-current text-gray-400 hover:text-pink-500 transition-colors duration-300 transform group-hover:scale-110 w-5 h-5" />
+                </a>
+                <a href="#" className="group" aria-label="Facebook">
+                  <Facebook className="fill-current text-gray-400 hover:text-blue-500 transition-colors duration-300 transform group-hover:scale-110 w-5 h-5" />
+                </a>
+                <a href="#" className="group" aria-label="YouTube">
+                  <Youtube className="fill-current text-gray-400 hover:text-red-500 transition-colors duration-300 transform group-hover:scale-110 w-5 h-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Policies Section */}
+        <div className="border-t border-gray-700 pt-5 mb-5">
+          <div className="flex flex-wrap justify-center gap-6 text-sm">
+            {[
+              { name: "FAQ", path: "/faqs" },
+              { name: "Privacy Policy", path: "/privacy-policy" },
+              { name: "Terms & Conditions", path: "/terms-condition" },
+              { name: "Shipping Policy", path: "/shipping-policy" },
+              { name: "Cancellation & Return", path: "/return-policy" },
+            ].map((link, index) => (
+              <Link
+                key={index}
+                to={link.path}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Bar - Copyright Left */}
+        <div className="border-t border-gray-700 pt-5">
+          <div className="lg:flex justify-between items-center text-sm text-gray-400">
+            <span className="block lg:inline">
+              ©2025
+              <a
+                href="#"
+                rel="noreferrer"
+                className="font-semibold text-white mx-1 hover:underline"
+              >
+                Rabbit & Finch
               </a>
               All rights reserved
             </span>
-          </div>
-          <div className="">
-            <a href="#">
-              <img
-                width="318"
-                height="28"
-                src={`${
-                  import.meta.env.VITE_PUBLIC_URL
-                }/assets/images/payment-getways.png`}
-                alt="payment-getways"
-              />
-            </a>
+            <div></div>
           </div>
         </div>
       </div>

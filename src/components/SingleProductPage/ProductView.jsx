@@ -1,125 +1,13 @@
 import { useState, useRef, useEffect } from "react";
+import productsData from "../../data/productsTwo.json";
 
 export default function ProductView({ className, reportHandler }) {
-  // Updated productsImg to include videos in the images array with type field
-  const productsImg = [
-    {
-      id: 1,
-      src: "shirt1.webp",
-      color: "#FFBC63",
-      colorName: "Yellow",
-      images: [
-        { src: "shirt1.webp", type: "image" },
-        { src: "shirt12.webp", type: "image" },
-        { src: "shirt13.webp", type: "image" },
-        { src: "ani.mp4", type: "video" },
-      ],
-    },
-    {
-      id: 2,
-      src: "shirt2.webp",
-      color: "#649EFF",
-      colorName: "Blue",
-      images: [
-        { src: "shirt2.webp", type: "image" },
-        { src: "shirt22.webp", type: "image" },
-        { src: "shirt23.webp", type: "image" },
-        { src: "shirt24.webp", type: "image" },
-        { src: "ani.mp4", type: "video" },
-      ],
-    },
-    {
-      id: 3,
-      src: "shirt3.webp",
-      color: "#FFFFFF",
-      colorName: "White",
-      images: [
-        { src: "shirt3.webp", type: "image" },
-        { src: "shirt32.webp", type: "image" },
-        { src: "shirt33.webp", type: "image" },
-        { src: "ani.mp4", type: "video" },
-      ],
-    },
-    {
-      id: 4,
-      src: "shirt4.webp",
-      color: "#FF7173",
-      colorName: "Red",
-      images: [
-        { src: "shirt4.webp", type: "image" },
-        { src: "shirt42.webp", type: "image" },
-        { src: "shirt43.webp", type: "image" },
-        { src: "shirt44.webp", type: "image" },
-        { src: "ani.mp4", type: "video" },
-      ],
-    },
-    {
-      id: 5,
-      src: "shirt5.webp",
-      color: "#ffffff",
-      colorName: "White",
-      images: [
-        { src: "shirt5.webp", type: "image" },
-        { src: "shirt51.webp", type: "image" },
-        { src: "shirt52.webp", type: "image" },
-        { src: "ani.mp4", type: "video" },
-      ],
-    },
-  ];
-
-  // Define size options
-  const sizeOptions = [
-    { label: "S", chest: '36-38"', value: "S" },
-    { label: "M", chest: '38-40"', value: "M" },
-    { label: "L", chest: '40-42"', value: "L" },
-    { label: "XL", chest: '42-44"', value: "XL" },
-    { label: "XXL", chest: '44-46"', value: "XXL" },
-    { label: "3XL", chest: '46-48"', value: "3XL" },
-    { label: "4XL", chest: '48-50"', value: "4XL" },
-  ];
-
-  // Mapping of product IDs to available sizes
-  const sizeAvailability = {
-    1: ["S", "M"],
-    2: ["M", "L"],
-    3: ["L", "XL", "XXL"],
-    4: ["S", "M", "L", "XL"],
-    5: ["S", "M", "L", "XL", "XXL", "3XL", "4XL"],
-  };
-
-  // Define reviews data
-  const reviews = [
-    {
-      id: 1,
-      name: "Sahil Gupta",
-      avatarColor: "bg-qh2-green",
-      initials: "SG",
-      rating: "★★★★☆",
-      date: "Aug, 2022",
-      location: "Sonipat",
-      text: "The shirt is really made up of very good quality. The colour is also very good as it looks good. The fitting is also good. Overall a nice shirt that looks premium.",
-    },
-    {
-      id: 2,
-      name: "Amit Kumar",
-      avatarColor: "bg-blue-500",
-      initials: "AK",
-      rating: "★★★★★",
-      date: "Sep, 2022",
-      location: "Delhi",
-      text: "Excellent fabric quality and perfect fitting. The color matches exactly as shown in the pictures. Great value for money! Will definitely purchase again.",
-    },
-    {
-      id: 3,
-      name: "Rahul Sharma",
-      avatarColor: "bg-purple-500",
-      initials: "RS",
-      rating: "★★★☆☆",
-      date: "Jul, 2022",
-      location: "Mumbai",
-      text: "Good shirt for the price but the sizing runs a bit small. Had to exchange for a larger size. Fabric quality is decent but could be better.",
-    },
-  ];
+  // Get product data from JSON
+  const product = productsData.products[0];
+  const productsImg = product.colors;
+  const sizeOptions = product.sizeOptions;
+  const sizeAvailability = product.sizeAvailability;
+  const reviews = product.reviews;
 
   // State to track the main content, selected color, thumbnails, reviews, and other UI states
   const [mainContent, setMainContent] = useState({ src: productsImg[0].src, type: "image" });
@@ -401,23 +289,23 @@ export default function ProductView({ className, reportHandler }) {
               data-aos="fade-up"
               className="text-qgray text-xs font-normal uppercase tracking-wider mb-2 inline-block"
             >
-              Men's Fashion
+              {product.category}
             </span>
             <p
               data-aos="fade-up"
               className="text-xl font-medium text-qblack mb-4"
             >
-              Classic Men's Button-Down Shirt - 5 Colors
+              {product.name}
             </p>
             <div
               data-aos="fade-up"
               className="flex space-x-[10px] items-center mb-6"
             >
               <span className="bg-qgreen text-xs font-bold py-1 px-2 rounded">
-                3.9 ★
+                {product.rating} ★
               </span>
               <span className="text-qblack text-sm">
-                2,02,923 ratings and 8,063 reviews
+                {product.totalRatings.toLocaleString()} ratings and {product.totalReviews.toLocaleString()} reviews
               </span>
             </div>
 
@@ -428,12 +316,12 @@ export default function ProductView({ className, reportHandler }) {
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-2xl font-bold text-qblack">₹279.00</span>
+                <span className="text-2xl font-bold text-qblack">₹{product.price}.00</span>
                 <span className="text-lg font-medium text-qgray line-through ml-3">
-                  ₹1999.00
+                  ₹{product.originalPrice}.00
                 </span>
                 <span className="text-sm font-semibold text-qred ml-3 bg-qred-light px-2 py-1 rounded">
-                  86% off
+                  {product.discountPercent}% off
                 </span>
                 <span
                   className="ml-2 cursor-pointer"
@@ -471,7 +359,7 @@ export default function ProductView({ className, reportHandler }) {
                 <div className="mt-2 p-3 bg-gray-100 rounded border border-gray-300">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Maximum Retail Price (incl. of all taxes)</span>
-                    <span>₹1999.00</span>
+                    <span>₹{product.originalPrice}.00</span>
                   </div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Selling Price</span>
@@ -479,11 +367,11 @@ export default function ProductView({ className, reportHandler }) {
                   </div>
                   <div className="flex justify-between border-t border-gray-300 text-sm mb-1">
                     <span>Special Price</span>
-                    <span>₹279.00</span>
+                    <span>₹{product.price}.00</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t border-gray-300 pt-1 mt-1">
                     <span>Overall you save</span>
-                    <span>₹1720 (86%)</span>
+                    <span>₹{product.originalPrice - product.price} ({product.discountPercent}%)</span>
                   </div>
                 </div>
               )}
@@ -838,41 +726,21 @@ export default function ProductView({ className, reportHandler }) {
                 <div className="mt-2">
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Brand:</span>
-                      <span className="text-qblack font-medium">METRONAUT</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Size:</span>
-                      <span className="text-qblack font-medium">{selectedSize}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Pack of:</span>
-                      <span className="text-qblack font-medium">1</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Style Code:</span>
-                      <span className="text-qblack font-medium">
-                        FORMAL SHIRT
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Closure:</span>
-                      <span className="text-qblack font-medium">Button</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Fit:</span>
-                      <span className="text-qblack font-medium">Regular</span>
-                    </div>
-                    <div className="flex items-center">
                       <span className="text-qgray w-1/3">Fabric:</span>
-                      <span className="text-qblack font-medium">
-                        Cotton Blend
-                      </span>
+                      <span className="text-qblack font-medium">{product.specifications.fabric}</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-qgray w-1/3">Sleeve:</span>
+                      <span className="text-qgray w-1/3">Fit Type</span>
+                      <span className="text-qblack font-medium">{product.specifications.fitType}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-qgray w-1/3">Occasion</span>
+                      <span className="text-qblack font-medium">{product.specifications.occasion}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-qgray w-1/3">Care Instructions</span>
                       <span className="text-qblack font-medium">
-                        Full Sleeve
+                        {product.specifications.careInstructions}
                       </span>
                     </div>
                   </div>
@@ -884,28 +752,9 @@ export default function ProductView({ className, reportHandler }) {
                   </button>
                   {showReadMore && (
                     <div className="mt-2 text-sm text-qblack">
-                      <div className="grid mb-2 grid-cols-1 gap-2 text-sm">
-                        <div className="flex items-center">
-                          <span className="text-qgray w-1/3">Brand:</span>
-                          <span className="text-qblack font-medium">
-                            METRONAUT
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-qgray w-1/3">Size:</span>
-                          <span className="text-qblack font-medium">{selectedSize}</span>
-                        </div>
-                      </div>
                       <p>
-                        Additional Information: This formal shirt is designed
-                        for comfort and style, featuring a classic collar and a
-                        tailored fit suitable for office wear or special
-                        occasions. Made with a high-quality cotton blend, it
-                        offers breathability and durability. Care Instructions:
-                        Machine wash cold, tumble dry low, or iron on medium
-                        heat. Available in multiple colors to suit your
-                        preference.
-                      </p>
+                        <span className="text-qgray w-1/3">Description:</span><span className="text-qblack font-medium"> {product.specifications.description}
+                      </span></p>
                     </div>
                   )}
                 </div>
@@ -926,14 +775,14 @@ export default function ProductView({ className, reportHandler }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-qblack">3.9</div>
+                    <div className="text-3xl font-bold text-qblack">{product.rating}</div>
                     <div className="text-qgreen text-sm font-medium">
                       ★ ★ ★ ★ ☆
                     </div>
                     <div className="text-xs text-qgray mt-1">
-                      2,02,923 ratings
+                      {product.totalRatings.toLocaleString()} ratings
                     </div>
-                    <div className="text-xs text-qgray">8,063 reviews</div>
+                    <div className="text-xs text-qgray">{product.totalReviews.toLocaleString()} reviews</div>
                   </div>
                 </div>
                 <div className="flex-1 ml-6">
@@ -1047,7 +896,7 @@ export default function ProductView({ className, reportHandler }) {
               />
             </svg>
             <span className="text-sm font-medium text-green-800">
-              93% of customers recommend this product
+              {product.recommendationRate}% of customers recommend this product
             </span>
           </div>
         </div>
