@@ -2,14 +2,14 @@ import { useState } from "react";
 import DiscountBanner from "../Home/DiscountBanner";
 import Drawer from "../Mobile/Drawer";
 import Footer from "./Footers/Footer";
-import Header from "./Headers/HeaderOne";
+import Header from "./Headers/HeaderOne/index";
 
 export default function Layout({ children, childrenClasses }) {
   const [drawer, setDrawer] = useState(false);
   return (
     <>
       <Drawer open={drawer} action={() => setDrawer(!drawer)} />
-      <div className="w-full overflow-x-hidden">
+      <div className="w-full max-w-[1920px] mx-auto overflow-x-hidden">
         <Header drawerAction={() => setDrawer(!drawer)} />
         <div className={`w-full  ${childrenClasses || "pt-[30px] pb-[60px]"}`}>
           {children && children}
