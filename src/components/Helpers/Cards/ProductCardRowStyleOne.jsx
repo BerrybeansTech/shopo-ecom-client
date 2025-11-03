@@ -26,8 +26,8 @@ export default function ProductCardRowStyleTwo({ className, datas, type }) {
           <div>
             {/* reviews */}
             <div className="flex space-x-1 mb-3">
-              {Array.from(Array(datas.review), () => (
-                <span key={datas.review + Math.random()}>
+              {Array.from(Array(Math.floor(datas.review) || 0), () => (
+                <span key={Math.random()}>
                   <Star />
                 </span>
               ))}
