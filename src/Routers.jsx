@@ -31,6 +31,8 @@ import Wishlist from "./components/Wishlist";
 import VerifyOTP from "./components/Auth/VerifyOTP/VerifyOTP.jsx";
 import ForgotPassword from "./components/Auth/VerifyOTP/ForgotPassword.jsx";
 import ResetPassword from "./components/Auth/VerifyOTP/ResetPassword.jsx";
+import ShippingPolicy from "./components/ShippingPolicy/index.jsx";
+import ReturnOrExchangePolicy from "./components/ReturnOrExchangePolicy/indesx.jsx";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -61,6 +63,8 @@ const router = createBrowserRouter([
   { path: "/become-saller", element: <BecomeSaller /> },
   { path: "/privacy-policy", element: <PrivacyPolicy /> },
   { path: "/terms-condition", element: <TermsCondition /> },
+  {path: "shipping-policy", element: <ShippingPolicy /> },
+  {path: "return-policy", element: <ReturnOrExchangePolicy/>},
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "*", element: <FourZeroFour /> },

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import DiscountBanner from "../Home/DiscountBanner";
+import FooterCategory from "../Home/FooterCategory";
 import Footer from "./Footers/Footer";
 import Header from "./Headers/HeaderOne";
 import DrawerThree from "../Mobile/DrawerThree";
@@ -14,7 +14,7 @@ export default function LayoutHomeThree({ children, childrenClasses,type }) {
                 <div className={`w-full  ${childrenClasses || "pt-[30px] pb-[60px]"}`}>
                     {children && children}
                 </div>
-                <DiscountBanner type={3} />
+                <FooterCategory type={3} />
                 <Footer type={type} />
             </div>
         </>
