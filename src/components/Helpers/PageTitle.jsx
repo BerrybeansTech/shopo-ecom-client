@@ -2,7 +2,7 @@ import BreadcrumbCom from "../BreadcrumbCom";
 
 export default function PageTitle({ title, breadcrumb = [] }) {
   return (
-    <div className="page-title-wrapper bg-[#FFFAEF] w-full h-[173px] py-10">
+    <div className="page-title-wrapper w-full h-[91px] py-8">
       <div className="container-x mx-auto">
         <div className="mb-5">
           <BreadcrumbCom paths={breadcrumb} />

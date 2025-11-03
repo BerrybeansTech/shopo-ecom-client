@@ -9,6 +9,12 @@ export default function ProductCardStyleOne({ datas, type }) {
     (datas.cam_product_sale /
       (datas.cam_product_available + datas.cam_product_sale)) *
     100;
+
+  // Determine if the image is a full URL or a relative path
+  const imageUrl = datas.image.startsWith("http")
+    ? datas.image
+    : `${import.meta.env.VITE_PUBLIC_URL}/assets/images/${datas.image}`;
+
   return (
     <div
       className="product-card-one w-full h-full bg-white relative group overflow-hidden"
@@ -17,9 +23,8 @@ export default function ProductCardStyleOne({ datas, type }) {
       <div
         className="product-card-img w-full h-[300px]"
         style={{
-          background: `url(${import.meta.env.VITE_PUBLIC_URL}/assets/images/${
-            datas.image
-          }) no-repeat center`,
+          background: `url(${imageUrl}) no-repeat center`,
+          backgroundSize: "contain",
         }}
       >
         {/* product available progress */}
@@ -39,7 +44,7 @@ export default function ProductCardStyleOne({ datas, type }) {
                   style={{
                     width: `${datas.campaingn_product ? 100 - available : 0}%`,
                   }}
-                  className={`h-full absolute left-0 top-0  ${
+                  className={`h-full absolute left-0 top-0 ${
                     type === 3 ? "bg-qh3-blue" : "bg-qyellow"
                   }`}
                 ></div>
@@ -61,7 +66,7 @@ export default function ProductCardStyleOne({ datas, type }) {
         )}
       </div>
       <div className="product-card-details px-[30px] pb-[30px] relative">
-        {/* add to card button */}
+        {/* add to cart button */}
         <div className="absolute w-full h-10 px-[30px] left-0 top-40 group-hover:top-[85px] transition-all duration-300 ease-in-out">
           <button
             type="button"
@@ -85,8 +90,8 @@ export default function ProductCardStyleOne({ datas, type }) {
           </button>
         </div>
         <div className="reviews flex space-x-[1px] mb-3">
-          {Array.from(Array(datas.review), () => (
-            <span key={datas.review + Math.random()}>
+          {Array.from(Array(Math.floor(datas.review) || 0), () => (
+            <span key={Math.random()}>
               <Star />
             </span>
           ))}
@@ -106,7 +111,7 @@ export default function ProductCardStyleOne({ datas, type }) {
         </p>
       </div>
       {/* quick-access-btns */}
-      <div className="quick-access-btns flex flex-col space-y-2 absolute group-hover:right-4 -right-10 top-20  transition-all duration-300 ease-in-out">
+      <div className="quick-access-btns flex flex-col space-y-2 absolute group-hover:right-4 -right-10 top-20 transition-all duration-300 ease-in-out">
         <a href="#">
           <span className="w-10 h-10 flex justify-center items-center bg-primarygray rounded">
             <QuickViewIco />

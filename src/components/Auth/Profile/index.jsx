@@ -74,7 +74,7 @@ export default function Profile() {
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-qblack bg-opacity-50 z-40 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black bg-opacity-20 z-40 md:hidden transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -90,12 +90,12 @@ export default function Profile() {
             />
             <div className="w-full bg-white px-4 py-6 md:px-10 md:py-9">
               <div className="title-area w-full flex justify-between items-center">
-                <h1 className="text-lg md:text-[22px] font-bold text-qblack">
+                <h1 className="text-lg md:text-[22px] font-bold text-gray-800">
                   Your Dashboard
                 </h1>
                 {/* Hamburger menu for mobile */}
                 <button
-                  className="hamburger-btn md:hidden text-qblack focus:outline-none p-2 hover:bg-primarygray rounded-lg transition-all duration-200"
+                  className="hamburger-btn md:hidden text-gray-700 focus:outline-none p-2 hover:bg-gray-50 rounded-lg transition-all duration-200"
                   onClick={toggleSidebar}
                   aria-label="Toggle menu"
                 >
@@ -127,22 +127,22 @@ export default function Profile() {
               <div className="profile-wrapper w-full mt-6 md:mt-8 flex flex-col md:flex-row md:space-x-12">
                 {/* Sidebar */}
                 <div
-                  className={`mobile-sidebar w-[280px] md:w-[256px] min-h-[400px] md:min-h-[600px] border-r border-qgray-border
-                    fixed md:static top-0 left-0 h-full md:h-auto bg-white z-50 
+                  className={`mobile-sidebar w-[280px] md:w-[256px] min-h-[400px] md:min-h-[600px] border-r border-gray-100
+                    fixed md:static top-0 left-0 h-full md:h-auto bg-white z-0 
                     transition-transform duration-300 ease-in-out 
                     ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-                    md:translate-x-0 shadow-2xl md:shadow-none overflow-y-auto`}
+                    md:translate-x-0 shadow-lg md:shadow-none overflow-y-auto`}
                 >
                   {/* Mobile Header */}
-                  <div className="md:hidden flex items-center justify-between p-4 border-b border-qgray-border bg-primarygray">
-                    <h2 className="text-lg font-semibold text-qblack">Menu</h2>
+                  <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-800">Menu</h2>
                     <button
                       onClick={() => setIsSidebarOpen(false)}
-                      className="p-2 hover:bg-white rounded-lg transition-all duration-200"
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200"
                       aria-label="Close menu"
                     >
                       <svg
-                        className="w-5 h-5 text-qblack"
+                        className="w-5 h-5 text-gray-700"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -157,18 +157,18 @@ export default function Profile() {
                     </button>
                   </div>
 
-                  <div className="flex flex-col space-y-2 p-4 md:p-0 md:pt-0 md:pr-4">
+                  <div className="flex flex-col space-y-1 p-4 md:p-0 md:pt-0 md:pr-4">
                     <div className="item group">
                       <Link 
                         to="/profile#dashboard" 
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'dashboard' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'dashboard' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'dashboard' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoDashboard />
                         </span>
                         <span className="text-base">
@@ -182,11 +182,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'profile' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'profile' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'profile' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoPeople />
                         </span>
                         <span className="text-base">
@@ -200,11 +200,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'address' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'address' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'address' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoAdress />
                         </span>
                         <span className="text-base">
@@ -218,11 +218,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'order' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'order' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'order' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoCart />
                         </span>
                         <span className="text-base">Order</span>
@@ -234,11 +234,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'review' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'review' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'review' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoReviewHand />
                         </span>
                         <span className="text-base">
@@ -252,11 +252,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'loyalty' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'loyalty' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'loyalty' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoLoyalty />
                         </span>
                         <span className="text-base">
@@ -270,11 +270,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'referral' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'referral' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'referral' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoReferral />
                         </span>
                         <span className="text-base">
@@ -288,11 +288,11 @@ export default function Profile() {
                         onClick={handleMenuClick}
                         className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
                           active === 'giftcard' 
-                            ? 'bg-qyellow bg-opacity-10 border-qyellow text-qblack font-medium' 
-                            : 'border-transparent text-qgray hover:bg-qyellow hover:bg-opacity-5 hover:text-qblack hover:border-qyellow'
+                            ? 'bg-gray-100 text-gray-800 border-gray-400 font-medium' 
+                            : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300'
                         }`}
                       >
-                        <span className={`transition-transform group-hover:scale-110 ${active === 'giftcard' ? 'text-qyellow' : ''}`}>
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'giftcard' ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
                           <IcoGiftCard />
                         </span>
                         <span className="text-base">
@@ -302,16 +302,16 @@ export default function Profile() {
                     </div>
                     
                     {/* Divider and Logout */}
-                    <div className="mt-4 pt-4 border-t border-qgray-border">
+                    <div className="mt-4 pt-4 border-t border-gray-100">
                       <button
                         onClick={() => {
                           handleLogout();
                           setIsSidebarOpen(false);
                         }}
                         type="button"
-                        className="flex space-x-3 items-center text-qgray hover:text-qred w-full text-left p-3 rounded-lg hover:bg-qred hover:bg-opacity-5 border-l-4 border-transparent hover:border-qred transition-all duration-200 group"
+                        className="flex space-x-3 items-center text-gray-600 hover:text-gray-800 w-full text-left p-3 rounded-lg hover:bg-gray-50 border-l-4 border-transparent hover:border-gray-300 transition-all duration-200 group"
                       >
-                        <span className="transition-transform group-hover:scale-110 group-hover:text-qred">
+                        <span className="transition-transform group-hover:scale-110 group-hover:text-gray-700">
                           <IcoLogout />
                         </span>
                         <span className="text-base font-medium">

@@ -1,52 +1,64 @@
 {
   "blogs": [
     {
-      "id": "62bd7ab2de5495e7ef2dd2cd",
-      "by": "admin",
-      "title": "reprehenderit non esse anim laboris reprehenderit officia",
-      "article": "irure laborum qui deserunt excepteur id ad sit quis laboris duis ut cillum eiusmod non sint exercitation nulla tempor nostrud eiusmod commodo mollit magna sint laboris excepteur elit cupidatat id",
-      "picture": "blog-img-1.jpg",
-      "comments_length": 6
+      "id": "1",
+      "title": "Top 10 Budget Smartphones Under ₹15,000 in 2025",
+      "slug": "top-10-budget-smartphones-under-15000-2025",
+      "description": "Looking for a powerful yet affordable smartphone in 2025? We’ve handpicked the top 10 budget phones under ₹15,000 that deliver flagship-level performance, long-lasting battery life, sharp cameras, and smooth multitasking. From Realme Narzo to Redmi Note series, these devices support 5G connectivity, 120Hz AMOLED displays, and 33W fast charging. Whether you're a student, professional, or casual user, find your ideal daily driver without stretching your budget. We compare key specifications like processor (Snapdragon 6-series or MediaTek Dimensity), RAM (6GB+), storage (128GB+), and camera setups (50MP AI triple cameras). Read real user reviews, check benchmark scores, and grab the best deals with bank offers, no-cost EMI, and exchange bonuses on leading platforms like Flipkart and Amazon. Don’t miss limited-time launch offers and assured buyback value. Upgrade smartly this year with our expert recommendations and stay ahead in the budget smartphone race.",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=1",
+      "banner_image": "https://picsum.photos/1200/600?random=1",
+      "date": "2025-06-15"
     },
     {
-      "id": "62bd7ab283077573adcca363",
-      "by": "admin",
-      "title": "aliquip duis nostrud ex cillum laborum adipisicing",
-      "article": "adipisicing dolor esse voluptate occaecat laborum fugiat adipisicing laboris id cupidatat deserunt exercitation et velit consectetur eiusmod pariatur ullamco enim ut nulla qui minim sunt minim amet non culpa aliqua",
-      "picture": "blog-img-2.jpg",
-      "comments_length": 8
+      "id": "2",
+      "title": "Best Wireless Earbuds for Gym & Running 2025",
+      "slug": "best-wireless-earbuds-gym-running-2025",
+      "description": "Stay motivated during workouts with the best wireless earbuds of 2025! We rigorously tested top models for sweat resistance (IPX5+), secure fit, long battery life, and immersive sound quality. From boAt Airdopes to OnePlus Buds Z2 and Realme Buds Air, enjoy deep bass, crystal-clear calls, and up to 30 hours of total playtime with the charging case. Perfect for running, gym sessions, yoga, or cycling. Advanced features include touch controls, fast charging (10 mins = 100 mins playtime), low-latency gaming mode, and environmental noise cancellation (ENC) for outdoor use. Compare prices, check user ratings, and buy with extended warranty, easy returns, and cashback offers from trusted online stores. Whether you love EDM beats or motivational podcasts, find the perfect pair to power your fitness journey with style, comfort, and reliability. Don’t compromise on sound — upgrade your workout audio experience today!",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=2",
+      "banner_image": "https://picsum.photos/1200/600?random=2",
+      "date": "2025-06-10"
     },
     {
-      "id": "62bd7ab29e9c84cd731e3759",
-      "by": "admin",
-      "title": "consequat qui non irure mollit laboris id",
-      "article": "incididunt nisi minim elit occaecat nostrud do non commodo commodo magna est et ex consequat amet fugiat aute magna reprehenderit consequat ut quis qui reprehenderit officia nostrud ex amet excepteur",
-      "picture": "blog-img-3.jpg",
-      "comments_length": 14
+      "id": "3",
+      "title": "Monsoon Fashion: Trendy Raincoats & Footwear Guide",
+      "slug": "monsoon-fashion-trendy-raincoats-footwear-guide",
+      "description": "Don’t let rain ruin your style! Discover the latest monsoon fashion trends with our curated collection of trendy raincoats, waterproof jackets, anti-slip boots, and quick-dry footwear. From transparent trench coats to lightweight ponchos and breathable rain jackets, stay dry and fashionable during daily commutes, college, or weekend outings. We’ve selected durable, stylish, and affordable options from top brands like Wildcraft, Decathlon, Quechua, and Puma. Pair with water-resistant backpacks, foldable umbrellas, and non-slip gumboots for complete protection. Learn how to choose the right material (polyester, PVC-free), check breathability ratings, and maintain your gear. Shop now with seasonal discounts up to 60% off, free shipping, and hassle-free 30-day returns. Stay chic, safe, and confident this rainy season with trendy colors, reflective strips for night safety, and compact designs. Beat the monsoon blues — upgrade your wardrobe with functional fashion that lasts beyond the season!",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=3",
+      "banner_image": "https://picsum.photos/1200/600?random=3",
+      "date": "2025-06-05"
     },
     {
-      "id": "62bd7ab27479861a15353602",
-      "by": "admin",
-      "title": "esse est in mollit nostrud adipisicing duis",
-      "article": "veniam mollit cillum aliquip quis proident cupidatat aute do cupidatat magna non ea laborum pariatur dolor sit anim et duis duis ut cupidatat cillum consectetur pariatur tempor eiusmod ea eiusmod",
-      "picture": "blog-img-4.jpg",
-      "comments_length": 2
+      "id": "4",
+      "title": "How to Choose the Perfect Laptop for Students",
+      "slug": "how-to-choose-perfect-laptop-for-students",
+      "description": "Confused about buying a laptop for college? This comprehensive guide helps students pick the perfect device for online classes, assignments, coding, light video editing, and multitasking. We compare ultrabooks, 2-in-1 convertibles, and budget gaming laptops under ₹50,000 with at least 8GB RAM, 512GB SSD, and 10+ hours battery life. Learn key specs: Intel Core i5 / AMD Ryzen 5 processors, Full HD IPS displays, backlit keyboards, and lightweight design (under 1.8kg). Top recommendations include Lenovo IdeaPad Slim 3, HP Pavilion Aero, Acer Aspire 5, and Dell Inspiron 14. Understand the difference between integrated and dedicated graphics, port selection (USB-C, HDMI), and build quality. Grab exclusive student discounts, old laptop exchange offers, no-cost EMI plans, and free MS Office subscriptions. Make a smart, future-proof investment for your academic success. Avoid common mistakes like overspending on gaming GPUs or ignoring battery backup. Study smarter, not harder — choose wisely!",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=4",
+      "banner_image": "https://picsum.photos/1200/600?random=4",
+      "date": "2025-05-30"
     },
     {
-      "id": "62bd7ab2580273f8fdd55ba6",
-      "by": "admin",
-      "title": "eiusmod elit deserunt eiusmod ea velit quis",
-      "article": "nisi anim culpa nisi ullamco est laborum reprehenderit proident ex anim quis adipisicing tempor officia nulla deserunt ex duis consequat laboris esse mollit ea excepteur ullamco deserunt elit cupidatat cillum",
-      "picture": "blog-img-5.jpg",
-      "comments_length": 20
+      "id": "5",
+      "title": "Smart Home Deals: Best Gadgets Under ₹5000",
+      "slug": "smart-home-deals-best-gadgets-under-5000",
+      "description": "Upgrade your home into a smart haven without breaking the bank! Explore the best smart home gadgets under ₹5000 — Wi-Fi smart plugs, color-changing LED bulbs, 1080p security cameras, and voice assistants. Control lights, fans, ACs, and appliances via smartphone apps or Alexa/Google Home from anywhere. Top brands like Wipro, Xiaomi, TP-Link, and Qubo offer easy plug-and-play setup, energy monitoring, scheduled automation, and IFTTT compatibility. Save up to 30% on electricity bills with usage insights and remote power control. Enhance security with motion detection, two-way audio, night vision, and cloud/local storage options. Perfect for renters, small apartments, and tech enthusiasts. Shop now with festive offers, debit card cashback, and 1-year replacement warranty. No hub required for most devices. Start small, expand later — build your dream smart home step by step. Live smarter, safer, and more efficiently with affordable automation that fits your budget and lifestyle!",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=5",
+      "banner_image": "https://picsum.photos/1200/600?random=5",
+      "date": "2025-05-25"
     },
     {
-      "id": "62bd7ab2a7903a05be388a60",
-      "by": "admin",
-      "title": "Lorem culpa qui proident est mollit officia",
-      "article": "ut sit velit esse laborum ad dolor voluptate nostrud dolore labore ipsum voluptate labore mollit exercitation veniam pariatur ipsum eiusmod irure Lorem ad culpa commodo deserunt laborum eu voluptate sint",
-      "picture": "blog-img-6.jpg",
-      "comments_length": 10
+      "id": "6",
+      "title": "Ultimate Guide to Buying Gold Jewelry Online",
+      "slug": "ultimate-guide-buying-gold-jewelry-online",
+      "description": "Planning to buy gold jewelry online? This ultimate guide ensures you make a safe, smart, and profitable purchase. Learn to verify BIS hallmarks (HUID), understand making charges, wastage, and purity levels (22K vs 18K vs 14K). From daily-wear chains, earrings, and bangles to bridal necklace sets and investment coins, explore certified collections with transparent pricing and lab certificates. Trusted platforms like Tanishq, Malabar Gold, and CaratLane offer 100% buyback, cash on delivery, video shopping, and try-at-home services. Avoid fakes by checking seller ratings, return policies, and customer reviews. Enjoy festive discounts up to 20% off, zero making charges on gold coins, and easy EMI options with no hidden fees. Get free insured delivery, gift wrapping, and engraving. Invest in gold with confidence — whether for marriage, gifting, or wealth creation. Stay updated on live gold rates and lock prices instantly. Shop smart, save more, and shine brighter!",
+      "status": "published",
+      "thumbnail_image": "https://picsum.photos/600/400?random=6",
+      "banner_image": "https://picsum.photos/1200/600?random=6",
+      "date": "2025-05-20"
     }
   ]
 }
