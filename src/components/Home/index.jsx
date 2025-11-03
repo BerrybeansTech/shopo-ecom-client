@@ -31,7 +31,7 @@ export default function Home() {
     <>
       <Layout>
         {/* {ads && <Ads handler={adsHandle} />} */}
-        <div className="btn w-5 h-5 "></div>
+        <div className="btn w-5"></div>
         <Banner className="banner-wrapper mb-[60px]" />
         <SectionStyleOne
           products={products}

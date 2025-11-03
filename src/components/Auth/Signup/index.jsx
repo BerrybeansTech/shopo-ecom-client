@@ -43,7 +43,6 @@ export default function Signup() {
 
     setFormData({ ...formData, [name]: newValue });
 
-    // Validation
     if (name === "phone") {
       const phoneRegex = /^\d{10}$/;
       if (!phoneRegex.test(newValue)) {
@@ -91,116 +90,109 @@ export default function Signup() {
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="login-page-wrapper w-full py-20 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-        <div className="container-x mx-auto">
-          <div className="lg:flex items-center justify-center relative">
-            <div className="lg:w-[572px] w-full bg-white p-12 rounded-2xl shadow-xl border border-gray-100 backdrop-blur-sm">
-              <div className="w-full max-w-md mx-auto">
-                <div className="title-area flex flex-col justify-center items-center relative text-center mb-10">
-                  <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
-                    Create Account
-                  </h1>
-                  <div className="shape mt-2">
-                    <svg
-                      width="354"
-                      height="30"
-                      viewBox="0 0 354 30"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M1 28.8027C17.6508 20.3626 63.9476 8.17089 113.509 17.8802C166.729 28.3062 341.329 42.704 353 1"
-                        stroke="#FF9900"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <form onSubmit={handleSubmit} className="input-area space-y-7">
-                  <div className="w-full">
-                    <label className="text-gray-800 text-sm font-bold block mb-2">
-                      Mobile Number
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700">+91</span>
-                      <input
-                        placeholder="Enter 10-digit mobile number"
-                        name="phone"
-                        type="text"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="h-[52px] w-full pl-12 pr-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
-                      />
-                    </div>
-                    {errors.phone && (
-                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.phone}</p>
-                    )}
-                  </div>
-                  <div className="w-full">
-                    <label className="text-gray-800 text-sm font-bold block mb-2">
-                      Name
-                    </label>
-                    <input
-                      placeholder="First Name and Last Name"
-                      name="fname"
-                      type="text"
-                      value={formData.fname}
-                      onChange={handleInputChange}
-                      className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 shadow-sm"
-                    />
-                    {errors.fname && (
-                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.fname}</p>
-                    )}
-                  </div>
-                  <div className="w-full">
-                    <label className="text-gray-800 text-sm font-bold block mb-2">
-                      Password*
-                    </label>
-                    <div className="relative w-full">
-                      <input
-                        placeholder="Your Password Here"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className="h-[52px] w-full text-base px-5 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-300 text-gray-900 placeholder-gray-400 pr-12 shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={togglePasswordVisibility}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 flex items-center justify-center h-full transition duration-200"
-                      >
-                        {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
-                      </button>
-                    </div>
-                    {errors.password && (
-                      <p className="text-red-600 text-sm mt-2 font-semibold">{errors.password}</p>
-                    )}
-                  </div>
-                  <div className="signin-area mb-3">
-                    <div className="flex justify-center">
-                      <button
-                        type="submit"
-                        className="bg-[#FF9900] hover:bg-[#e68a00] text-white h-[52px] w-full rounded-lg font-bold text-base tracking-wide transition duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={errors.phone || errors.password || errors.fname || !formData.fname.trim()}
-                      >
-                        <span>Verify mobile number</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="signup-area flex justify-center">
-                    <p className="text-base text-gray-600 font-semibold">
-                      Already have an Account?
-                      <Link to="/login" className="ml-2 text-[#FF9900] font-extrabold hover:underline hover:text-[#e68a00] transition duration-200">
-                        Log In
-                      </Link>
-                    </p>
-                  </div>
-                </form>
-              </div>
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-8">
+        <div className="w-full max-w-[35rem] bg-white shadow-2xl rounded-3xl p-10 border border-gray-300">
+          
+          {/* Header Section with Avatar Icon */}
+          <div className="text-center mb-10">
+            <div className="flex justify-center mb-8">
+            </div>
+            <h1 className="text-3xl font-bold text-black mb-3">
+              Create Account
+            </h1>
+            <div className="w-40 mx-auto mt-3">
+              <svg viewBox="0 0 354 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M1 28.8027C17.6508 20.3626 63.9476 8.17089 113.509 17.8802C166.729 28.3062 341.329 42.704 353 1"
+                  stroke="black"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-3">
+                Mobile Number
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 font-bold">+91</span>
+                <input
+                  placeholder="Enter 10-digit mobile number"
+                  name="phone"
+                  type="text"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full pl-14 pr-4 py-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                />
+              </div>
+              {errors.phone && (
+                <p className="text-red-600 text-sm mt-3 font-medium">{errors.phone}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-3">
+                Name
+              </label>
+              <input
+                placeholder="First Name and Last Name"
+                name="fname"
+                type="text"
+                value={formData.fname}
+                onChange={handleInputChange}
+                className="w-full px-4 py-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+              />
+              {errors.fname && (
+                <p className="text-red-600 text-sm mt-3 font-medium">{errors.fname}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-3">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  placeholder="Your Password Here"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 pr-12 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <FaEyeSlash size={22} /> : <FaEye size={22} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-600 text-sm mt-3 font-medium">{errors.password}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-bold text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={errors.phone || errors.password || errors.fname || !formData.fname.trim()}
+            >
+              Verify mobile number
+            </button>
+
+            <div className="text-center pt-4">
+              <p className="text-base text-gray-600">
+                Already have an Account?{" "}
+                <Link to="/login" className="text-black font-bold hover:underline">
+                  Log In
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </Layout>

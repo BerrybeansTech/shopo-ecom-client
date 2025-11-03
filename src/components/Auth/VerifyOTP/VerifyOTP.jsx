@@ -62,56 +62,61 @@ export default function VerifyOTP() {
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="login-page-wrapper w-full py-12 bg-gradient-to-br from-gray-50 to-gray-100 min-h-7">
-        <div className="container-x mx-auto">
-          <div className="flex items-center justify-center">
-            <div className="lg:w-[450px] w-full bg-white p-10 rounded-lg shadow-lg border border-gray-100">
-              <div className="title-area text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Verify Your Account
-                </h1>
-                <p className="text-sm text-gray-500 mt-2">
-                  Enter the OTP sent to {identifier}
-                </p>
+      <div className="flex min-h-[76vh] items-center justify-center bg-white px-4 py-8">
+        <div className="lg:w-[450px] w-full bg-white p-10 rounded-2xl shadow-xl border border-gray-300">
+          
+          {/* Header Section with Avatar Icon */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-2xl flex items-center justify-center shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
               </div>
-
-              {error && (
-                <div className="mb-6 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label
-                    htmlFor="otp"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Enter OTP
-                  </label>
-                  <input
-                    id="otp"
-                    placeholder="Enter 6-digit OTP"
-                    name="otp"
-                    type="text"
-                    value={otp}
-                    onChange={handleOtpChange}
-                    maxLength={6}
-                    className="w-full h-[50px] px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-200 text-gray-900 placeholder-gray-400"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-[#FF9900] hover:bg-[#e68a00] text-white h-[50px] rounded-lg font-semibold transition duration-200"
-                >
-                  Verify OTP
-                </button>
-              </form>
             </div>
+            <h1 className="text-2xl font-bold text-black mb-2">
+              Verify Your Account
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Enter the OTP sent to {identifier}
+            </p>
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-gray-50 text-gray-800 text-sm rounded-lg flex items-center gap-3 border border-gray-300">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label
+                htmlFor="otp"
+                className="block text-sm font-semibold text-gray-900 mb-2"
+              >
+                Enter OTP
+              </label>
+              <input
+                id="otp"
+                placeholder="Enter 6-digit OTP"
+                name="otp"
+                type="text"
+                value={otp}
+                onChange={handleOtpChange}
+                maxLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition"
+            >
+              Verify OTP
+            </button>
+          </form>
         </div>
       </div>
     </Layout>
