@@ -1,264 +1,138 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { Truck, RotateCcw, Shield, Award } from 'lucide-react';
 
 export default function Banner({ className }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const slides = [
+    {
+      id: 1,
+      image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&q=80',
+      alt: 'Fashion Store'
+    },
+    {
+      id: 2,
+      image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1600&q=80',
+      alt: 'Clothing Collection'
+    },
+    {
+      id: 3,
+      image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80',
+      alt: 'Accessories'
+    },
+    {
+      id: 4,
+      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600&q=80',
+      alt: 'Fashion Trends'
+    }
+  ];
+
+  const services = [
+    {
+      icon: <Truck className="w-7 h-7" />,
+      title: 'Free Shipping',
+      description: 'On orders over $100'
+    },
+    {
+      icon: <RotateCcw className="w-7 h-7" />,
+      title: 'Easy Returns',
+      description: '30 days return policy'
+    },
+    {
+      icon: <Shield className="w-7 h-7" />,
+      title: 'Secure Payment',
+      description: '100% secure transactions'
+    },
+    {
+      icon: <Award className="w-7 h-7" />,
+      title: 'Best Quality',
+      description: 'Original products guaranteed'
+    }
+  ];
+
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, slides.length]);
+
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+    setIsAutoPlaying(false);
+  };
+
   return (
-    <>
-      <div className={`w-full ${className || ""}`}>
-        <div className="container-x mx-auto">
-          <div className="main-wrapper w-full">
-            <div className="banner-card xl:flex xl:space-x-[30px] xl:h-[600px]  mb-[30px]">
-              <div data-aos="fade-right" className="xl:w-[740px] w-full h-full">
-                <Link to="/single-product">
-                  <picture>
-                    <source
-                      media="(min-width:1025px)"
-                      srcSet={`${
-                        import.meta.env.VITE_PUBLIC_URL
-                      }/assets/images/banner-1.png`}
-                    />
-                    <img
-                      src={`${
-                        import.meta.env.VITE_PUBLIC_URL
-                      }/assets/images/banner-1.2.png`}
-                      alt=""
-                      className="w-full max-w-full h-auto object-cover"
-                    />
-                  </picture>
-                </Link>
-              </div>
-              <div
-                data-aos="fade-left"
-                className="flex-1 flex xl:flex-col flex-row  xl:space-y-[30px] h-full"
-              >
-                <div className="w-full xl:h-1/2">
-                  <Link to="/single-product">
-                    <img
-                      src={`${
-                        import.meta.env.VITE_PUBLIC_URL
-                      }/assets/images/banner-2.png`}
-                      alt=""
-                      className="w-full h-full"
-                    />
-                  </Link>
-                </div>
-                <div className="w-full xl:h-1/2">
-                  <Link to="/single-product">
-                    <img
-                      src={`${
-                        import.meta.env.VITE_PUBLIC_URL
-                      }/assets/images/banner-3.png`}
-                      alt=""
-                      className="w-full h-full"
-                    />
-                  </Link>
-                </div>
-              </div>
-            </div>
+    <div className={`w-full ${className || ''}`}>
+      {/* Main Slider Section - Full Width */}
+      <div className="relative w-full mb-0">
+        {/* Slider Container */}
+        <div className="relative w-full h-[240px] sm:h-[320px] lg:h-[420px] xl:h-[500px] overflow-hidden bg-gray-100">
+          {/* Slides */}
+          {slides.map((slide, index) => (
             <div
-              data-aos="fade-up"
-              className="best-services w-full bg-white flex flex-col space-y-10 lg:space-y-0 lg:flex-row lg:justify-between lg:items-center lg:h-[110px] px-10 lg:py-0 py-10"
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                index === currentSlide ? 'opacity-100' : 'opacity-0'
+              }`}
             >
-              <div className="item">
-                <div className="flex space-x-5 items-center">
-                  <div>
-                    <span>
-                      <svg
-                        width="36"
-                        height="36"
-                        viewBox="0 0 36 36"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M1 1H5.63636V24.1818H35"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M8.72763 35.0002C10.4347 35.0002 11.8185 33.6163 11.8185 31.9093C11.8185 30.2022 10.4347 28.8184 8.72763 28.8184C7.02057 28.8184 5.63672 30.2022 5.63672 31.9093C5.63672 33.6163 7.02057 35.0002 8.72763 35.0002Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M31.9073 35.0002C33.6144 35.0002 34.9982 33.6163 34.9982 31.9093C34.9982 30.2022 33.6144 28.8184 31.9073 28.8184C30.2003 28.8184 28.8164 30.2022 28.8164 31.9093C28.8164 33.6163 30.2003 35.0002 31.9073 35.0002Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M34.9982 1H11.8164V18H34.9982V1Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M11.8164 7.18164H34.9982"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                      </svg>
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-black text-[15px] font-700 tracking-wide mb-1">
-                      Free Shipping
-                    </p>
-                    <p className="text-sm text-qgray">
-                      When ordering over $100
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="item">
-                <div className="flex space-x-5 items-center">
-                  <div>
-                    <span>
-                      <svg
-                        width="32"
-                        height="34"
-                        viewBox="0 0 32 34"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M31 17.4502C31 25.7002 24.25 32.4502 16 32.4502C7.75 32.4502 1 25.7002 1 17.4502C1 9.2002 7.75 2.4502 16 2.4502C21.85 2.4502 26.95 5.7502 29.35 10.7002"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                        />
-                        <path
-                          d="M30.7 2L29.5 10.85L20.5 9.65"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                      </svg>
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-black text-[15px] font-700 tracking-wide mb-1">
-                      Free Return
-                    </p>
-                    <p className="text-sm text-qgray">
-                      Get Return within 30 days
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="item">
-                <div className="flex space-x-5 items-center">
-                  <div>
-                    <span>
-                      <svg
-                        width="32"
-                        height="38"
-                        viewBox="0 0 32 38"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M22.6654 18.667H9.33203V27.0003H22.6654V18.667Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M12.668 18.6663V13.6663C12.668 11.833 14.168 10.333 16.0013 10.333C17.8346 10.333 19.3346 11.833 19.3346 13.6663V18.6663"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M31 22C31 30.3333 24.3333 37 16 37C7.66667 37 1 30.3333 1 22V5.33333L16 2L31 5.33333V22Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                      </svg>
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-black text-[15px] font-700 tracking-wide mb-1">
-                      Secure Payment
-                    </p>
-                    <p className="text-sm text-qgray">
-                      100% Secure Online Payment
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="item">
-                <div className="flex space-x-5 items-center">
-                  <div>
-                    <span>
-                      <svg
-                        width="32"
-                        height="35"
-                        viewBox="0 0 32 35"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M7 13H5.5C2.95 13 1 11.05 1 8.5V1H7"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                        />
-                        <path
-                          d="M25 13H26.5C29.05 13 31 11.05 31 8.5V1H25"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                        />
-                        <path
-                          d="M16 28V22"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                        />
-                        <path
-                          d="M16 22C11.05 22 7 17.95 7 13V1H25V13C25 17.95 20.95 22 16 22Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                        <path
-                          d="M25 34H7C7 30.7 9.7 28 13 28H19C22.3 28 25 30.7 25 34Z"
-                          stroke="#FFBB38"
-                          strokeWidth="2"
-                          strokeMiterlimit="10"
-                          strokeLinecap="square"
-                        />
-                      </svg>
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-black text-[15px] font-700 tracking-wide mb-1">
-                      Best Quality
-                    </p>
-                    <p className="text-sm text-qgray">
-                      Original Product Guarenteed
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <a href="/single-product" className="block w-full h-full">
+                <img
+                  src={slide.image}
+                  alt={slide.alt}
+                  className="w-full h-full object-cover"
+                />
+              </a>
             </div>
+          ))}
+
+          {/* Dots Indicator - Bottom Right */}
+          <div className="absolute bottom-5 right-5 flex gap-2.5 backdrop-blur-sm rounded-full px-3 py-2">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                className={`transition-all duration-400 rounded-full ${
+                  index === currentSlide
+                    ? 'bg-white w-10 h-2.5 shadow-lg'
+                    : 'bg-white/50 hover:bg-white/75 w-2.5 h-2.5 hover:scale-125'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
           </div>
         </div>
       </div>
-    </>
+
+      {/* Services Section */}
+      <div className="w-full bg-white border-t pt-10 border-gray-200">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
+            {services.map((service, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-4 p-6 lg:p-8 hover:bg-gray-50 transition-colors duration-300"
+              >
+                <div className="flex-shrink-0 text-yellow-500">
+                  {service.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-gray-900 font-semibold text-sm lg:text-base mb-0.5 truncate">
+                    {service.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs lg:text-sm leading-tight">
+                    {service.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
