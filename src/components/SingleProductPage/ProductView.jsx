@@ -685,8 +685,8 @@ export default function ProductView({ className, reportHandler }) {
                   type="button"
                   className={`text-sm font-semibold w-full h-full ${
                     isOutOfStock || !selectedSize
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      : "black-btn hover:bg-green-700"
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-black text-white hover:bg-gray-800"
                   }`}
                   disabled={isOutOfStock || !selectedSize}
                 >
@@ -696,8 +696,8 @@ export default function ProductView({ className, reportHandler }) {
                   type="button"
                   className={`text-sm font-semibold w-full h-full ${
                     isOutOfStock || !selectedSize
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      : "black-btn hover:bg-green-700"
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-black text-white hover:bg-gray-800"
                   }`}
                   disabled={isOutOfStock || !selectedSize}
                 >
