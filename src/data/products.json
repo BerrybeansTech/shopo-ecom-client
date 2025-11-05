@@ -25,7 +25,8 @@
       "care_instructions": "Machine wash cold",
       "size_chart": "size_chart_topwear.pdf",
       "meta_keywords": "men t-shirt, cotton tee",
-      "meta_description": "Men’s basic crew neck cotton T-shirt, daily wear essential."
+      "meta_description": "Men’s basic crew neck cotton T-shirt, daily wear essential.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "2",
@@ -52,7 +53,8 @@
       "care_instructions": "Machine wash warm",
       "size_chart": "size_chart_topwear.pdf",
       "meta_keywords": "oversized t-shirt, men streetwear",
-      "meta_description": "Drop shoulder oversized t-shirt in grey for urban street look."
+      "meta_description": "Drop shoulder oversized t-shirt in grey for urban street look.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "3",
@@ -79,7 +81,8 @@
       "care_instructions": "Dry clean preferred",
       "size_chart": "size_chart_shirts.pdf",
       "meta_keywords": "men formal shirt",
-      "meta_description": "White premium twill shirt ideal for business formals."
+      "meta_description": "White premium twill shirt ideal for business formals.",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "4",
@@ -106,7 +109,8 @@
       "care_instructions": "Machine wash cold",
       "size_chart": "size_chart_bottomwear.pdf",
       "meta_keywords": "men jeans, slim fit",
-      "meta_description": "Slim fit stretch denim jeans with modern fade."
+      "meta_description": "Slim fit stretch denim jeans with modern fade.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "5",
@@ -133,7 +137,8 @@
       "care_instructions": "Machine wash warm",
       "size_chart": "size_chart_bottomwear.pdf",
       "meta_keywords": "men chinos, cotton pants",
-      "meta_description": "Classic beige chinos for all-day comfort and style."
+      "meta_description": "Classic beige chinos for all-day comfort and style.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "6",
@@ -160,7 +165,8 @@
       "care_instructions": "Machine wash cold",
       "size_chart": "size_chart_bottomwear.pdf",
       "meta_keywords": "joggers, gym wear",
-      "meta_description": "Tech-knit joggers for training and casual comfort."
+      "meta_description": "Tech-knit joggers for training and casual comfort.",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "7",
@@ -187,7 +193,8 @@
       "care_instructions": "Machine wash cold",
       "size_chart": "size_chart_activewear.pdf",
       "meta_keywords": "running t-shirt, gym wear",
-      "meta_description": "QuickDry men’s running tee with breathable fabric."
+      "meta_description": "QuickDry men’s running tee with breathable fabric.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "8",
@@ -214,11 +221,12 @@
       "care_instructions": "Machine wash cold",
       "size_chart": "size_chart_activewear.pdf",
       "meta_keywords": "track pants, sportswear",
-      "meta_description": "Tapered athletic pants with contrast side stripe."
+      "meta_description": "Tapered athletic pants with contrast side stripe.",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "9",
-      "image": "https://images.pexels.com/photos/4505449/pexels-photo-4505449.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "image": "https://images.pexels.com/photos/4505452/pexels-photo-4505452.jpeg?auto=compress&cs=tinysrgb&w=800",
       "brand": "Tommy Hilfiger",
       "review": 4.5,
       "name": "Genuine Leather Belt",
@@ -241,7 +249,8 @@
       "care_instructions": "Wipe clean only",
       "size_chart": null,
       "meta_keywords": "men leather belt",
-      "meta_description": "Classic leather belt with durable metal buckle."
+      "meta_description": "Classic leather belt with durable metal buckle.",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "10",
@@ -268,7 +277,8 @@
       "care_instructions": "Wipe clean",
       "size_chart": null,
       "meta_keywords": "men wallet, leather card holder",
-      "meta_description": "Slim black wallet with card slots and note pocket."
+      "meta_description": "Slim black wallet with card slots and note pocket.",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "11",
@@ -295,7 +305,8 @@
       "care_instructions": "Hand wash only",
       "size_chart": null,
       "meta_keywords": "men cap, casual wear",
-      "meta_description": "Black cotton baseball cap with adjustable fit."
+      "meta_description": "Black cotton baseball cap with adjustable fit.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "12",
@@ -322,7 +333,8 @@
       "care_instructions": "Wipe with damp cloth",
       "size_chart": null,
       "meta_keywords": "men sneakers, casual shoes",
-      "meta_description": "Low-top sneakers with cushioned insole for daily comfort."
+      "meta_description": "Low-top sneakers with cushioned insole for daily comfort.",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "13",
@@ -349,7 +361,8 @@
       "care_instructions": "Clean with suede brush",
       "size_chart": null,
       "meta_keywords": "men loafers, suede shoes",
-      "meta_description": "Tan suede loafers with elegant stitch detailing."
+      "meta_description": "Tan suede loafers with elegant stitch detailing.",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "14",
@@ -372,7 +385,8 @@
       "material": "Cotton",
       "occasion": ["Formal"],
       "stock": 10,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "15",
@@ -395,7 +409,8 @@
       "material": "Denim",
       "occasion": ["Casual"],
       "stock": 14,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "16",
@@ -418,7 +433,8 @@
       "material": "Cotton",
       "occasion": ["Formal", "Casual"],
       "stock": 32,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "17",
@@ -441,7 +457,8 @@
       "material": "Polyester",
       "occasion": ["Sports"],
       "stock": 0,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "18",
@@ -464,7 +481,8 @@
       "material": "Denim",
       "occasion": ["Casual"],
       "stock": 24,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "20",
@@ -487,7 +505,8 @@
       "material": "Cotton",
       "occasion": ["Formal"],
       "stock": 6,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "21",
@@ -510,7 +529,8 @@
       "material": "Polyester",
       "occasion": ["Sports"],
       "stock": 19,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "22",
@@ -533,7 +553,8 @@
       "material": "Cotton",
       "occasion": ["Casual"],
       "stock": 11,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "23",
@@ -556,7 +577,8 @@
       "material": "Cotton Pique",
       "occasion": ["Casual", "Formal"],
       "stock": 26,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "24",
@@ -579,7 +601,8 @@
       "material": "Leather",
       "occasion": ["Formal"],
       "stock": 3,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "25",
@@ -602,7 +625,8 @@
       "material": "Polyester",
       "occasion": ["Sports"],
       "stock": 21,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "26",
@@ -625,7 +649,8 @@
       "material": "Polyester",
       "occasion": ["Formal"],
       "stock": 0,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "27",
@@ -648,7 +673,8 @@
       "material": "Polyester",
       "occasion": ["Sports"],
       "stock": 29,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "28",
@@ -671,11 +697,12 @@
       "material": "Cotton",
       "occasion": ["Formal"],
       "stock": 33,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Festive / Designer Drop"
     },
     {
       "id": "33",
-      "image": "https://images.pexels.com/photos/4505450/pexels-photo-4505450.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "image": "https://images.pexels.com/photos/4505452/pexels-photo-4505452.jpeg?auto=compress&cs=tinysrgb&w=800",
       "brand": "Ray-Ban",
       "review": 4.7,
       "name": "Ray-Ban Wayfarer Sunglasses",
@@ -694,11 +721,12 @@
       "material": "Plastic",
       "occasion": ["Casual"],
       "stock": 40,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "34",
-      "image": "https://images.pexels.com/photos/4505453/pexels-photo-4505453.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "image": "https://images.pexels.com/photos/4505452/pexels-photo-4505452.jpeg?auto=compress&cs=tinysrgb&w=800",
       "brand": "Levi's",
       "review": 4.5,
       "name": "Levi's Baseball Cap",
@@ -717,7 +745,8 @@
       "material": "Cotton",
       "occasion": ["Casual", "Sports"],
       "stock": 35,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Summer Essentials (e.g., Linen, Shorts)"
     },
     {
       "id": "35",
@@ -740,11 +769,12 @@
       "material": "Wool",
       "occasion": ["Casual"],
       "stock": 25,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Winter Wear (e.g., Sweaters, Coats, Thermal Layers)"
     },
     {
       "id": "36",
-      "image": "https://images.pexels.com/photos/4505450/pexels-photo-4505450.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "image": "https://images.pexels.com/photos/4505452/pexels-photo-4505452.jpeg?auto=compress&cs=tinysrgb&w=800",
       "brand": "Fastrack",
       "review": 4.4,
       "name": "Fastrack Aviator Sunglasses",
@@ -763,7 +793,8 @@
       "material": "Metal",
       "occasion": ["Casual"],
       "stock": 45,
-      "storage": "N/A"
+      "storage": "N/A",
+      "seasonal_special_collection": "Co-ords / Matching Sets"
     }
   ]
 }

@@ -45,25 +45,22 @@ export default function Signup() {
 
     if (name === "phone") {
       const phoneRegex = /^\d{10}$/;
-      if (!phoneRegex.test(newValue)) {
-        setErrors({ ...errors, phone: "Mobile number must be 10 digits." });
-      } else {
-        setErrors({ ...errors, phone: "" });
-      }
+      setErrors({
+        ...errors,
+        phone: phoneRegex.test(newValue) ? "" : "Mobile number must be 10 digits.",
+      });
     }
     if (name === "password") {
-      if (newValue.length < 6) {
-        setErrors({ ...errors, password: "Password must be at least 6 characters" });
-      } else {
-        setErrors({ ...errors, password: "" });
-      }
+      setErrors({
+        ...errors,
+        password: newValue.length < 6 ? "Password must be at least 6 characters" : "",
+      });
     }
     if (name === "fname") {
-      if (newValue.trim() === "") {
-        setErrors({ ...errors, fname: "Name is required" });
-      } else {
-        setErrors({ ...errors, fname: "" });
-      }
+      setErrors({
+        ...errors,
+        fname: newValue.trim() === "" ? "Name is required" : "",
+      });
     }
   };
 
@@ -90,68 +87,67 @@ export default function Signup() {
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-8">
-        <div className="w-full max-w-[35rem] bg-white shadow-2xl rounded-3xl p-10 border border-gray-300">
-          
-          {/* Header Section with Avatar Icon */}
-          <div className="text-center mb-10">
-            <div className="flex justify-center mb-8">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-[33rem] mb-20 max-w-lg mt-18 sm:max-w-xl bg-white shadow-lg rounded-2xl p-8 sm:p-10 lg:p-12">
+
+          {/* Header Section */}
+          <div className="px-8 pb-6">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-black-900 to-black-700 rounded-2xl flex items-center justify-center shadow-lg">
+                <svg className="w-9 h-9 text-white-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-black mb-3">
+            <h1 className="text-3xl font-bold text-center text-black-900 tracking-tight">
               Create Account
             </h1>
-            <div className="w-40 mx-auto mt-3">
-              <svg viewBox="0 0 354 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M1 28.8027C17.6508 20.3626 63.9476 8.17089 113.509 17.8802C166.729 28.3062 341.329 42.704 353 1"
-                  stroke="black"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+            <p className="text-center text-black-300 mt-2 text-sm font-medium">
+              Join us and start your journey today
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            {/* Mobile Field */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Mobile Number
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 font-bold">+91</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 font-bold">
+                  +91
+                </span>
                 <input
                   placeholder="Enter 10-digit mobile number"
                   name="phone"
                   type="text"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full pl-14 pr-4 py-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                  className="w-full pl-14 pr-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
                 />
               </div>
-              {errors.phone && (
-                <p className="text-red-600 text-sm mt-3 font-medium">{errors.phone}</p>
-              )}
+              {errors.phone && <p className="text-red-600 text-sm mt-2">{errors.phone}</p>}
             </div>
 
+            {/* Name Field */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-3">
-                Name
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
               </label>
               <input
-                placeholder="First Name and Last Name"
+                placeholder="Enter your full name"
                 name="fname"
                 type="text"
                 value={formData.fname}
                 onChange={handleInputChange}
-                className="w-full px-4 py-4 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
               />
-              {errors.fname && (
-                <p className="text-red-600 text-sm mt-3 font-medium">{errors.fname}</p>
-              )}
+              {errors.fname && <p className="text-red-600 text-sm mt-2">{errors.fname}</p>}
             </div>
 
+            {/* Password Field */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -161,34 +157,36 @@ export default function Signup() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-4 pr-12 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
                 />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <FaEyeSlash size={22} /> : <FaEye size={22} />}
+                  {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-red-600 text-sm mt-3 font-medium">{errors.password}</p>
-              )}
+              {errors.password && <p className="text-red-600 text-sm mt-2">{errors.password}</p>}
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-bold text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-lg flex items-center justify-center transition disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={errors.phone || errors.password || errors.fname || !formData.fname.trim()}
             >
-              Verify mobile number
+              Verify Mobile Number
             </button>
 
-            <div className="text-center pt-4">
-              <p className="text-base text-gray-600">
-                Already have an Account?{" "}
-                <Link to="/login" className="text-black font-bold hover:underline">
-                  Log In
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  className="text-gray-900 font-semibold hover:underline hover:text-gray-700 transition"
+                >
+                  Log in
                 </Link>
               </p>
             </div>

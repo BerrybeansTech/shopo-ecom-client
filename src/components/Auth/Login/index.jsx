@@ -9,13 +9,24 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleInputChange = (e) => {
-    let value = e.target.value;
+    let value = e.target.value.trim();
 
-    // Normalize phone number (add +91 if needed)
-    if (/^\d/.test(value) || value.startsWith("+91")) {
-      value = value.replace(/\D/g, "");
-      if (value.length > 10) value = value.slice(0, 10);
-      value = `+91${value}`;
+    // If input looks like an email, keep it as-is
+    if (value.includes("@")) {
+      setFormData({ identifier: value });
+      setError("");
+      return;
+    }
+
+    // Handle phone numbers
+    // Add +91 only once
+    if (/^\d/.test(value) && !value.startsWith("+91")) {
+      const digits = value.replace(/\D/g, "").slice(0, 10);
+      value = digits.length > 0 ? `+91${digits}` : "";
+    } else if (value.startsWith("+91")) {
+      // Keep +91 and only allow 10 digits after it
+      const digits = value.replace(/\D/g, "").slice(2, 12);
+      value = `+91${digits}`;
     }
 
     setFormData({ identifier: value });
@@ -74,14 +85,15 @@ export default function Login() {
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-[33rem] max-w-lg sm:max-w-xl bg-white shadow-lg rounded-2xl p-8 sm:p-10 lg:p-12">
+        <div className="w-[32rem] max-w-lg sm:max-w-xl bg-white shadow-lg rounded-2xl p-8 sm:p-10 lg:p-12">
 
-          {/* Header Section */}
-          <div className="px-8  pb-6 bg-gradient-to-br from-white-100 to-white-200">
+          {/* Header */}
+          <div className="px-8 pb-6">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-black-900 to-black-700 rounded-2xl flex items-center justify-center shadow-lg">
                 <svg className="w-9 h-9 text-white-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
             </div>

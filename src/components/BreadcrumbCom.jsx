@@ -6,7 +6,7 @@ export default function BreadcrumbCom({
   return (
     <>
       {paths && paths.length > 0 && (
-        <div className="breadcrumb-wrapper font-400 text-[13px] text-qblack mb-[23px]">
+        <div className="breadcrumb-wrapper font-400 text-[13px] text-qblack">
           {paths.map((path) => (
             <span key={path.name}>
               <Link to={path.path}>

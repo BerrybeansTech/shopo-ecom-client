@@ -108,7 +108,7 @@ export default function AllOrders() {
     } else if (hash === "#wishlist") {
       setActiveTab("Wishlist");
     } else {
-      setActiveTab("All orders"); // Default to All orders
+      setActiveTab("All orders");
     }
   }, [location]);
 
@@ -123,7 +123,7 @@ export default function AllOrders() {
         )
       );
     } else if (activeTab === "Wishlist") {
-      setFilteredOrders([]); // Wishlist handled by WishlistTab
+      setFilteredOrders([]);
     }
   }, [activeTab, orders]);
 
@@ -144,11 +144,11 @@ export default function AllOrders() {
       case "processing":
         return "text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full text-xs font-medium";
       case "cancelled":
-        return "text-qred bg-red-100 px-2 py-1 rounded-full text-xs font-medium";
+        return "text-red-600 bg-red-100 px-2 py-1 rounded-full text-xs font-medium";
       case "pending":
-        return "text-qyellow bg-yellow-100 px-2 py-1 rounded-full text-xs font-medium";
+        return "text-black-900 bg-white-400 px-2 py-1 rounded-full text-xs font-medium";
       default:
-        return "text-qgray bg-primarygray px-2 py-1 rounded-full text-xs font-medium";
+        return "text-black-300 bg-white-400 px-2 py-1 rounded-full text-xs font-medium";
     }
   };
 
@@ -171,9 +171,9 @@ export default function AllOrders() {
     return (
       <div className="w-full p-4">
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="text-center py-12 bg-white rounded-lg border border-qgray-border">
-          <h3 className="text-lg font-semibold text-qblack mb-2">Wishlist Content</h3>
-          <p className="text-sm text-qgray">
+        <div className="text-center py-12 bg-white-50 rounded-lg border border-white-500">
+          <h3 className="text-lg font-semibold text-black-900 mb-2">Wishlist Content</h3>
+          <p className="text-sm text-black-300">
             Please navigate to the Wishlist section to view your saved items.
           </p>
         </div>
@@ -187,7 +187,7 @@ export default function AllOrders() {
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-center">
-            <div className="mx-auto h-24 w-24 text-qgray mb-4">
+            <div className="mx-auto h-24 w-24 text-black-300 mb-4">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -197,8 +197,8 @@ export default function AllOrders() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-qblack mb-2">No orders found</h3>
-            <p className="text-qgray max-w-sm">
+            <h3 className="text-lg font-medium text-black-900 mb-2">No orders found</h3>
+            <p className="text-black-300 max-w-sm">
               {activeTab === "All orders"
                 ? "You haven't placed any orders yet."
                 : `You don't have any ${activeTab.toLowerCase()} orders.`}
@@ -212,8 +212,8 @@ export default function AllOrders() {
   return (
     <div className="w-full p-4">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-qblack mb-2">My Orders</h2>
-        <p className="text-qgray">
+        <h2 className="text-2xl font-bold text-black-900 mb-2">My Orders</h2>
+        <p className="text-black-300">
           {filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found
         </p>
       </div>
@@ -224,36 +224,35 @@ export default function AllOrders() {
         {filteredOrders.map((order) => (
           <div
             key={order.id}
-            className="border border-qgray-border rounded-lg p-6 bg-white hover:shadow-md transition-shadow duration-200"
+            className="border border-white-500 rounded-lg p-6 bg-white-50 hover:shadow-md transition-shadow duration-200"
           >
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3">
               <div className="space-y-2 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="font-bold text-lg text-qblack">Order #{order.id}</h3>
+                  <h3 className="font-bold text-lg text-black-900">Order #{order.id}</h3>
                   <span className={getStatusColor(order.status)}>{order.status}</span>
                 </div>
-                <p className="text-sm text-qgray">Placed on {formatDate(order.date)}</p>
+                <p className="text-sm text-black-300">Placed on {formatDate(order.date)}</p>
                 {order.customerName && (
-                  <p className="text-sm text-qgray">By {order.customerName}</p>
+                  <p className="text-sm text-black-300">By {order.customerName}</p>
                 )}
               </div>
 
               <div className="text-right">
-                <p className="text-sm text-qgray">Total Amount</p>
-                <p className="text-xl font-bold text-qblack">{order.amount}</p>
+                <p className="text-sm text-black-300">Total Amount</p>
+                <p className="text-xl font-bold text-black-900">{order.amount}</p>
               </div>
             </div>
 
-       
             <div className="flex flex-wrap gap-3 justify-between items-center mt-4">
               <div className="flex flex-wrap gap-2">
-                <button className="border border-qgray-border text-qblack rounded-lg font-medium text-sm hover:border-qyellow hover:bg-qyellow hover:text-white transition-all duration-300 px-4 py-2">
+                <button className="border border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300 px-4 py-2">
                   View Details
                 </button>
                 
                 {order.status.toLowerCase() !== "delivered" &&
                   order.status.toLowerCase() !== "cancelled" && (
-                    <button className="text-sm text-qred bg-white border border-qgray-border px-4 py-2 rounded-lg font-medium hover:bg-primarygray transition-colors">
+                    <button className="text-sm text-red-600 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors">
                       Track Order
                     </button>
                   )}
@@ -263,7 +262,7 @@ export default function AllOrders() {
                 {canReviewOrder(order) && (
                   <button
                     onClick={() => handleReviewClick(order.id)}
-                    className="text-sm text-white bg-qyellow border border-qyellow px-4 py-2 rounded-lg font-medium hover:bg-amber-500 hover:border-amber-500 transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-2"
+                    className="text-sm text-white-50 bg-black-900 border border-black-900 px-4 py-2 rounded-lg font-medium hover:bg-black-700 hover:border-black-700 transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
@@ -273,7 +272,7 @@ export default function AllOrders() {
                 )}
 
                 {order.status.toLowerCase() === "delivered" && (
-                  <button className="text-sm text-qyellow bg-white border border-qgray-border px-4 py-2 rounded-lg font-medium hover:bg-primarygray transition-colors">
+                  <button className="text-sm text-black-900 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors">
                     Reorder
                   </button>
                 )}

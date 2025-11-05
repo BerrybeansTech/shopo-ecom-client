@@ -68,7 +68,7 @@ export default function ResetPassword() {
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-8">
+      <div className="flex min-h-[90vh] items-center justify-center bg-white px-4 py-8">
         <div className="lg:w-[480px] w-full bg-white p-10 rounded-2xl shadow-xl border border-gray-300">
           
           {/* Header Section with Avatar Icon */}
