@@ -252,7 +252,7 @@ export default function Signup() {
             </div>
 
             {/* Optional Fields (can be collapsed or shown in profile later) */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Address
@@ -324,7 +324,7 @@ export default function Signup() {
                   />
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <button

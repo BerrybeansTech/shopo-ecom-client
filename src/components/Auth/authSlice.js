@@ -3,6 +3,19 @@ import { createSlice } from '@reduxjs/toolkit';
 
 // Helper function to get initial state from localStorage
 const getInitialState = () => {
+  if (typeof window === 'undefined') {
+    return {
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      loading: false,
+      error: null,
+      otpData: null,
+      resetToken: null,
+      message: null,
+    };
+  }
+
   const storedToken = localStorage.getItem('accessToken');
   const storedUser = localStorage.getItem('user');
   
@@ -63,8 +76,10 @@ const authSlice = createSlice({
       state.message = action.payload.message || 'Login successful';
       
       // Store in localStorage
-      localStorage.setItem('accessToken', action.payload.accessToken);
-      localStorage.setItem('user', JSON.stringify(action.payload.user));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('accessToken', action.payload.accessToken);
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+      }
     },
     
     // Registration success
@@ -77,12 +92,16 @@ const authSlice = createSlice({
       state.message = action.payload.message || 'Registration successful';
       
       // Store in localStorage
-      localStorage.setItem('accessToken', action.payload.accessToken);
-      localStorage.setItem('user', JSON.stringify(action.payload.user));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('accessToken', action.payload.accessToken);
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+      }
     },
     
-    // Logout
+    // LOGOUT - FIXED VERSION
     logout: (state) => {
+      console.log("Clearing auth state...");
+      
       state.user = null;
       state.accessToken = null;
       state.isAuthenticated = false;
@@ -93,8 +112,13 @@ const authSlice = createSlice({
       state.loading = false;
       
       // Clear localStorage
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        console.log("LocalStorage cleared");
+      }
+      
+      console.log("Auth state cleared successfully");
     },
     
     // Update user profile
@@ -103,18 +127,14 @@ const authSlice = createSlice({
       state.message = 'Profile updated successfully';
       
       // Update localStorage
-      localStorage.setItem('user', JSON.stringify(state.user));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
     },
     
     // Set message
     setMessage: (state, action) => {
       state.message = action.payload;
-    },
-
-    // Refresh token (if needed)
-    refreshToken: (state, action) => {
-      state.accessToken = action.payload.accessToken;
-      localStorage.setItem('accessToken', action.payload.accessToken);
     },
   },
 });
@@ -131,7 +151,6 @@ export const {
   logout,
   updateUserSuccess,
   setMessage,
-  refreshToken,
 } = authSlice.actions;
 
 export default authSlice.reducer;

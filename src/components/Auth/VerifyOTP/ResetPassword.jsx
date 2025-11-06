@@ -2,16 +2,22 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Layout from "../../Partials/Layout";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ResetPassword() {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formData, setFormData] = useState({
+    newPassword: "",
+    confirmPassword: ""
+  });
   const [error, setError] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
-  const { identifier, fromForgotPassword } = location.state || {};
+  const { identifier, resetToken, fromForgotPassword } = location.state || {};
+  const { resetPassword, updatePassword, user, accessToken } = useAuth();
 
   // Validate password (at least 8 characters)
   const isValidPassword = (password) => {
@@ -19,35 +25,70 @@ export default function ResetPassword() {
   };
 
   // Handle setting new password
-  const handleSetPassword = (e) => {
+  const handleSetPassword = async (e) => {
     e.preventDefault();
     setError("");
 
     // Validate new password
-    if (!isValidPassword(newPassword)) {
+    if (!isValidPassword(formData.newPassword)) {
       setError("New password must be at least 8 characters.");
       return;
     }
 
     // Validate confirm password
-    if (newPassword !== confirmPassword) {
+    if (formData.newPassword !== formData.confirmPassword) {
       setError("New password and confirm password do not match.");
       return;
     }
 
-    // Simulate password update (replace with API call in production)
-    console.log("Password updated for:", identifier, "with new password:", newPassword);
-    const redirectPath = fromForgotPassword ? "/" : "/profile#profile";
-    navigate(redirectPath, {
-      state: { newPassword },
-    });
+    setIsLoading(true);
+
+    try {
+      let result;
+      
+      if (fromForgotPassword && resetToken) {
+        // Password reset flow (from forgot password)
+        console.log("Resetting password with:", { identifier, resetToken });
+        result = await resetPassword(identifier, formData.newPassword, resetToken);
+      } else {
+        // Regular password update flow (from profile)
+        console.log("Updating password for user:", user?.id);
+        result = await updatePassword(user, formData.newPassword, accessToken);
+      }
+
+      console.log("Password update result:", result);
+
+      if (result.success) {
+        const redirectPath = fromForgotPassword ? "/login" : "/profile#profile";
+        navigate(redirectPath, {
+          state: { 
+            message: "Password updated successfully",
+            fromPasswordReset: true
+          },
+          replace: true
+        });
+      } else {
+        // Handle specific error cases
+        if (result.error?.includes("Internal server error")) {
+          setError("Server error. Please try again later or contact support.");
+        } else if (result.error?.includes("expired") || result.error?.includes("invalid")) {
+          setError("Reset link has expired. Please request a new password reset.");
+        } else {
+          setError(result.error || "Password update failed. Please try again.");
+        }
+      }
+    } catch (error) {
+      console.error("Reset password error:", error);
+      setError("Password update failed. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle password input changes
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    if (name === "newPassword") setNewPassword(value);
-    if (name === "confirmPassword") setConfirmPassword(value);
+    setFormData(prev => ({ ...prev, [name]: value }));
     setError("");
   };
 
@@ -60,11 +101,33 @@ export default function ResetPassword() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  // Handle back to login
+  const handleBackToLogin = () => {
+    navigate("/login");
+  };
+
+  // Handle request new reset
+  const handleRequestNewReset = () => {
+    navigate("/forgot-password", {
+      state: { identifier }
+    });
+  };
+
   useEffect(() => {
-    if (!identifier) {
-      navigate("/login"); // Redirect to login if no identifier
+    if (!identifier && !user && fromForgotPassword) {
+      navigate("/login");
     }
-  }, [identifier, navigate]);
+  }, [identifier, user, navigate, fromForgotPassword]);
+
+  const getHeaderText = () => {
+    return fromForgotPassword ? "Reset Password" : "Change Password";
+  };
+
+  const getSubheaderText = () => {
+    return fromForgotPassword 
+      ? `Set a new password for ${identifier}`
+      : "Enter your new password";
+  };
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
@@ -81,15 +144,15 @@ export default function ResetPassword() {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-black mb-2">
-              Reset Password
+              {getHeaderText()}
             </h1>
             <p className="text-gray-600 text-sm">
-              Set a new password for {identifier}
+              {getSubheaderText()}
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-gray-50 text-gray-800 text-sm rounded-lg flex items-center gap-3 border border-gray-300">
+            <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-3 border border-red-200">
               <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -98,7 +161,17 @@ export default function ResetPassword() {
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              {error}
+              <div className="flex-1">
+                <span className="block">{error}</span>
+                {error.includes("expired") && fromForgotPassword && (
+                  <button
+                    onClick={handleRequestNewReset}
+                    className="mt-2 text-sm text-red-700 underline hover:no-underline font-medium"
+                  >
+                    Request new password reset
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -112,17 +185,19 @@ export default function ResetPassword() {
               </label>
               <input
                 id="newPassword"
-                placeholder="Enter new password"
+                placeholder="Enter new password (min. 8 characters)"
                 name="newPassword"
                 type={showNewPassword ? "text" : "password"}
-                value={newPassword}
+                value={formData.newPassword}
                 onChange={handlePasswordChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50"
               />
               <button
                 type="button"
                 onClick={toggleNewPasswordVisibility}
-                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                disabled={isLoading}
+                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
                 aria-label={showNewPassword ? "Hide new password" : "Show new password"}
               >
                 {showNewPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
@@ -140,14 +215,16 @@ export default function ResetPassword() {
                 placeholder="Confirm new password"
                 name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
+                value={formData.confirmPassword}
                 onChange={handlePasswordChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50"
               />
               <button
                 type="button"
                 onClick={toggleConfirmPasswordVisibility}
-                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                disabled={isLoading}
+                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
                 {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
@@ -155,11 +232,37 @@ export default function ResetPassword() {
             </div>
             <button
               type="submit"
-              className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition"
+              disabled={isLoading || !formData.newPassword || !formData.confirmPassword}
+              className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Update Password
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                       xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10"
+                            stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Updating...
+                </>
+              ) : (
+                "Update Password"
+              )}
             </button>
           </form>
+
+          {/* Alternative options */}
+          <div className="mt-6 text-center space-y-3">
+            {fromForgotPassword && (
+              <button
+                onClick={handleBackToLogin}
+                className="text-sm text-gray-600 hover:text-gray-900 underline"
+              >
+                Back to Login
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
