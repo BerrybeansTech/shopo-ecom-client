@@ -1,17 +1,18 @@
-// import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import datas from "../../data/products.json";
 import SectionStyleFour from "../Helpers/SectionStyleFour";
-import SectionStyleOne from "../Helpers/SectionStyleOne";
 import SectionStyleThree from "../Helpers/SectionStyleThree";
-import SectionStyleTwo from "../Helpers/SectionStyleTwo";
 import ViewMoreTitle from "../Helpers/ViewMoreTitle";
 import Layout from "../Partials/Layout";
-// import Ads from "./Ads";
+import Ads from "./Ads";
 import Banner from "./Banner";
 import BestSellers from "./BestSellers";
 import BrandSection from "./BrandSection";
 import CampaignCountDown from "./CampaignCountDown";
 import ProductsAds from "./ProductsAds";
+import TopProducts from "./TopProducts";
+import NewArrivals from "./NewArrivals";
+import PopularSales from "./PopularSales";
 
 export default function Home() {
   const { products } = datas;
@@ -19,28 +20,18 @@ export default function Home() {
   products.forEach((product) => {
     brands.push(product.brand);
   });
-  // const [ads, setAds] = useState(false);
-  // const adsHandle = () => {
-  //   setAds(false);
-  // };
-  // useEffect(() => gs
-  // {
-  //   setAds(true);
-  // }, []);
+  const [ads, setAds] = useState(false);
+  const adsHandle = () => {
+    setAds(false);
+  };
+  useEffect(() => {
+    setAds(false);
+  }, []);
   return (
     <>
       <Layout>
-        {/* {ads && <Ads handler={adsHandle} />} */}
-        <div className="btn w-5"></div>
+        {ads && <Ads handler={adsHandle} />}
         <Banner className="banner-wrapper mb-[60px]" />
-        <SectionStyleOne
-          products={products}
-          brands={brands}
-          categoryTitle="Mobile & Tablet"
-          sectionTitle="Gamer World"
-          seeMoreUrl="/all-products"
-          className="category-products mb-[60px]"
-        />
         <BrandSection
           sectionTitle="Shop by Brand"
           className="brand-section-wrapper mb-[60px]"
@@ -49,13 +40,11 @@ export default function Home() {
           className="mb-[60px]"
           lastDate="2025-10-04 4:00:00"
         />
-        <ViewMoreTitle
+        <TopProducts
           className="top-selling-product mb-[60px]"
           seeMoreUrl="/all-products"
           categoryTitle="Top Selling Products"
-        >
-          <SectionStyleTwo products={products.slice(3, products.length)} />
-        </ViewMoreTitle>
+        />
         <ViewMoreTitle
           className="best-sallers-section mb-[60px]"
           seeMoreUrl="/sallers"
@@ -65,43 +54,25 @@ export default function Home() {
         </ViewMoreTitle>
         <ProductsAds
           ads={[
-            `${import.meta.env.VITE_PUBLIC_URL}/assets/images/bannera-1.png`,
-            `${import.meta.env.VITE_PUBLIC_URL}/assets/images/bannera-2.png`,
+            "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=626&h=295&fit=crop",
+            "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=626&h=295&fit=crop",
           ]}
           sectionHeight="sm:h-[295px] h-full"
           className="products-ads-section mb-[60px]"
         />
-        <SectionStyleOne
-          categoryBackground={`${
-            import.meta.env.VITE_PUBLIC_URL
-          }/assets/images/section-category-2.jpg`}
-          products={products.slice(4, products.length)}
-          brands={brands}
-          categoryTitle="Electronics"
-          sectionTitle="Popular Sales"
-          seeMoreUrl="/all-products"
-          className="category-products mb-[60px]"
-        />
+        <NewArrivals />
         <ProductsAds
-          ads={[`${import.meta.env.VITE_PUBLIC_URL}/assets/images/bannera-3.png`]}
+          ads={[
+            "https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=1252&h=295&fit=crop",
+          ]}
+          sectionHeight="sm:h-[295px] h-full"
           className="products-ads-section mb-[60px]"
         />
-        <SectionStyleThree
-          products={products}
-          sectionTitle="New Arrivals"
-          seeMoreUrl="/all-products"
-          className="new-products mb-[60px]"
-        />
-        <ProductsAds
-          sectionHeight="164"
-          ads={[`${import.meta.env.VITE_PUBLIC_URL}assets/images/bannera-4.png`]}
-          className="products-ads-section mb-[60px]"
-        />
-        <SectionStyleFour
+        <PopularSales
           products={products}
           sectionTitle="Popular Sales"
           seeMoreUrl="/all-products"
-          className="category-products mb-[60px]"
+          className="category-products "
         />
       </Layout>
     </>

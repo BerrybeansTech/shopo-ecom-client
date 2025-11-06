@@ -30,6 +30,7 @@ export default function AllProductPage({ type = 1 }) {
   const [selectedDiscountRanges, setSelectedDiscountRanges] = useState([]);
   const [selectedOccasions, setSelectedOccasions] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
+  const [selectedSeasonalCollections, setSelectedSeasonalCollections] = useState([]);
 
   const clearAllFilters = () => {
     setSelectedSubCategories([]);
@@ -42,6 +43,7 @@ export default function AllProductPage({ type = 1 }) {
     setSelectedDiscountRanges([]);
     setSelectedOccasions([]);
     setSelectedBrands([]);
+    setSelectedSeasonalCollections([]);
   };
 
   useEffect(() => {
@@ -59,6 +61,7 @@ export default function AllProductPage({ type = 1 }) {
     selectedDiscountRanges,
     selectedOccasions,
     selectedBrands,
+    selectedSeasonalCollections,
     sortOption,
   ]);
 
@@ -148,6 +151,12 @@ export default function AllProductPage({ type = 1 }) {
       )
     );
 
+    selectedSeasonalCollections.forEach((collection) =>
+      pushFilter(collection, () =>
+        setSelectedSeasonalCollections((prev) => prev.filter((i) => i !== collection))
+      )
+    );
+
     return activeFilters.length ? [...base, ...activeFilters] : base;
   }, [
     selectedSubCategories,
@@ -160,6 +169,7 @@ export default function AllProductPage({ type = 1 }) {
     selectedDiscountRanges,
     selectedOccasions,
     selectedBrands,
+    selectedSeasonalCollections,
   ]);
 
   const filteredProducts = useMemo(() => {
@@ -240,6 +250,13 @@ export default function AllProductPage({ type = 1 }) {
       );
     }
 
+    // Seasonal Collection Filter
+    if (selectedSeasonalCollections.length > 0) {
+      result = result.filter((p) =>
+        selectedSeasonalCollections.includes(p.seasonal_special_collection)
+      );
+    }
+
     if (sortOption === "New Arrivals") {
       result.sort((a, b) => b.id - a.id);
     } else if (sortOption === "Best Sellers") {
@@ -278,6 +295,7 @@ export default function AllProductPage({ type = 1 }) {
     selectedDiscountRanges,
     selectedOccasions,
     selectedBrands,
+    selectedSeasonalCollections,
     sortOption,
   ]);
 
@@ -292,6 +310,7 @@ export default function AllProductPage({ type = 1 }) {
       selectedDiscountRanges.length,
       selectedOccasions.length,
       selectedBrands.length,
+      selectedSeasonalCollections.length,
       priceRange.min !== 0 || priceRange.max !== 10000 ? 1 : 0,
     ].reduce((a, b) => a + b, 0);
   }, [
@@ -304,14 +323,15 @@ export default function AllProductPage({ type = 1 }) {
     selectedDiscountRanges,
     selectedOccasions,
     selectedBrands,
+    selectedSeasonalCollections,
     priceRange,
   ]);
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="products-page-wrapper w-full bg-gray-50 min-h-screen">
-        <div className="container-x mx-auto px-3 sm:px-4 lg:px-6 max-w-[1920px]">
-          <div className="w-full mt-4 sm:mt-6 lg:flex lg:gap-6 xl:gap-8">
+        <div className="container-x mx-auto p-10 px-3 sm:px-4 lg:px-6 max-w-[1920px]">
+          <div className="w-full lg:flex lg:gap-6 xl:gap-8">
             {/* Filter Sidebar - Desktop */}
             <div className="lg:w-[280px] xl:w-[320px] flex-shrink-0 hidden lg:block">
               <div className="sticky top-6">
@@ -337,6 +357,8 @@ export default function AllProductPage({ type = 1 }) {
                   setSelectedOccasions={setSelectedOccasions}
                   selectedBrands={selectedBrands}
                   setSelectedBrands={setSelectedBrands}
+                  selectedSeasonalCollections={selectedSeasonalCollections}
+                  setSelectedSeasonalCollections={setSelectedSeasonalCollections}
                   filterToggle={filterToggle}
                   filterToggleHandler={() => setFilterToggle(!filterToggle)}
                   clearAllFilters={clearAllFilters}
@@ -369,6 +391,8 @@ export default function AllProductPage({ type = 1 }) {
                   setSelectedOccasions={setSelectedOccasions}
                   selectedBrands={selectedBrands}
                   setSelectedBrands={setSelectedBrands}
+                  selectedSeasonalCollections={selectedSeasonalCollections}
+                  setSelectedSeasonalCollections={setSelectedSeasonalCollections}
                   filterToggle={filterToggle}
                   filterToggleHandler={() => setFilterToggle(!filterToggle)}
                   clearAllFilters={clearAllFilters}
@@ -583,7 +607,7 @@ export default function AllProductPage({ type = 1 }) {
                           <div className="p-3 sm:p-4 flex flex-col flex-grow">
                             {/* Brand */}
                             <p className="text-xs text-gray-500 font-medium mb-1 sm:mb-1.5 uppercase">
-                              {product.brand}
+                              {product.subCategory}
                             </p>
 
                             {/* Product Title */}

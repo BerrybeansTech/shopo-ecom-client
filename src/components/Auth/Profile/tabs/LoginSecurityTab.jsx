@@ -144,8 +144,8 @@ export default function LoginSecurityTab() {
     <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
       {/* Header Section */}
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-qblack mb-2">Login & Security</h2>
-        <p className="text-qgray text-sm">Manage your account credentials and security settings</p>
+        <h2 className="text-3xl font-bold text-black-900 mb-2">Login & Security</h2>
+        <p className="text-black-300 text-sm">Manage your account credentials and security settings</p>
       </div>
 
       {/* Security Items Grid */}
@@ -153,16 +153,16 @@ export default function LoginSecurityTab() {
         {securityItems.map((item) => (
           <div
             key={item.field}
-            className={`bg-white border-2 border-qgray-border rounded-lg p-6 ${
-              editField === item.field ? "" : "hover:border-qyellow"
+            className={`bg-white-50 border-2 border-white-500 rounded-lg p-6 ${
+              editField === item.field ? "" : "hover:border-black-500"
             } transition-all duration-300`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-start space-x-4 flex-1">
                 {/* Icon */}
                 <div
-                  className={`flex-shrink-0 w-12 h-12 bg-primarygray rounded-lg flex items-center justify-center text-qgray ${
-                    editField === item.field ? "" : "group-hover:bg-qyellow group-hover:text-white"
+                  className={`flex-shrink-0 w-12 h-12 bg-white-400 rounded-lg flex items-center justify-center text-black-300 ${
+                    editField === item.field ? "" : "group-hover:bg-black-900 group-hover:text-white-50"
                   } transition-all duration-300`}
                 >
                   {item.icon}
@@ -170,7 +170,7 @@ export default function LoginSecurityTab() {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <label className="block text-xs font-semibold text-qgraytwo mb-1.5 uppercase tracking-wider">
+                  <label className="block text-xs font-semibold text-black-300 mb-1.5 uppercase tracking-wider">
                     {item.label}
                   </label>
                   {editField === item.field ? (
@@ -182,24 +182,24 @@ export default function LoginSecurityTab() {
                           setNewValue(e.target.value);
                           setError("");
                         }}
-                        className="w-full h-[50px] px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#FF9900] focus:border-[#FF9900] outline-none transition duration-200 text-gray-900 placeholder-gray-400"
+                        className="w-full h-[50px] px-4 py-3 border border-white-500 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none transition duration-200 text-black-900 placeholder-black-200"
                         placeholder={`Enter new ${item.label.toLowerCase()}`}
                       />
                       <button
                         onClick={handleSave}
-                        className="px-4 py-2 bg-qyellow text-white rounded-lg font-medium text-sm hover:bg-qyellow-dark transition-all duration-300"
+                        className="px-4 py-2 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300"
                       >
                         Save
                       </button>
                       <button
                         onClick={handleCancel}
-                        className="px-4 py-2 border-2 border-qgray-border text-qblack rounded-lg font-medium text-sm hover:border-qyellow hover:bg-qyellow hover:text-white transition-all duration-300"
+                        className="px-4 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300"
                       >
                         Cancel
                       </button>
                     </div>
                   ) : (
-                    <p className="text-base font-medium text-qblacktext truncate">{item.value}</p>
+                    <p className="text-base font-medium text-black-900 truncate">{item.value}</p>
                   )}
                 </div>
               </div>
@@ -209,7 +209,7 @@ export default function LoginSecurityTab() {
                 <button
                   type="button"
                   onClick={() => handleEdit(item.field)}
-                  className="ml-4 px-5 py-2 border-2 border-qgray-border text-qblack rounded-lg font-medium text-sm hover:border-qyellow hover:bg-qyellow hover:text-white transition-all duration-300 group"
+                  className="ml-4 px-5 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300 group"
                 >
                   Edit
                 </button>

@@ -76,11 +76,11 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <div className="welcome-msg mb-8">
         <div>
-          <p className="text-gray-600 text-base">Hello,</p>
-          <h1 className="font-bold text-3xl text-gray-800 mt-1">
+          <p className="text-black-300 text-base">Hello,</p>
+          <h1 className="font-bold text-3xl text-black-900 mt-1">
             Welcome to your Profile
           </h1>
-          <p className="text-gray-600 text-sm mt-2">
+          <p className="text-black-300 text-sm mt-2">
             Manage your orders, wishlist, and account settings
           </p>
         </div>
@@ -92,21 +92,21 @@ export default function Dashboard() {
           <a
             key={item.id}
             href={item.link}
-            className="bg-white border border-gray-100 rounded-lg p-6 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group flex flex-col h-full min-h-[140px]"
+            className="bg-white-50 border border-white-500 rounded-lg p-6 hover:bg-white-300 hover:border-black-500 transition-all duration-200 group flex flex-col h-full min-h-[140px]"
           >
             <div className="flex items-start justify-between h-full">
               <div className="flex items-start space-x-4 flex-1">
                 {/* Icon */}
-                <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-gray-600 group-hover:bg-gray-100 group-hover:text-gray-700 transition-all duration-200">
+                <div className="flex-shrink-0 w-12 h-12 bg-white-400 rounded-lg flex items-center justify-center text-black-400 group-hover:bg-white-500 group-hover:text-black-700 transition-all duration-200">
                   {item.icon}
                 </div>
                 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-gray-800 group-hover:text-gray-900 transition-colors duration-200 line-clamp-1">
+                  <h3 className="text-lg font-semibold text-black-900 group-hover:text-black-900 transition-colors duration-200 line-clamp-1">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">
+                  <p className="text-sm text-black-300 mt-2 line-clamp-2 leading-relaxed">
                     {item.description}
                   </p>
                 </div>
@@ -115,7 +115,7 @@ export default function Dashboard() {
               {/* Arrow Icon */}
               <div className="flex-shrink-0 ml-3">
                 <svg 
-                  className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-all duration-200 transform group-hover:translate-x-1" 
+                  className="w-5 h-5 text-black-200 group-hover:text-black-500 transition-all duration-200 transform group-hover:translate-x-1" 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -131,19 +131,19 @@ export default function Dashboard() {
       {/* Recent Activity Section */}
       <div className="mt-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Recent Activity</h2>
-          <button className="text-sm text-gray-600 hover:text-gray-800 transition-colors duration-200">
+          <h2 className="text-xl font-semibold text-black-900">Recent Activity</h2>
+          <button className="text-sm text-black-300 hover:text-black-900 transition-colors duration-200">
             View All
           </button>
         </div>
         
-        <div className="bg-white border border-gray-100 rounded-lg p-6 hover:bg-gray-50 transition-all duration-200">
+        <div className="bg-white-50 border border-white-500 rounded-lg p-6 hover:bg-white-300 transition-all duration-200">
           <div className="text-center py-8">
-            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 text-black-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-gray-600 text-lg">No recent activity</p>
-            <p className="text-gray-500 text-sm mt-1">Your recent orders and activities will appear here</p>
+            <p className="text-black-300 text-lg">No recent activity</p>
+            <p className="text-black-200 text-sm mt-1">Your recent orders and activities will appear here</p>
           </div>
         </div>
       </div>

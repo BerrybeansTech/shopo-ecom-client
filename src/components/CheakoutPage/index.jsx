@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check } from 'lucide-react';
 import Layout from '../Partials/Layout';
+import ThankYouPopup from './ThankYouPopup';
 
-const Checkout = () => {
+// Main Checkout Component
+export default function Checkout() {
   const [step, setStep] = useState(1);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState('');
@@ -11,6 +13,9 @@ const Checkout = () => {
   const [showCoupon, setShowCoupon] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [orderDetails, setOrderDetails] = useState(null);
 
   const cartItems = [
     {
@@ -21,7 +26,8 @@ const Checkout = () => {
       price: 1299,
       mrp: 1999,
       qty: 1,
-      image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=200&h=200&fit=crop'
+      image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=200&h=200&fit=crop',
+      estimatedDelivery: 'Nov 5, 2023'
     },
     {
       id: 2,
@@ -31,7 +37,8 @@ const Checkout = () => {
       price: 1599,
       mrp: 2499,
       qty: 1,
-      image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=200&h=200&fit=crop'
+      image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=200&h=200&fit=crop',
+      estimatedDelivery: 'Nov 5, 2023'
     }
   ];
 
@@ -82,444 +89,511 @@ const Checkout = () => {
     }
   };
 
+  const handlePlaceOrder = async () => {
+    setIsPlacingOrder(true);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Set order details
+    const orderData = {
+      orderId: `SHOPO${Date.now()}`,
+      items: cartItems,
+      deliveryAddress: savedAddresses.find(addr => addr.id === selectedAddress),
+      paymentMethod: paymentMethods.find(m => m.id === selectedPayment)?.name,
+      totalAmount: total,
+      savings: savings + discount
+    };
+    
+    setOrderDetails(orderData);
+    setShowThankYou(true);
+    setIsPlacingOrder(false);
+  };
+
+  const handleContinueShopping = () => {
+    setShowThankYou(false);
+    // Redirect to home or products page
+    window.location.href = '/';
+  };
+
+  const isContinueToPaymentDisabled = !selectedAddress;
+  const isContinueToReviewDisabled = !selectedPayment;
+  const isPlaceOrderDisabled = !selectedAddress || !selectedPayment || isPlacingOrder;
+
   return (
     <Layout childrenClasses="pt-0 pb-0">
-    <div className="min-h-screen bg-gray-50 font-inter">
-
-      {/* Progress Steps */}
-      <div className="bg-white-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-center space-x-2 sm:space-x-8">
-            {[
-              { num: 1, label: 'Address' },
-              { num: 2, label: 'Payment' },
-              { num: 3, label: 'Review' }
-            ].map((s, idx) => (
-              <React.Fragment key={s.num}>
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                    step >= s.num 
-                      ? 'bg-black-900 text-white-50' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {step > s.num ? <Check className="w-4 h-4" /> : s.num}
+      <div className="min-h-screen bg-gray-50 font-inter">
+        {/* Progress Steps */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-center space-x-2 sm:space-x-8">
+              {[
+                { num: 1, label: 'Address' },
+                { num: 2, label: 'Payment' },
+                { num: 3, label: 'Review' }
+              ].map((s, idx) => (
+                <React.Fragment key={s.num}>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                      step >= s.num 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {step > s.num ? <Check className="w-4 h-4" /> : s.num}
+                    </div>
+                    <span className={`text-xs sm:text-sm font-medium ${
+                      step >= s.num ? 'text-black' : 'text-gray-500'
+                    }`}>{s.label}</span>
                   </div>
-                  <span className={`text-xs sm:text-sm font-medium ${
-                    step >= s.num ? 'text-black-900' : 'text-gray-500'
-                  }`}>{s.label}</span>
-                </div>
-                {idx < 2 && (
-                  <div className={`hidden sm:block w-12 lg:w-24 h-0.5 ${
-                    step > s.num ? 'bg-black-900' : 'bg-gray-200'
-                  }`}></div>
-                )}
-              </React.Fragment>
-            ))}
+                  {idx < 2 && (
+                    <div className={`hidden sm:block w-12 lg:w-24 h-0.5 ${
+                      step > s.num ? 'bg-black' : 'bg-gray-200'
+                    }`}></div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-4">
-            
-            {/* Step 1: Delivery Address */}
-            {step >= 1 && (
-              <div className="bg-white-50 rounded-lg shadow-sm">
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg sm:text-xl font-semibold text-black-900 flex items-center">
-                      <MapPin className="w-5 h-5 mr-2 text-black-900" />
-                      Delivery Address
-                    </h2>
-                    {step > 1 && selectedAddress && (
-                      <button 
-                        onClick={() => setStep(1)}
-                        className="text-sm text-black-900 hover:text-gray-700 transition-colors flex items-center"
-                      >
-                        <Edit2 className="w-4 h-4 mr-1" />
-                        Change
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-4 sm:p-6">
-                  {step === 1 ? (
-                    <div className="space-y-3">
-                      {savedAddresses.map(addr => (
-                        <div
-                          key={addr.id}
-                          onClick={() => setSelectedAddress(addr.id)}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                            selectedAddress === addr.id
-                              ? 'border-black-900 bg-gray-100'
-                              : 'border-gray-200 hover:border-gray-400'
-                          }`}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-4">
+              
+              {/* Step 1: Delivery Address */}
+              {step >= 1 && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
+                        <MapPin className="w-5 h-5 mr-2 text-black" />
+                        Delivery Address
+                      </h2>
+                      {step > 1 && selectedAddress && (
+                        <button 
+                          onClick={() => setStep(1)}
+                          className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="font-semibold text-black-900">{addr.name}</span>
-                                {addr.isDefault && (
-                                  <span className="px-2 py-0.5 bg-black-900 text-white-50 text-xs rounded">Default</span>
-                                )}
-                              </div>
-                              <p className="text-sm text-black-900 font-medium">{addr.fullName}</p>
-                              <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                              <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                              <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                                <Edit2 className="w-4 h-4 text-gray-600" />
-                              </button>
-                              <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                                <Trash2 className="w-4 h-4 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      <button
-                        onClick={() => setShowAddAddress(!showAddAddress)}
-                        className="w-full p-4 border-2 border-dashed border-gray-300 hover:border-black-900 rounded-lg text-gray-600 hover:text-black-900 transition-all flex items-center justify-center space-x-2"
-                      >
-                        <Plus className="w-5 h-5" />
-                        <span className="font-medium">Add New Address</span>
-                      </button>
-
-                      {showAddAddress && (
-                        <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                          <input
-                            type="text"
-                            placeholder="Pincode"
-                            value={pincode}
-                            onChange={(e) => setPincode(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm"
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="text" placeholder="Full Name" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm" />
-                            <input type="text" placeholder="Mobile" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm" />
-                          </div>
-                          <input type="text" placeholder="Address (House No, Building, Street)" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm" />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="text" placeholder="City" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm" />
-                            <input type="text" placeholder="State" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black-900 text-sm" />
-                          </div>
-                          <button className="w-full py-3 bg-black-900 hover:bg-black-800 text-white-50 font-medium rounded-lg transition-colors">
-                            Save Address
-                          </button>
-                        </div>
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Change
+                        </button>
                       )}
+                    </div>
+                  </div>
 
-                      {selectedAddress && (
+                  <div className="p-4 sm:p-6">
+                    {step === 1 ? (
+                      <div className="space-y-3">
+                        {savedAddresses.map(addr => (
+                          <div
+                            key={addr.id}
+                            onClick={() => setSelectedAddress(addr.id)}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              selectedAddress === addr.id
+                                ? 'border-black bg-gray-50'
+                                : 'border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-semibold text-black">{addr.name}</span>
+                                  {addr.isDefault && (
+                                    <span className="px-2 py-0.5 bg-black text-white text-xs rounded">Default</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
+                                <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                                <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+                                  <Edit2 className="w-4 h-4 text-gray-600" />
+                                </button>
+                                <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+                                  <Trash2 className="w-4 h-4 text-gray-600" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          onClick={() => setShowAddAddress(!showAddAddress)}
+                          className="w-full p-4 border-2 border-dashed border-gray-300 hover:border-black rounded-lg text-gray-600 hover:text-black transition-all flex items-center justify-center space-x-2"
+                        >
+                          <Plus className="w-5 h-5" />
+                          <span className="font-medium">Add New Address</span>
+                        </button>
+
+                        {showAddAddress && (
+                          <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+                            <input
+                              type="text"
+                              placeholder="Pincode"
+                              value={pincode}
+                              onChange={(e) => setPincode(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <input type="text" placeholder="Full Name" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" />
+                              <input type="text" placeholder="Mobile" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" />
+                            </div>
+                            <input type="text" placeholder="Address (House No, Building, Street)" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" />
+                            <div className="grid grid-cols-2 gap-3">
+                              <input type="text" placeholder="City" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" />
+                              <input type="text" placeholder="State" className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" />
+                            </div>
+                            <button className="w-full py-3 bg-black hover:bg-gray-800 text-white font-medium rounded-lg transition-colors">
+                              Save Address
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Continue to Payment Button - Always Visible */}
                         <button
                           onClick={() => setStep(2)}
-                          className="w-full mt-4 py-3 sm:py-4 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all text-sm sm:text-base"
+                          disabled={isContinueToPaymentDisabled}
+                          className={`w-full mt-4 py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
+                            isContinueToPaymentDisabled
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-black hover:bg-gray-800 text-white'
+                          }`}
                         >
                           Continue to Payment
                         </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      {savedAddresses.find(a => a.id === selectedAddress) && (
-                        <div>
-                          <p className="text-sm font-semibold text-black-900">
-                            {savedAddresses.find(a => a.id === selectedAddress).fullName}
-                          </p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {savedAddresses.find(a => a.id === selectedAddress).address}, {savedAddresses.find(a => a.id === selectedAddress).city}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {savedAddresses.find(a => a.id === selectedAddress).pincode}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        {savedAddresses.find(a => a.id === selectedAddress) && (
+                          <div>
+                            <p className="text-sm font-semibold text-black">
+                              {savedAddresses.find(a => a.id === selectedAddress).fullName}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {savedAddresses.find(a => a.id === selectedAddress).address}, {savedAddresses.find(a => a.id === selectedAddress).city}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {savedAddresses.find(a => a.id === selectedAddress).pincode}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Step 2: Payment Method */}
-            {step >= 2 && (
-              <div className="bg-white-50 rounded-lg shadow-sm">
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <h2 className="text-lg sm:text-xl font-semibold text-black-900 flex items-center">
-                    <CreditCard className="w-5 h-5 mr-2 text-black-900" />
-                    Payment Method
-                  </h2>
-                </div>
+              {/* Step 2: Payment Method */}
+              {step >= 2 && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
+                      <CreditCard className="w-5 h-5 mr-2 text-black" />
+                      Payment Method
+                    </h2>
+                  </div>
 
-                <div className="p-4 sm:p-6">
-                  {step === 2 ? (
-                    <div className="space-y-3">
-                      {paymentMethods.map(method => (
-                        <div
-                          key={method.id}
-                          onClick={() => setSelectedPayment(method.id)}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                            selectedPayment === method.id
-                              ? 'border-black-900 bg-gray-100'
-                              : 'border-gray-200 hover:border-gray-400'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              selectedPayment === method.id ? 'bg-black-900' : 'bg-gray-200'
-                            }`}>
-                              <method.icon className={`w-5 h-5 ${
-                                selectedPayment === method.id ? 'text-white-50' : 'text-gray-600'
-                              }`} />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-black-900">{method.name}</p>
-                              <p className="text-xs text-gray-600">{method.subtitle}</p>
+                  <div className="p-4 sm:p-6">
+                    {step === 2 ? (
+                      <div className="space-y-3">
+                        {paymentMethods.map(method => (
+                          <div
+                            key={method.id}
+                            onClick={() => setSelectedPayment(method.id)}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              selectedPayment === method.id
+                                ? 'border-black bg-gray-50'
+                                : 'border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                selectedPayment === method.id ? 'bg-black' : 'bg-gray-200'
+                              }`}>
+                                <method.icon className={`w-5 h-5 ${
+                                  selectedPayment === method.id ? 'text-white' : 'text-gray-600'
+                                }`} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-semibold text-black">{method.name}</p>
+                                <p className="text-xs text-gray-600">{method.subtitle}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
 
-                      {selectedPayment && (
+                        {/* Continue to Review Button - Always Visible */}
                         <button
                           onClick={() => setStep(3)}
-                          className="w-full mt-4 py-3 sm:py-4 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all text-sm sm:text-base"
+                          disabled={isContinueToReviewDisabled}
+                          className={`w-full mt-4 py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
+                            isContinueToReviewDisabled
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-black hover:bg-gray-800 text-white'
+                          }`}
                         >
                           Continue to Review
                         </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-lg bg-black-900 flex items-center justify-center">
-                          {React.createElement(paymentMethods.find(m => m.id === selectedPayment)?.icon, { className: 'w-5 h-5 text-white-50' })}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
+                            {React.createElement(paymentMethods.find(m => m.id === selectedPayment)?.icon, { className: 'w-5 h-5 text-white' })}
+                          </div>
+                          <span className="text-sm font-semibold text-black">
+                            {paymentMethods.find(m => m.id === selectedPayment)?.name}
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold text-black-900">
-                          {paymentMethods.find(m => m.id === selectedPayment)?.name}
-                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Review Order */}
+              {step === 3 && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
+                      <Package className="w-5 h-5 mr-2 text-black" />
+                      Review Your Order
+                    </h2>
+                  </div>
+
+                  <div className="p-4 sm:p-6 space-y-4">
+                    <div className="flex items-start space-x-2 p-3 bg-gray-100 rounded-lg">
+                      <Clock className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-black">Estimated Delivery</p>
+                        <p className="text-sm text-gray-600">3-5 business days</p>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Step 3: Review Order */}
-            {step === 3 && (
-              <div className="bg-white-50 rounded-lg shadow-sm">
+                    {cartItems.map(item => (
+                      <div key={item.id} className="flex space-x-3 pb-4 border-b border-gray-200 last:border-0">
+                        <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-black">{item.name}</h4>
+                          <p className="text-xs text-gray-600 mt-1">{item.color} | Size: {item.size}</p>
+                          <p className="text-xs text-gray-600">Qty: {item.qty}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-black">₹{item.price}</p>
+                          <p className="text-xs text-gray-500 line-through">₹{item.mrp}</p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Place Order Button */}
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={isPlaceOrderDisabled}
+                      className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base flex items-center justify-center space-x-2 ${
+                        isPlaceOrderDisabled
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-black hover:bg-gray-800 text-white'
+                      }`}
+                    >
+                      <Shield className="w-5 h-5" />
+                      <span>
+                        {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Order Summary - Sticky Sidebar */}
+            <div className="lg:sticky lg:top-24 h-fit">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <h2 className="text-lg sm:text-xl font-semibold text-black-900 flex items-center">
-                    <Package className="w-5 h-5 mr-2 text-black-900" />
-                    Review Your Order
-                  </h2>
+                  <h3 className="text-lg font-semibold text-black">Order Summary</h3>
                 </div>
 
                 <div className="p-4 sm:p-6 space-y-4">
-                  <div className="flex items-start space-x-2 p-3 bg-gray-100 rounded-lg">
-                    <Clock className="w-5 h-5 text-black-900 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-black-900">Estimated Delivery</p>
-                      <p className="text-sm text-gray-600">3-5 business days</p>
-                    </div>
-                  </div>
-
-                  {cartItems.map(item => (
-                    <div key={item.id} className="flex space-x-3 pb-4 border-b border-gray-200 last:border-0">
-                      <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-black-900">{item.name}</h4>
-                        <p className="text-xs text-gray-600 mt-1">{item.color} | Size: {item.size}</p>
-                        <p className="text-xs text-gray-600">Qty: {item.qty}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-black-900">₹{item.price}</p>
-                        <p className="text-xs text-gray-500 line-through">₹{item.mrp}</p>
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={() => alert('Order placed successfully!')}
-                    className="w-full py-3 sm:py-4 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all text-sm sm:text-base flex items-center justify-center space-x-2"
-                  >
-                    <Shield className="w-5 h-5" />
-                    <span>Place Order</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Order Summary - Sticky Sidebar */}
-          <div className="lg:sticky lg:top-24 h-fit">
-            <div className="bg-white-50 rounded-lg shadow-sm">
-              <div className="p-4 sm:p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-black-900">Order Summary</h3>
-              </div>
-
-              <div className="p-4 sm:p-6 space-y-4">
-                {/* Coupon Section */}
-                <div>
-                  {!appliedCoupon ? (
-                    <button
-                      onClick={() => setShowCoupon(!showCoupon)}
-                      className="w-full text-left px-4 py-3 border border-dashed border-gray-300 hover:border-black-900 rounded-lg transition-colors flex items-center justify-between"
-                    >
-                      <span className="text-sm text-gray-600">Have a coupon code?</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showCoupon ? 'rotate-180' : ''}`} />
-                    </button>
-                  ) : (
-                    <div className="px-4 py-3 bg-gray-100 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Check className="w-4 h-4 text-black-900" />
-                        <span className="text-sm font-medium text-black-900">{appliedCoupon.code} Applied</span>
-                      </div>
+                  {/* Coupon Section */}
+                  <div>
+                    {!appliedCoupon ? (
                       <button
-                        onClick={() => setAppliedCoupon(null)}
-                        className="text-xs text-gray-600 hover:text-black-900"
+                        onClick={() => setShowCoupon(!showCoupon)}
+                        className="w-full text-left px-4 py-3 border border-dashed border-gray-300 hover:border-black rounded-lg transition-colors flex items-center justify-between"
                       >
-                        Remove
+                        <span className="text-sm text-gray-600">Have a coupon code?</span>
+                        <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showCoupon ? 'rotate-180' : ''}`} />
                       </button>
-                    </div>
-                  )}
-
-                  {showCoupon && !appliedCoupon && (
-                    <div className="mt-2 flex space-x-2">
-                      <input
-                        type="text"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Enter code"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-black-900"
-                      />
-                      <button
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2 bg-black-900 hover:bg-black-800 text-white-50 text-sm font-medium rounded-lg transition-colors"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Price Breakdown */}
-                <div className="space-y-3 pt-4 border-t border-gray-200">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Subtotal ({cartItems.length} items)</span>
-                    <span className="text-black-900 font-medium">₹{subtotal}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Shipping</span>
-                    {shipping === 0 ? (
-                      <span className="text-black-900 font-medium">FREE</span>
                     ) : (
-                      <span className="text-black-900 font-medium">₹{shipping}</span>
+                      <div className="px-4 py-3 bg-gray-100 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Check className="w-4 h-4 text-black" />
+                          <span className="text-sm font-medium text-black">{appliedCoupon.code} Applied</span>
+                        </div>
+                        <button
+                          onClick={() => setAppliedCoupon(null)}
+                          className="text-xs text-gray-600 hover:text-black"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+
+                    {showCoupon && !appliedCoupon && (
+                      <div className="mt-2 flex space-x-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="Enter code"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-black"
+                        />
+                        <button
+                          onClick={handleApplyCoupon}
+                          className="px-4 py-2 bg-black hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
                     )}
                   </div>
 
-                  {codFee > 0 && (
+                  {/* Price Breakdown */}
+                  <div className="space-y-3 pt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">COD Handling</span>
-                      <span className="text-black-900 font-medium">₹{codFee}</span>
+                      <span className="text-gray-600">Subtotal ({cartItems.length} items)</span>
+                      <span className="text-black font-medium">₹{subtotal}</span>
                     </div>
-                  )}
 
-                  {appliedCoupon && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700">Coupon Discount</span>
-                      <span className="text-gray-700 font-medium">-₹{discount}</span>
+                      <span className="text-gray-600">Shipping</span>
+                      {shipping === 0 ? (
+                        <span className="text-black font-medium">FREE</span>
+                      ) : (
+                        <span className="text-black font-medium">₹{shipping}</span>
+                      )}
                     </div>
-                  )}
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">You Save</span>
-                    <span className="text-gray-700 font-medium">₹{savings + discount}</span>
-                  </div>
-                </div>
+                    {codFee > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">COD Handling</span>
+                        <span className="text-black font-medium">₹{codFee}</span>
+                      </div>
+                    )}
 
-                {/* Total */}
-                <div className="pt-4 border-t-2 border-gray-300">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-black-900">Total</span>
-                    <span className="text-2xl font-bold text-black-900">₹{total}</span>
-                  </div>
-                </div>
+                    {appliedCoupon && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-green-600">Coupon Discount</span>
+                        <span className="text-green-600 font-medium">-₹{discount}</span>
+                      </div>
+                    )}
 
-                {/* Trust Badges */}
-                <div className="grid grid-cols-2 gap-3 pt-4">
-                  <div className="flex items-center space-x-2 text-xs text-gray-600">
-                    <Shield className="w-4 h-4 text-black-900" />
-                    <span>Secure Payment</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-green-600">You Save</span>
+                      <span className="text-green-600 font-medium">₹{savings + discount}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-xs text-gray-600">
-                    <Package className="w-4 h-4 text-black-900" />
-                    <span>Easy Returns</span>
+
+                  {/* Total */}
+                  <div className="pt-4 border-t-2 border-gray-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-semibold text-black">Total</span>
+                      <span className="text-2xl font-bold text-black">₹{total}</span>
+                    </div>
+                  </div>
+
+                  {/* Trust Badges */}
+                  <div className="grid grid-cols-2 gap-3 pt-4">
+                    <div className="flex items-center space-x-2 text-xs text-gray-600">
+                      <Shield className="w-4 h-4 text-black" />
+                      <span>Secure Payment</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-xs text-gray-600">
+                      <Package className="w-4 h-4 text-black" />
+                      <span>Easy Returns</span>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Delivery Promise */}
+              {step > 0 && (
+                <div className="mt-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-start space-x-3">
+                    <Clock className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-black">Delivery by Nov 3</p>
+                      <p className="text-xs text-gray-600 mt-1">Order within 2 hours</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
+        </div>
 
-            {/* Delivery Promise */}
-            {step > 0 && (
-              <div className="mt-4 p-4 bg-white-50 rounded-lg shadow-sm">
-                <div className="flex items-start space-x-3">
-                  <Clock className="w-5 h-5 text-black-900 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-black-900">Delivery by Nov 3</p>
-                    <p className="text-xs text-gray-600 mt-1">Order within 2 hours</p>
-                  </div>
-                </div>
-              </div>
+        {/* Mobile Sticky Footer */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-xs text-gray-600">Total Amount</p>
+              <p className="text-xl font-bold text-black">₹{total}</p>
+            </div>
+            {step === 1 && (
+              <button
+                onClick={() => setStep(2)}
+                disabled={isContinueToPaymentDisabled}
+                className={`px-6 py-3 font-semibold rounded-lg transition-all ${
+                  isContinueToPaymentDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-gray-800 text-white'
+                }`}
+              >
+                Continue
+              </button>
+            )}
+            {step === 2 && (
+              <button
+                onClick={() => setStep(3)}
+                disabled={isContinueToReviewDisabled}
+                className={`px-6 py-3 font-semibold rounded-lg transition-all ${
+                  isContinueToReviewDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-gray-800 text-white'
+                }`}
+              >
+                Continue
+              </button>
+            )}
+            {step === 3 && (
+              <button
+                onClick={handlePlaceOrder}
+                disabled={isPlaceOrderDisabled}
+                className={`px-6 py-3 font-semibold rounded-lg transition-all ${
+                  isPlaceOrderDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-gray-800 text-white'
+                }`}
+              >
+                {isPlacingOrder ? 'Placing...' : 'Place Order'}
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Mobile Sticky Footer */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white-50 border-t border-gray-200 p-4 z-40">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-xs text-gray-600">Total Amount</p>
-            <p className="text-xl font-bold text-black-900">₹{total}</p>
-          </div>
-          {step === 1 && selectedAddress && (
-            <button
-              onClick={() => setStep(2)}
-              className="px-6 py-3 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all"
-            >
-              Continue
-            </button>
-          )}
-          {step === 2 && selectedPayment && (
-            <button
-              onClick={() => setStep(3)}
-              className="px-6 py-3 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all"
-            >
-              Continue
-            </button>
-          )}
-          {step === 3 && (
-            <button
-              onClick={() => alert('Order placed successfully!')}
-              className="px-6 py-3 bg-black-900 hover:bg-black-800 text-white-50 font-semibold rounded-lg transition-all"
-            >
-              Place Order
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+      {/* Thank You Popup */}
+      <ThankYouPopup
+        isOpen={showThankYou}
+        onClose={() => setShowThankYou(false)}
+        orderDetails={orderDetails}
+        onContinueShopping={handleContinueShopping}
+      />
     </Layout>
   );
-};
-
-export default Checkout;
+}
 
 // // import React, { useState } from 'react';
 // // import { CreditCard, Truck, ShoppingBag, Lock, ChevronRight, Check, MapPin, Phone, Mail, User, Package, ArrowLeft } from 'lucide-react';
