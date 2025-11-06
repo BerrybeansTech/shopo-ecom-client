@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import BreadcrumbCom from "../BreadcrumbCom";
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/Layout";
 
@@ -13,14 +12,11 @@ export default function CartPage() {
       size: "S",
       seller: "RedBrocket",
       assured: true,
-      originalPrice: "₹1,999",
-      discountedPrice: "₹256",
+      originalPriceValue: 1999,
+      discountedPriceValue: 256,
       discount: "86% Off",
       image: "/assets/images/shirt1.webp",
       quantity: 1,
-      inCart: true,
-      originalPriceValue: 1999,
-      discountedPriceValue: 256,
     },
     {
       id: 2,
@@ -29,82 +25,61 @@ export default function CartPage() {
       size: "L",
       seller: "Apple Store",
       assured: true,
-      originalPrice: "₹1,999",
-      discountedPrice: "₹1,000",
+      originalPriceValue: 1999,
+      discountedPriceValue: 1000,
       discount: "50% Off",
       image: "/assets/images/shirt3.webp",
       quantity: 1,
-      inCart: true,
-      originalPriceValue: 1999,
-      discountedPriceValue: 1000,
     },
   ]);
 
   const [savedItems, setSavedItems] = useState([]);
 
-  const formatINR = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatINR = (amount) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  };
 
-  const handleRemove = (id) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
-  };
-
+  const handleRemove = (id) => setCartItems(cartItems.filter((i) => i.id !== id));
   const handleSaveForLater = (id) => {
-    const itemToSave = cartItems.find((item) => item.id === id);
-    if (itemToSave) {
-      setCartItems(cartItems.filter((item) => item.id !== id));
-      setSavedItems([...savedItems, { ...itemToSave, inCart: false }]);
+    const item = cartItems.find((i) => i.id === id);
+    if (item) {
+      setCartItems(cartItems.filter((i) => i.id !== id));
+      setSavedItems([...savedItems, item]);
     }
   };
-
   const handleMoveToCart = (id) => {
-    const itemToMove = savedItems.find((item) => item.id === id);
-    if (itemToMove) {
-      setSavedItems(savedItems.filter((item) => item.id !== id));
-      setCartItems([...cartItems, { ...itemToMove, inCart: true }]);
+    const item = savedItems.find((i) => i.id === id);
+    if (item) {
+      setSavedItems(savedItems.filter((i) => i.id !== id));
+      setCartItems([...cartItems, item]);
     }
   };
-
-  const handleRemoveFromSaved = (id) => {
-    setSavedItems(savedItems.filter((item) => item.id !== id));
+  const handleRemoveFromSaved = (id) =>
+    setSavedItems(savedItems.filter((i) => i.id !== id));
+  const updateQuantity = (id, q) => {
+    if (q < 1) return;
+    setCartItems(cartItems.map((i) => (i.id === id ? { ...i, quantity: q } : i)));
   };
 
-  const updateQuantity = (id, newQuantity) => {
-    if (newQuantity < 1) return;
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const calculateTotal = (items) => {
-    return items.reduce((total, item) => total + item.discountedPriceValue * item.quantity, 0);
-  };
-
-  const calculateItemTotal = (item) => item.discountedPriceValue * item.quantity;
-  const calculateOriginalTotal = (item) => item.originalPriceValue * item.quantity;
-
-  const handleImageError = (e) => {
-    e.target.alt = "Product image not available";
-  };
-
-  // Price Calculations
-  const subtotal = calculateTotal(cartItems);
-  const originalTotal = cartItems.reduce((sum, i) => sum + i.originalPriceValue * i.quantity, 0);
+  const subtotal = cartItems.reduce(
+    (t, i) => t + i.discountedPriceValue * i.quantity,
+    0
+  );
+  const originalTotal = cartItems.reduce(
+    (t, i) => t + i.originalPriceValue * i.quantity,
+    0
+  );
   const discount = originalTotal - subtotal;
   const platformFee = 7;
   const totalAmount = subtotal + platformFee;
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="cart-page-wrapper w-full bg-white pb-[60px]">
+      <div className="cart-page-wrapper w-full bg-white pb-[30px]">
         <div className="w-full">
           <PageTitle
             title="Your Cart"
@@ -115,16 +90,18 @@ export default function CartPage() {
           />
         </div>
 
-        <div className="w-full mt-[23px]">
+        <div className="w-full mt-[50px]">
           <div className="container-x mx-auto">
             {cartItems.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                <div className="text-6xl mb-4">Empty Cart</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h3>
+                <div className="text-6xl mb-4 text-gray-800">Empty Cart</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Your cart is empty
+                </h3>
                 <p className="text-gray-600 mb-6">Add some items to get started</p>
                 <Link
                   to="/"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Continue Shopping
                 </Link>
@@ -152,7 +129,6 @@ export default function CartPage() {
                                 src={item.image}
                                 alt={item.name}
                                 className="w-full h-full object-cover"
-                                onError={handleImageError}
                               />
                             </div>
                           </div>
@@ -164,28 +140,32 @@ export default function CartPage() {
                                 {item.name}
                               </h2>
                               <p className="text-sm text-gray-600 mb-2">
-                                Delivery by <span className="font-medium">{item.deliveryDate}</span>
+                                Delivery by{" "}
+                                <span className="font-medium text-gray-800">
+                                  {item.deliveryDate}
+                                </span>
                               </p>
-
                               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                                <span>Size: <strong>{item.size}</strong></span>
+                                <span>
+                                  Size: <strong>{item.size}</strong>
+                                </span>
                               </div>
 
                               {/* Price */}
                               <div className="flex items-center gap-2 mb-4">
                                 <span className="text-2xl font-bold text-gray-900">
-                                  {formatINR(calculateItemTotal(item))}
+                                  {formatINR(item.discountedPriceValue * item.quantity)}
                                 </span>
                                 <span className="text-lg text-gray-500 line-through">
-                                  {formatINR(calculateOriginalTotal(item))}
+                                  {formatINR(item.originalPriceValue * item.quantity)}
                                 </span>
-                                <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">
+                                <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
                                   {item.discount}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Bottom Actions: Quantity + Buttons */}
+                            {/* Bottom Actions */}
                             <div className="flex items-center justify-between md:justify-start gap-4 mt-auto">
                               {/* Quantity Selector */}
                               <div className="flex items-center gap-2">
@@ -193,7 +173,9 @@ export default function CartPage() {
                                 <div className="flex items-center border border-gray-300 rounded-lg">
                                   <button
                                     className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
-                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                    onClick={() =>
+                                      updateQuantity(item.id, item.quantity - 1)
+                                    }
                                   >
                                     −
                                   </button>
@@ -202,7 +184,9 @@ export default function CartPage() {
                                   </span>
                                   <button
                                     className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
-                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    onClick={() =>
+                                      updateQuantity(item.id, item.quantity + 1)
+                                    }
                                   >
                                     +
                                   </button>
@@ -213,13 +197,13 @@ export default function CartPage() {
                               <div className="flex gap-6 text-sm">
                                 <button
                                   onClick={() => handleSaveForLater(item.id)}
-                                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                                  className="text-gray-700 hover:text-black font-medium transition-colors"
                                 >
                                   SAVE FOR LATER
                                 </button>
                                 <button
                                   onClick={() => handleRemove(item.id)}
-                                  className="text-red-600 hover:text-red-800 font-medium transition-colors"
+                                  className="text-gray-700 hover:text-black font-medium transition-colors"
                                 >
                                   REMOVE
                                 </button>
@@ -249,7 +233,6 @@ export default function CartPage() {
                                   src={item.image}
                                   alt={item.name}
                                   className="w-full h-full object-cover"
-                                  onError={handleImageError}
                                 />
                               </div>
                               <div className="flex-1">
@@ -260,7 +243,7 @@ export default function CartPage() {
                                   Size: {item.size} • Seller: {item.seller}
                                 </p>
                                 <div className="flex items-center gap-2 mb-3">
-                                  <span className="text-lg font-bold">
+                                  <span className="text-lg font-bold text-gray-900">
                                     {formatINR(item.discountedPriceValue)}
                                   </span>
                                   <span className="text-sm text-gray-500 line-through">
@@ -270,13 +253,13 @@ export default function CartPage() {
                                 <div className="flex gap-6 text-sm">
                                   <button
                                     onClick={() => handleMoveToCart(item.id)}
-                                    className="text-blue-600 hover:text-blue-800 font-medium"
+                                    className="text-gray-700 hover:text-black font-medium"
                                   >
                                     MOVE TO CART
                                   </button>
                                   <button
                                     onClick={() => handleRemoveFromSaved(item.id)}
-                                    className="text-red-600 hover:text-red-800 font-medium"
+                                    className="text-gray-700 hover:text-black font-medium"
                                   >
                                     REMOVE
                                   </button>
@@ -299,13 +282,13 @@ export default function CartPage() {
                         <div className="flex gap-3 w-full sm:w-auto">
                           <Link
                             to="/"
-                            className="flex-1 sm:flex-initial px-5 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-center"
+                            className="flex-1 sm:flex-initial px-5 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-center"
                           >
                             CONTINUE SHOPPING
                           </Link>
                           <Link
                             to="/checkout"
-                            className="flex-1 sm:flex-initial px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-center"
+                            className="flex-1 sm:flex-initial px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-center"
                           >
                             PROCEED TO CHECKOUT ({cartItems.length})
                           </Link>
@@ -317,34 +300,46 @@ export default function CartPage() {
 
                 {/* Right: Price Details */}
                 <div className="lg:w-[370px]">
-                  <div className="border border-[#EDEDED] px-[30px] mt-14  py-[26px] rounded-lg">
-                    <h3 className="text-lg font-medium text-qblack mb-4">PRICE DETAILS</h3>
+                  <div className="border border-gray-200 px-[30px] mt-14 py-[26px] rounded-lg">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      PRICE DETAILS
+                    </h3>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-qgraytwo">Price ({cartItems.length} items)</span>
-                        <span className="font-medium">{formatINR(originalTotal)}</span>
+                        <span className="text-gray-600">
+                          Price ({cartItems.length} items)
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {formatINR(originalTotal)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-qgraytwo">Discount</span>
-                        <span className="font-medium text-green-600">- {formatINR(discount)}</span>
+                        <span className="text-gray-600">Discount</span>
+                        <span className="font-medium text-gray-800">
+                          -{formatINR(discount)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-qgraytwo">Platform Fee</span>
-                        <span className="font-medium">{formatINR(platformFee)}</span>
+                        <span className="text-gray-600">Platform Fee</span>
+                        <span className="font-medium text-gray-900">
+                          {formatINR(platformFee)}
+                        </span>
                       </div>
-                      <div className="h-px bg-[#EDEDED] my-3"></div>
-                      <div className="flex justify-between text-base font-medium">
-                        <span className="text-qblack">Total Amount</span>
-                        <span className="text-qblack">{formatINR(totalAmount)}</span>
+                      <div className="h-px bg-gray-300 my-3"></div>
+                      <div className="flex justify-between text-base font-medium text-gray-900">
+                        <span>Total Amount</span>
+                        <span>{formatINR(totalAmount)}</span>
                       </div>
                     </div>
-                    <div className="bg-green-50 border border-green-200 rounded p-3 mt-4">
-                      <p className="text-sm text-green-700 text-center">
-                        <strong>You will save {formatINR(discount)}</strong> on this order
+                    <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-4">
+                      <p className="text-sm text-center text-gray-700">
+                        <strong>You will save {formatINR(discount)}</strong> on this
+                        order
                       </p>
                     </div>
-                    <p className="text-xs text-qgraytwo text-center mt-4">
-                      Safe and Secure Payments. Easy returns. 100% Authentic products.
+                    <p className="text-xs text-gray-500 text-center mt-4">
+                      Safe and Secure Payments. Easy returns. 100% Authentic
+                      products.
                     </p>
                   </div>
                 </div>
