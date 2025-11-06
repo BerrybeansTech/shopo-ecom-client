@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../Partials/Layout";
+import { useAuth } from "../hooks/useAuth";
+import { OTP_TYPES } from "../authApi";
 
 export default function Login() {
   const [formData, setFormData] = useState({ identifier: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { sendOTP, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleInputChange = (e) => {
     let value = e.target.value.trim();
@@ -39,14 +49,6 @@ export default function Login() {
     return emailRegex.test(identifier) || phoneRegex.test(identifier);
   };
 
-  const isExistingAccount = (identifier) => {
-    const existingAccounts = [
-      { identifier: "admin@gmail.com", password: "admin@123" },
-      { identifier: "+919952699123", password: "password123" },
-    ];
-    return existingAccounts.find((account) => account.identifier === identifier);
-  };
-
   const handleContinue = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -61,22 +63,33 @@ export default function Login() {
         return;
       }
 
-      const account = isExistingAccount(formData.identifier);
-      if (account) {
+      // Check if identifier is email or phone
+      if (formData.identifier.includes("@")) {
+        // For email, navigate to signin with email
         navigate("/signin", {
           state: {
             identifier: formData.identifier,
-            userData: {
-              email: formData.identifier.includes("@") ? formData.identifier : "",
-              phone: formData.identifier.includes("+91") ? formData.identifier : "",
-              password: account.password,
-              name: "Shuvo Khan",
-            },
+            isEmail: true
           },
         });
       } else {
-        navigate("/signup", { state: { identifier: formData.identifier } });
+        // For phone number, send OTP for login
+        const result = await sendOTP(OTP_TYPES.CUSTOMER_REGISTRATION, formData.identifier.replace('+91', ''));
+        
+        if (result.success) {
+          navigate("/verify-otp", {
+            state: {
+              type: OTP_TYPES.CUSTOMER_REGISTRATION,
+              identifier: formData.identifier,
+              flow: "login"
+            },
+          });
+        } else {
+          setError(result.error || "Failed to send OTP");
+        }
       }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -127,17 +140,17 @@ export default function Login() {
                 type="text"
                 value={formData.identifier}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={isLoading || loading}
                 className="block w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
               />
             </div>
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || loading}
               className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-lg flex items-center justify-center transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
+              {(isLoading || loading) ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -166,7 +179,7 @@ export default function Login() {
           <button
             aria-label="Sign in with Google"
             className="w-full flex items-center justify-center border border-gray-300 rounded-lg py-3 hover:bg-gray-50 transition disabled:opacity-60"
-            disabled={isLoading}
+            disabled={isLoading || loading}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  xmlns="http://www.w3.org/2000/svg">
@@ -189,7 +202,7 @@ export default function Login() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don’t have an account?{" "}
+              Don't have an account?{" "}
               <Link
                 to="/signup"
                 className="text-gray-900 font-semibold hover:underline hover:text-gray-700 transition"
