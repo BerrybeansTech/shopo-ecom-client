@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import datas from "../../../data/products.json";
 import BreadcrumbCom from "../../BreadcrumbCom";
 import Layout from "../../Partials/Layout";
@@ -23,11 +23,16 @@ import WishlistTab from "./tabs/WishlistTab";
 import LoyaltyTab from "./tabs/LoyaltyTab";
 import ReferralTab from "./tabs/ReferralTab";
 import GiftCardTab from "./tabs/GiftCardTab";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Profile() {
   const [switchDashboard, setSwitchDashboard] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout, loading } = useAuth();
+  
   const getHashContent = location.hash.split("#");
   const [active, setActive] = useState("dashboard");
 
@@ -56,9 +61,25 @@ export default function Profile() {
     };
   }, [isSidebarOpen]);
 
-  const handleLogout = () => {
-    console.log("Logging out...");
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      console.log("Logging out...");
+      
+      // Call the logout function from auth hook
+      await logout();
+      
+      // The navigation is now handled within the logout function
+      // Close sidebar on mobile
+      setIsSidebarOpen(false);
+      
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Even if logout fails, redirect to login
+      navigate("/login", { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const toggleSidebar = () => {
@@ -68,6 +89,8 @@ export default function Profile() {
   const handleMenuClick = () => {
     setIsSidebarOpen(false);
   };
+
+  const isLogoutLoading = isLoggingOut || loading;
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
@@ -304,18 +327,29 @@ export default function Profile() {
                     {/* Divider and Logout */}
                     <div className="mt-4 pt-4 border-t border-white-500">
                       <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsSidebarOpen(false);
-                        }}
+                        onClick={handleLogout}
                         type="button"
-                        className="flex space-x-3 items-center text-black-300 hover:text-black-900 w-full text-left p-3 rounded-lg hover:bg-white-300 border-l-4 border-transparent hover:border-black-500 transition-all duration-200 group"
+                        disabled={isLogoutLoading}
+                        className={`flex space-x-3 items-center w-full text-left p-3 rounded-lg border-l-4 border-transparent transition-all duration-200 group ${
+                          isLogoutLoading 
+                            ? 'opacity-60 cursor-not-allowed text-black-300' 
+                            : 'text-black-300 hover:text-black-900 hover:bg-white-300 hover:border-black-500'
+                        }`}
                       >
-                        <span className="transition-transform group-hover:scale-110 group-hover:text-black-700">
-                          <IcoLogout />
+                        <span className={`transition-transform group-hover:scale-110 ${
+                          isLogoutLoading ? 'text-black-400' : 'group-hover:text-black-700'
+                        }`}>
+                          {isLogoutLoading ? (
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <IcoLogout />
+                          )}
                         </span>
                         <span className="text-base font-medium">
-                          Logout
+                          {isLogoutLoading ? 'Logging out...' : 'Logout'}
                         </span>
                       </button>
                     </div>

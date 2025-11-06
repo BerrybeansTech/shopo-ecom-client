@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaEye, FaEyeSlash, FaShieldAlt, FaKey } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
 import Layout from "../../Partials/Layout";
+import { useAuth } from "../hooks/useAuth";
 
 export default function SignIn() {
   const [formData, setFormData] = useState({ password: "" });
@@ -11,15 +12,16 @@ export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { identifier, editField, userData } = location.state || {};
+  const { identifier, editField, isEmail } = location.state || {};
+  const { login, loading } = useAuth();
 
   const isPhoneNumber = (identifier) => /^\+91\d{10}$/.test(identifier);
 
   useEffect(() => {
-    if (!identifier || !userData) {
+    if (!identifier) {
       navigate("/login", { replace: true });
     }
-  }, [identifier, userData, navigate]);
+  }, [identifier, navigate]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -39,23 +41,28 @@ export default function SignIn() {
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (formData.password === userData.password) {
-        if (editField) {
-          if (editField === "password") {
-            navigate("/reset-password", { state: { identifier, userData } });
+      // For email login
+      if (isEmail) {
+        const result = await login(identifier, formData.password);
+        
+        if (result.success) {
+          if (editField) {
+            if (editField === "password") {
+              navigate("/reset-password", { state: { identifier } });
+            } else {
+              navigate("/profile#profile", {
+                state: { editField },
+              });
+            }
           } else {
-            navigate("/profile#profile", {
-              state: { isAuthenticated: true, editField, userData },
-            });
+            navigate("/");
           }
         } else {
-          navigate("/", { state: { isAuthenticated: true, userData } });
+          setError(result.error || "Login failed. Please try again.");
         }
       } else {
-        setError("Invalid password. Please try again.");
+        // For phone login - you can implement phone-based login here
+        setError("Phone login not implemented yet");
       }
     } catch (error) {
       setError("Login failed. Please try again.");
@@ -144,13 +151,13 @@ export default function SignIn() {
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    disabled={isLoading}
+                    disabled={isLoading || loading}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all outline-none text-gray-800 placeholder-gray-400 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
-                    disabled={isLoading}
+                    disabled={isLoading || loading}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
@@ -163,7 +170,6 @@ export default function SignIn() {
               <div className="flex justify-end">
                 <Link
                   to={`/forgot-password?identifier=${encodeURIComponent(identifier || "")}`}
-                  state={{ userData }}
                   className="text-sm text-gray-900 font-semibold hover:underline hover:text-gray-700 transition-colors"
                 >
                   Forgot Password?
@@ -173,10 +179,10 @@ export default function SignIn() {
               {/* Sign In Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || loading}
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
-                {isLoading ? (
+                {(isLoading || loading) ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -204,7 +210,6 @@ export default function SignIn() {
 
                 <Link
                   to={`/verify-otp?identifier=${encodeURIComponent(identifier)}&type=signin`}
-                  state={{ userData }}
                   className="w-full flex items-center justify-center gap-3 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200"
                   aria-label="Sign in with OTP"
                 >
