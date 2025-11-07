@@ -31,7 +31,7 @@ export default function Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, loading } = useAuth();
+  const { logout, loading, user, accessToken } = useAuth();
   
   const getHashContent = location.hash.split("#");
   const [active, setActive] = useState("dashboard");
@@ -64,14 +64,16 @@ export default function Profile() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      console.log("Logging out...");
+      console.log("Logging out user:", user?.email || user?.phone);
       
-      // Call the logout function from auth hook
-      await logout();
+      // Call the logout function from auth hook with the access token
+      await logout(accessToken);
       
-      // The navigation is now handled within the logout function
       // Close sidebar on mobile
       setIsSidebarOpen(false);
+      
+      // Show success message (optional)
+      console.log("Logout successful");
       
     } catch (error) {
       console.error("Logout failed:", error);

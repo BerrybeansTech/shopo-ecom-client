@@ -1,15 +1,20 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Layout from "../../Partials/Layout";
+import { useAuth } from "../hooks/useAuth";
+import { OTP_TYPES } from "../authApi";
 
 export default function ForgotPassword() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const prefilled = searchParams.get("identifier") || "";
   const { userData } = location.state || {};
+  const { sendOTP, checkUserExists } = useAuth();
 
   useEffect(() => {
     // Only set mobile number if it's a valid phone number
@@ -26,23 +31,56 @@ export default function ForgotPassword() {
     return /^\d{10}$/.test(mobile);
   };
 
-  const handleContinue = (e) => {
+  const handleContinue = async (e) => {
     e.preventDefault();
+    setError("");
+
     if (!mobileNumber) {
       setError("Please enter your mobile number.");
       return;
     }
+    
     if (!isValidMobileNumber(mobileNumber)) {
       setError("Invalid mobile number. Please enter a valid 10-digit mobile number.");
       return;
     }
     
-    // Simulate sending OTP
-    const identifier = `+91${mobileNumber}`;
-    console.log("Sending OTP to:", identifier);
-    navigate(`/verify-otp?identifier=${encodeURIComponent(identifier)}&type=reset`, {
-      state: { userData },
-    });
+    setIsLoading(true);
+    
+    try {
+      const identifier = `+91${mobileNumber}`;
+      
+      // First check if user exists
+      const checkResult = await checkUserExists(identifier);
+      
+      if (!checkResult.exists) {
+        setError("No account found with this mobile number. Please sign up first.");
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await sendOTP(OTP_TYPES.PASSWORD_RESET, identifier);
+
+      if (result.success) {
+        navigate(`/verify-otp`, {
+          state: {
+            identifier,
+            type: OTP_TYPES.PASSWORD_RESET,
+            flow: "reset",
+            receivedOtp: result.otp || result.data?.otp,
+            userData
+          },
+          replace: true
+        });
+      } else {
+        setError(result.error || "Failed to send OTP. Please try again.");
+      }
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      setError("Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle mobile number input with formatting
@@ -75,7 +113,7 @@ export default function ForgotPassword() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-gray-50 text-gray-800 text-sm rounded-lg flex items-center gap-3 border border-gray-300">
+            <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-3 border border-red-200">
               <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -100,7 +138,8 @@ export default function ForgotPassword() {
                   value={mobileNumber}
                   onChange={handleMobileChange}
                   placeholder="Enter 10-digit mobile number"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500"
+                  disabled={isLoading}
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 disabled:bg-gray-50"
                   maxLength={10}
                 />
               </div>
@@ -111,9 +150,23 @@ export default function ForgotPassword() {
             
             <button
               type="submit"
-              className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition"
+              disabled={isLoading || !mobileNumber || mobileNumber.length !== 10}
+              className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Send OTP
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                       xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10"
+                            stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending OTP...
+                </>
+              ) : (
+                "Send OTP"
+              )}
             </button>
           </form>
 
