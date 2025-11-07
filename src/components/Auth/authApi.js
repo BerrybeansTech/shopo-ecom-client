@@ -1,23 +1,18 @@
-// src/components/Auth/authApi.js
 import { apiService } from '../../services/apiservice';
 
-// OTP type constants
 export const OTP_TYPES = {
   CUSTOMER_REGISTRATION: 'customer-registration',
-  PASSWORD_RESET: 'password-reset',
+  PASSWORD_RESET: 'reset-password',
   CUSTOMER_LOGIN: 'customer-login',
 };
 
-// Check if user exists
 export const checkUserExists = async (identifier) => {
   try {
-    // Check if identifier is email or phone
     if (identifier.includes('@')) {
       return await apiService.apiCall(`/customer/check-exists?email=${encodeURIComponent(identifier)}`, {
         method: 'GET',
       });
     } else {
-      // Remove +91 if present for API call
       const phone = identifier.replace('+91', '');
       return await apiService.apiCall(`/customer/check-exists?phone=${phone}`, {
         method: 'GET',
@@ -29,7 +24,6 @@ export const checkUserExists = async (identifier) => {
   }
 };
 
-// Send OTP
 export const sendOTP = async (type, identifier) => {
   try {
     const cleanIdentifier = identifier.replace('+91', '');
@@ -48,7 +42,6 @@ export const sendOTP = async (type, identifier) => {
   }
 };
 
-// Verify OTP
 export const verifyOTP = async (type, identifier, otp) => {
   try {
     const cleanIdentifier = identifier.replace('+91', '');
@@ -67,7 +60,6 @@ export const verifyOTP = async (type, identifier, otp) => {
   }
 };
 
-// Register Customer
 export const registerCustomer = async (customerData) => {
   try {
     console.log('Registering customer:', customerData);
@@ -84,7 +76,6 @@ export const registerCustomer = async (customerData) => {
   }
 };
 
-// Login Customer with Email
 export const loginCustomer = async (credentials) => {
   try {
     console.log('Logging in customer:', { email: credentials.email });
@@ -101,7 +92,6 @@ export const loginCustomer = async (credentials) => {
   }
 };
 
-// Login with Phone and Password
 export const loginWithPhonePassword = async (phone, password) => {
   try {
     const cleanPhone = phone.replace('+91', '');
@@ -120,7 +110,6 @@ export const loginWithPhonePassword = async (phone, password) => {
   }
 };
 
-// Login with Phone and OTP
 export const loginWithPhoneOTP = async (phone, otp) => {
   try {
     const cleanPhone = phone.replace('+91', '');
@@ -139,7 +128,6 @@ export const loginWithPhoneOTP = async (phone, otp) => {
   }
 };
 
-// Get Customer Profile
 export const getCustomerProfile = async (customerId, token) => {
   try {
     const response = await apiService.apiCall(`/customer/get-customer/${customerId}`, {
@@ -153,11 +141,10 @@ export const getCustomerProfile = async (customerId, token) => {
   }
 };
 
-// Update Customer Profile
 export const updateCustomerProfile = async (customerData, token) => {
   try {
     const response = await apiService.apiCall('/customer/update-customer', {
-      method: 'POST',
+      method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: customerData,
     });
@@ -168,12 +155,11 @@ export const updateCustomerProfile = async (customerData, token) => {
   }
 };
 
-// Update Password
 export const updatePassword = async (userData, newPassword, token) => {
   try {
     const updatedData = { ...userData, password: newPassword };
     const response = await apiService.apiCall('/customer/update-customer', {
-      method: 'POST',
+      method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: updatedData,
     });
@@ -184,20 +170,20 @@ export const updatePassword = async (userData, newPassword, token) => {
   }
 };
 
-// Reset Password
-export const resetPassword = async (identifier, newPassword, resetToken) => {
+// FIXED: Reset Password API call
+export const resetPassword = async (phone, newPassword, resetToken) => {
   try {
-    const cleanIdentifier = identifier.replace('+91', '');
+    const cleanPhone = phone.replace('+91', '');
     console.log('Resetting password:', { 
-      identifier: cleanIdentifier, 
+      phone: cleanPhone, 
       resetToken,
       passwordLength: newPassword.length 
     });
     
     const requestBody = {
-      identifier: cleanIdentifier,
+      phone: cleanPhone,
       newPassword: newPassword,
-      resetToken: resetToken
+      otpToken: resetToken
     };
 
     console.log('Reset password request body:', requestBody);
@@ -212,7 +198,6 @@ export const resetPassword = async (identifier, newPassword, resetToken) => {
   } catch (error) {
     console.error('Reset password API error:', error);
     
-    // Provide more specific error messages
     if (error.message?.includes('500') || error.message?.includes('Internal Server Error')) {
       throw new Error('Server error. Please try again later.');
     } else if (error.message?.includes('Network Error')) {
@@ -223,43 +208,6 @@ export const resetPassword = async (identifier, newPassword, resetToken) => {
   }
 };
 
-// Update password using profile update (fallback method)
-export const updatePasswordViaProfile = async (identifier, newPassword, token) => {
-  try {
-    const cleanIdentifier = identifier.replace('+91', '');
-    console.log('Updating password via profile:', { identifier: cleanIdentifier });
-    
-    // First get current user data
-    const userResponse = await apiService.apiCall('/customer/get-customer-by-phone', {
-      method: 'POST',
-      body: { phone: cleanIdentifier },
-    });
-    
-    if (!userResponse.success) {
-      throw new Error('User not found');
-    }
-    
-    // Update user with new password
-    const updateData = {
-      ...userResponse.data,
-      password: newPassword
-    };
-    
-    const response = await apiService.apiCall('/customer/update-customer', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: updateData,
-    });
-    
-    console.log('Update password via profile response:', response);
-    return response;
-  } catch (error) {
-    console.error('Update password via profile error:', error);
-    throw error;
-  }
-};
-
-//  Logout User (optional API call)
 export const logoutUser = async (token) => {
   try {
     const response = await apiService.apiCall('/customer/logout', {

@@ -1,4 +1,3 @@
-// src/components/Auth/hooks/useAuth.js
 import { useSelector, useDispatch } from 'react-redux';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +35,6 @@ export const useAuth = () => {
   const navigate = useNavigate();
   const authState = useSelector((state) => state.auth);
 
-  //  Check if user exists
   const handleCheckUserExists = useCallback(async (identifier) => {
     try {
       dispatch(setLoading(true));
@@ -60,7 +58,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Send OTP
   const handleSendOTP = useCallback(async (type, identifier) => {
     try {
       dispatch(setLoading(true));
@@ -73,7 +70,7 @@ export const useAuth = () => {
         return { 
           success: true, 
           data: response,
-          otp: response.data?.otp
+          otp: response.otp
         };
       } else {
         dispatch(setError(response.message || 'Failed to send OTP'));
@@ -87,8 +84,7 @@ export const useAuth = () => {
       dispatch(setLoading(false));
     }
   }, [dispatch]);
-
-  //  Verify OTP
+  
   const handleVerifyOTP = useCallback(async (type, identifier, otp) => {
     try {
       dispatch(setLoading(true));
@@ -101,7 +97,7 @@ export const useAuth = () => {
         return { 
           success: true, 
           data: response,
-          resetToken: response.data?.resetToken 
+          resetToken: response.resetToken 
         };
       } else {
         dispatch(setError(response.message || 'OTP verification failed'));
@@ -116,7 +112,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Register Customer
   const handleRegister = useCallback(async (customerData) => {
     try {
       dispatch(setLoading(true));
@@ -143,7 +138,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Login Customer (Email)
   const handleLogin = useCallback(async (email, password) => {
     try {
       dispatch(setLoading(true));
@@ -170,7 +164,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Login with Phone and Password
   const handleLoginWithPhonePassword = useCallback(async (phone, password) => {
     try {
       dispatch(setLoading(true));
@@ -197,7 +190,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Login with Phone and OTP
   const handleLoginWithPhoneOTP = useCallback(async (phone, otp) => {
     try {
       dispatch(setLoading(true));
@@ -224,7 +216,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Get Customer Profile
   const handleGetCustomerProfile = useCallback(async (customerId, token) => {
     try {
       dispatch(setLoading(true));
@@ -246,7 +237,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Update Customer Profile
   const handleUpdateProfile = useCallback(async (customerData, token) => {
     try {
       dispatch(setLoading(true));
@@ -270,7 +260,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Update Password
   const handleUpdatePassword = useCallback(async (userData, newPassword, token) => {
     try {
       dispatch(setLoading(true));
@@ -293,67 +282,51 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  //  Reset Password
-const handleResetPassword = useCallback(async (identifier, newPassword, resetToken) => {
-  try {
-    dispatch(setLoading(true));
-    dispatch(clearError());
-
-    console.log("Attempting password reset...", { identifier, resetToken });
-
-    let response;
-    
-    // Try the main reset password endpoint first
+  // FIXED: Reset Password Handler
+  const handleResetPassword = useCallback(async (phone, newPassword, resetToken) => {
     try {
-      response = await resetPassword(identifier, newPassword, resetToken);
-    } catch (primaryError) {
-      console.warn("Primary reset method failed, trying fallback:", primaryError);
-      
-      // Fallback: Try updating via profile if we have a token
-      if (authState.accessToken) {
-        response = await updatePasswordViaProfile(identifier, newPassword, authState.accessToken);
-      } else {
-        throw primaryError;
-      }
-    }
+      dispatch(setLoading(true));
+      dispatch(clearError());
 
-    if (response.success) {
-      dispatch(setMessage('Password reset successfully'));
-      return { success: true, data: response };
-    } else {
-      // Handle specific backend errors
-      let errorMessage = response.message || 'Password reset failed';
+      console.log("Attempting password reset...", { phone, resetToken });
+
+      const response = await resetPassword(phone, newPassword, resetToken);
+
+      if (response.success) {
+        dispatch(setMessage('Password reset successfully'));
+        return { success: true, data: response };
+      } else {
+        let errorMessage = response.message || 'Password reset failed';
+        
+        if (response.message?.includes('Internal server error')) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (response.message?.includes('expired') || response.message?.includes('invalid')) {
+          errorMessage = 'Reset token has expired or is invalid. Please request a new password reset.';
+        } else if (response.message?.includes('not found')) {
+          errorMessage = 'User not found. Please check your phone number.';
+        }
+        
+        dispatch(setError(errorMessage));
+        return { success: false, error: errorMessage };
+      }
+    } catch (error) {
+      console.error("Reset password error:", error);
       
-      if (response.message?.includes('Internal server error')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (response.message?.includes('expired') || response.message?.includes('invalid')) {
-        errorMessage = 'Reset token has expired or is invalid. Please request a new password reset.';
-      } else if (response.message?.includes('not found')) {
-        errorMessage = 'User not found. Please check your phone number.';
+      let errorMessage = error.message || 'Network error occurred';
+      
+      if (error.message?.includes('Server error')) {
+        errorMessage = 'Server is temporarily unavailable. Please try again in a few minutes.';
+      } else if (error.message?.includes('Network error')) {
+        errorMessage = 'Network connection failed. Please check your internet connection.';
       }
       
       dispatch(setError(errorMessage));
       return { success: false, error: errorMessage };
+    } finally {
+      dispatch(setLoading(false));
     }
-  } catch (error) {
-    console.error("Reset password error:", error);
-    
-    let errorMessage = error.message || 'Network error occurred';
-    
-    if (error.message?.includes('Server error')) {
-      errorMessage = 'Server is temporarily unavailable. Please try again in a few minutes.';
-    } else if (error.message?.includes('Network error')) {
-      errorMessage = 'Network connection failed. Please check your internet connection.';
-    }
-    
-    dispatch(setError(errorMessage));
-    return { success: false, error: errorMessage };
-  } finally {
-    dispatch(setLoading(false));
-  }
-}, [dispatch, authState.accessToken]);
+  }, [dispatch]);
 
-  //  LOGOUT - FIXED VERSION
   const handleLogout = useCallback(async (token = null) => {
     try {
       dispatch(setLoading(true));
@@ -361,23 +334,19 @@ const handleResetPassword = useCallback(async (identifier, newPassword, resetTok
 
       console.log("Starting logout process...");
 
-      // Optional: Call server-side logout if token is provided
       if (token) {
         try {
           await logoutUser(token);
           console.log("Server logout successful");
         } catch (serverError) {
           console.warn("Server logout failed, but continuing with client-side logout:", serverError);
-          // Continue with client-side logout even if server logout fails
         }
       }
 
-      // Always clear local state and storage
       dispatch(logout());
       
       console.log("Client-side logout successful");
       
-      // Navigate to login page after successful logout
       navigate('/login', { 
         replace: true,
         state: { 
@@ -391,7 +360,6 @@ const handleResetPassword = useCallback(async (identifier, newPassword, resetTok
     } catch (error) {
       console.error("Logout error:", error);
       
-      // Even if there's an error, force client-side logout
       dispatch(logout());
       navigate('/login', { replace: true });
       
@@ -404,19 +372,16 @@ const handleResetPassword = useCallback(async (identifier, newPassword, resetTok
     }
   }, [dispatch, navigate]);
 
-  //  Clear error
   const handleClearError = useCallback(() => {
     dispatch(clearError());
   }, [dispatch]);
 
-  //  Clear message
   const handleClearMessage = useCallback(() => {
     dispatch(clearMessage());
   }, [dispatch]);
 
   return {
     ...authState,
-    // Auth actions
     checkUserExists: handleCheckUserExists,
     sendOTP: handleSendOTP,
     verifyOTP: handleVerifyOTP,
