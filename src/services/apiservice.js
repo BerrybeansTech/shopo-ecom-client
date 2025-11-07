@@ -1,4 +1,3 @@
-// src/services/apiService.js
 const BASE_URL = 'http://luxcycs.com:5501';
 
 class ApiService {
@@ -6,7 +5,6 @@ class ApiService {
     this.baseURL = BASE_URL;
   }
 
-  // Generic API call method
   async apiCall(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -38,6 +36,5 @@ class ApiService {
   }
 }
 
-// Export a singleton instance
 export const apiService = new ApiService();
 export default ApiService;

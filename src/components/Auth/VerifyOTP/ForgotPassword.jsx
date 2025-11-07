@@ -17,7 +17,6 @@ export default function ForgotPassword() {
   const { sendOTP, checkUserExists } = useAuth();
 
   useEffect(() => {
-    // Only set mobile number if it's a valid phone number
     if (prefilled && prefilled.startsWith("+91")) {
       const phoneMatch = prefilled.match(/^\+91(\d{10})$/);
       if (phoneMatch) {
@@ -26,7 +25,6 @@ export default function ForgotPassword() {
     }
   }, [prefilled]);
 
-  // Validate mobile number (exactly 10 digits)
   const isValidMobileNumber = (mobile) => {
     return /^\d{10}$/.test(mobile);
   };
@@ -50,7 +48,6 @@ export default function ForgotPassword() {
     try {
       const identifier = `+91${mobileNumber}`;
       
-      // First check if user exists
       const checkResult = await checkUserExists(identifier);
       
       if (!checkResult.exists) {
@@ -83,7 +80,6 @@ export default function ForgotPassword() {
     }
   };
 
-  // Handle mobile number input with formatting
   const handleMobileChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setMobileNumber(value);
@@ -95,7 +91,6 @@ export default function ForgotPassword() {
       <div className="flex min-h-[82vh] items-center justify-center bg-white px-4 py-8">
         <div className="lg:w-[480px] w-full bg-white p-10 rounded-2xl shadow-xl border border-gray-300">
           
-          {/* Header Section with Avatar Icon */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-2xl flex items-center justify-center shadow-lg">

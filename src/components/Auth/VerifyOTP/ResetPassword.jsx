@@ -19,23 +19,19 @@ export default function ResetPassword() {
   const { identifier, resetToken, fromForgotPassword } = location.state || {};
   const { resetPassword, updatePassword, user, accessToken } = useAuth();
 
-  // Validate password (at least 8 characters)
   const isValidPassword = (password) => {
-    return password.length >= 8;
+    return password.length >= 6;
   };
 
-  // Handle setting new password
   const handleSetPassword = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Validate new password
     if (!isValidPassword(formData.newPassword)) {
-      setError("New password must be at least 8 characters.");
+      setError("New password must be at least 6 characters.");
       return;
     }
 
-    // Validate confirm password
     if (formData.newPassword !== formData.confirmPassword) {
       setError("New password and confirm password do not match.");
       return;
@@ -47,11 +43,9 @@ export default function ResetPassword() {
       let result;
       
       if (fromForgotPassword && resetToken) {
-        // Password reset flow (from forgot password)
         console.log("Resetting password with:", { identifier, resetToken });
         result = await resetPassword(identifier, formData.newPassword, resetToken);
       } else {
-        // Regular password update flow (from profile)
         console.log("Updating password for user:", user?.id);
         result = await updatePassword(user, formData.newPassword, accessToken);
       }
@@ -68,11 +62,10 @@ export default function ResetPassword() {
           replace: true
         });
       } else {
-        // Handle specific error cases
         if (result.error?.includes("Internal server error")) {
           setError("Server error. Please try again later or contact support.");
         } else if (result.error?.includes("expired") || result.error?.includes("invalid")) {
-          setError("Reset link has expired. Please request a new password reset.");
+          setError("Reset token has expired. Please request a new password reset.");
         } else {
           setError(result.error || "Password update failed. Please try again.");
         }
@@ -85,14 +78,12 @@ export default function ResetPassword() {
     }
   };
 
-  // Handle password input changes
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError("");
   };
 
-  // Toggle visibility for passwords
   const toggleNewPasswordVisibility = () => {
     setShowNewPassword(!showNewPassword);
   };
@@ -101,12 +92,10 @@ export default function ResetPassword() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Handle back to login
   const handleBackToLogin = () => {
     navigate("/login");
   };
 
-  // Handle request new reset
   const handleRequestNewReset = () => {
     navigate("/forgot-password", {
       state: { identifier }
@@ -134,7 +123,6 @@ export default function ResetPassword() {
       <div className="flex min-h-[90vh] items-center justify-center bg-white px-4 py-8">
         <div className="lg:w-[480px] w-full bg-white p-10 rounded-2xl shadow-xl border border-gray-300">
           
-          {/* Header Section with Avatar Icon */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-2xl flex items-center justify-center shadow-lg">
@@ -185,7 +173,7 @@ export default function ResetPassword() {
               </label>
               <input
                 id="newPassword"
-                placeholder="Enter new password (min. 8 characters)"
+                placeholder="Enter new password (min. 6 characters)"
                 name="newPassword"
                 type={showNewPassword ? "text" : "password"}
                 value={formData.newPassword}
@@ -252,7 +240,6 @@ export default function ResetPassword() {
             </button>
           </form>
 
-          {/* Alternative options */}
           <div className="mt-6 text-center space-y-3">
             {fromForgotPassword && (
               <button
