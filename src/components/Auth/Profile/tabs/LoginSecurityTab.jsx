@@ -1,80 +1,153 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../Auth/hooks/useAuth";
 
 export default function LoginSecurityTab() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, accessToken, updateProfile, getProfile, loading, error, clearError } = useAuth();
+  
   const [userData, setUserData] = useState({
-    name: "admin",
-    email: "admin@gmail.com",
-    phone: "+919952699123",
-    password: "admin@123", // Actual password for simulation
+    name: "",
+    email: "",
+    phone: "",
+    password: "********", // Placeholder for password
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    postalCode: ""
   });
   const [editField, setEditField] = useState(null);
   const [newValue, setNewValue] = useState("");
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Check for state from SignIn or ResetPassword after authentication
+  // Load user data on component mount
+  useEffect(() => {
+    if (user) {
+      setUserData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone ? `+91${user.phone}` : "",
+        password: "********",
+        address: user.address || "",
+        city: user.city || "",
+        state: user.state || "",
+        country: user.country || "",
+        postalCode: user.postalCode || ""
+      });
+    } else if (accessToken) {
+      // If we have token but no user data, fetch it
+      fetchUserProfile();
+    }
+  }, [user, accessToken]);
+
+  // Handle state from navigation
   useEffect(() => {
     if (location.state?.isAuthenticated && location.state?.editField && location.state?.editField !== "password") {
       setEditField(location.state.editField);
       setNewValue(userData[location.state.editField]);
       navigate("/profile#profile", { replace: true, state: {} });
     }
-    // Update userData if password was changed in ResetPassword
-    if (location.state?.newPassword) {
-      setUserData((prev) => ({
-        ...prev,
-        password: location.state.newPassword,
-      }));
-      navigate("/profile#profile", { replace: true, state: {} });
-    }
-  }, [location.state, location.hash, navigate, userData]);
+  }, [location.state, navigate, userData]);
 
-  const handleEdit = (field) => {
-    // Navigate to SignIn for authentication
-    navigate("/signin", {
-      state: {
-        identifier: userData.email,
-        editField: field,
-        userData,
-      },
-    });
+  const fetchUserProfile = async () => {
+    if (user?.id && accessToken) {
+      const result = await getProfile(user.id, accessToken);
+      if (result.success) {
+        // User data will be updated via Redux
+        console.log("Profile fetched successfully");
+      }
+    }
   };
 
-  const handleSave = () => {
+  const handleEdit = (field) => {
+    if (field === "password") {
+      // Navigate to reset password flow
+      navigate("/reset-password", {
+        state: {
+          identifier: userData.email,
+          userData: user,
+        },
+      });
+    } else {
+      // Navigate to SignIn for authentication for sensitive fields
+      navigate("/signin", {
+        state: {
+          identifier: userData.email,
+          editField: field,
+          userData: user,
+        },
+      });
+    }
+  };
+
+  const handleSave = async () => {
     if (!newValue.trim()) {
-      setError(`Please enter a valid ${editField}.`);
+      setLocalError(`Please enter a valid ${editField}.`);
       return;
     }
+
     // Additional validation for specific fields
     if (editField === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newValue)) {
-        setError("Please enter a valid email address.");
+        setLocalError("Please enter a valid email address.");
         return;
       }
     }
     if (editField === "phone") {
       const phoneRegex = /^\+91\d{10}$/;
       if (!phoneRegex.test(newValue)) {
-        setError("Please enter a valid phone number (e.g., +91XXXXXXXXXX).");
+        setLocalError("Please enter a valid phone number (e.g., +91XXXXXXXXXX).");
         return;
       }
     }
-    setUserData((prev) => ({
-      ...prev,
-      [editField]: newValue,
-    }));
-    setEditField(null);
-    setNewValue("");
-    setError("");
+
+    setIsLoading(true);
+    setLocalError("");
+
+    try {
+      // Prepare update data
+      const updateData = {
+        id: user.id,
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone.replace('+91', ''),
+        address: userData.address,
+        city: userData.city,
+        state: userData.state,
+        country: userData.country,
+        postalCode: userData.postalCode,
+        [editField]: editField === 'phone' ? newValue.replace('+91', '') : newValue
+      };
+
+      const result = await updateProfile(updateData, accessToken);
+      
+      if (result.success) {
+        setUserData(prev => ({
+          ...prev,
+          [editField]: newValue
+        }));
+        setEditField(null);
+        setNewValue("");
+        setLocalError("");
+      } else {
+        setLocalError(result.error || "Failed to update profile");
+      }
+    } catch (err) {
+      setLocalError("An error occurred while updating");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setEditField(null);
     setNewValue("");
-    setError("");
+    setLocalError("");
+    clearError();
   };
 
   const securityItems = [
@@ -126,7 +199,7 @@ export default function LoginSecurityTab() {
     {
       field: "password",
       label: "Password",
-      value: "********",
+      value: userData.password,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -147,6 +220,16 @@ export default function LoginSecurityTab() {
         <h2 className="text-3xl font-bold text-black-900 mb-2">Login & Security</h2>
         <p className="text-black-300 text-sm">Manage your account credentials and security settings</p>
       </div>
+
+      {/* Error Message */}
+      {(error || localError) && (
+        <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-3 border border-red-200">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {error || localError}
+        </div>
+      )}
 
       {/* Security Items Grid */}
       <div className="grid gap-4">
@@ -180,20 +263,24 @@ export default function LoginSecurityTab() {
                         value={newValue}
                         onChange={(e) => {
                           setNewValue(e.target.value);
-                          setError("");
+                          setLocalError("");
+                          clearError();
                         }}
-                        className="w-full h-[50px] px-4 py-3 border border-white-500 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none transition duration-200 text-black-900 placeholder-black-200"
+                        disabled={isLoading || loading}
+                        className="w-full h-[50px] px-4 py-3 border border-white-500 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none transition duration-200 text-black-900 placeholder-black-200 disabled:bg-gray-100"
                         placeholder={`Enter new ${item.label.toLowerCase()}`}
                       />
                       <button
                         onClick={handleSave}
-                        className="px-4 py-2 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300"
+                        disabled={isLoading || loading}
+                        className="px-4 py-2 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300 disabled:opacity-50"
                       >
-                        Save
+                        {(isLoading || loading) ? "Saving..." : "Save"}
                       </button>
                       <button
                         onClick={handleCancel}
-                        className="px-4 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300"
+                        disabled={isLoading || loading}
+                        className="px-4 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300 disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -209,25 +296,13 @@ export default function LoginSecurityTab() {
                 <button
                   type="button"
                   onClick={() => handleEdit(item.field)}
-                  className="ml-4 px-5 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300 group"
+                  disabled={isLoading || loading}
+                  className="ml-4 px-5 py-2 border-2 border-white-500 text-black-900 rounded-lg font-medium text-sm hover:border-black-900 hover:bg-black-900 hover:text-white-50 transition-all duration-300 group disabled:opacity-50"
                 >
                   Edit
                 </button>
               )}
             </div>
-            {editField === item.field && error && (
-              <div className="mt-2 text-red-600 text-sm flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                {error}
-              </div>
-            )}
           </div>
         ))}
       </div>
