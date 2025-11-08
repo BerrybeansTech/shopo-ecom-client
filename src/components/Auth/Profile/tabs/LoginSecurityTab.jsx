@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../Auth/hooks/useAuth";
@@ -5,25 +6,18 @@ import { useAuth } from "../../../Auth/hooks/useAuth";
 export default function LoginSecurityTab() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, accessToken, updateProfile, getProfile, loading, error, clearError } = useAuth();
-  
+  const { user, accessToken, updateProfile, loading, error, clearError } = useAuth();
+
   const [userData, setUserData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "********", // Placeholder for password
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    postalCode: ""
+    name: "", email: "", phone: "", password: "********",
   });
   const [editField, setEditField] = useState(null);
   const [newValue, setNewValue] = useState("");
   const [localError, setLocalError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load user data on component mount
+  // Load user data
   useEffect(() => {
     if (user) {
       setUserData({
@@ -31,123 +25,98 @@ export default function LoginSecurityTab() {
         email: user.email || "",
         phone: user.phone ? `+91${user.phone}` : "",
         password: "********",
+      });
+    }
+  }, [user]);
+
+  // Handle success message & edit field from navigation
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+    if (location.state?.editField && location.state?.isAuthenticated) {
+      setEditField(location.state.editField);
+      const val = location.state.editField === 'phone' ? `+91${user.phone}` : user[location.state.editField] || "";
+      setNewValue(val);
+      navigate("/profile#profile", { replace: true, state: {} });
+    }
+  }, [location.state, navigate, user]);
+
+  // Handle Edit Click
+  const handleEdit = (field) => {
+    if (!user) return setLocalError("User not available.");
+
+    setLocalError("");
+    setSuccessMessage("");
+    clearError();
+
+    if (field === "password") {
+      const phone = user.phone ? `+91${user.phone}` : userData.phone;
+      navigate("/forgot-password", {
+        state: { identifier: phone, isPhone: true }
+      });
+    } else {
+      navigate("/signin", {
+        state: {
+          identifier: user.email,
+          editField: field,
+          isEmail: true,
+          userData: user,
+        },
+      });
+    }
+  };
+
+  // Save name/email/phone
+  const handleSave = async () => {
+    if (!newValue.trim()) return setLocalError(`Enter valid ${editField}`);
+    const validationError = validateField(editField, newValue);
+    if (validationError) return setLocalError(validationError);
+
+    setIsLoading(true);
+    try {
+      const updateData = {
+        id: user.id,
+        name: editField === 'name' ? newValue.trim() : userData.name,
+        email: editField === 'email' ? newValue.trim() : userData.email,
+        phone: editField === 'phone' ? newValue.replace('+91', '') : userData.phone.replace('+91', ''),
+        password: user.password,
         address: user.address || "",
         city: user.city || "",
         state: user.state || "",
-        country: user.country || "",
+        country: user.country || "India",
         postalCode: user.postalCode || ""
-      });
-    } else if (accessToken) {
-      // If we have token but no user data, fetch it
-      fetchUserProfile();
-    }
-  }, [user, accessToken]);
-
-  // Handle state from navigation
-  useEffect(() => {
-    if (location.state?.isAuthenticated && location.state?.editField && location.state?.editField !== "password") {
-      setEditField(location.state.editField);
-      setNewValue(userData[location.state.editField]);
-      navigate("/profile#profile", { replace: true, state: {} });
-    }
-  }, [location.state, navigate, userData]);
-
-  const fetchUserProfile = async () => {
-    if (user?.id && accessToken) {
-      const result = await getProfile(user.id, accessToken);
-      if (result.success) {
-        // User data will be updated via Redux
-        console.log("Profile fetched successfully");
-      }
-    }
-  };
-
-  const handleEdit = (field) => {
-    if (field === "password") {
-      // Navigate to reset password flow
-      navigate("/reset-password", {
-        state: {
-          identifier: userData.email,
-          userData: user,
-        },
-      });
-    } else {
-      // Navigate to SignIn for authentication for sensitive fields
-      navigate("/signin", {
-        state: {
-          identifier: userData.email,
-          editField: field,
-          userData: user,
-        },
-      });
-    }
-  };
-
-  const handleSave = async () => {
-    if (!newValue.trim()) {
-      setLocalError(`Please enter a valid ${editField}.`);
-      return;
-    }
-
-    // Additional validation for specific fields
-    if (editField === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newValue)) {
-        setLocalError("Please enter a valid email address.");
-        return;
-      }
-    }
-    if (editField === "phone") {
-      const phoneRegex = /^\+91\d{10}$/;
-      if (!phoneRegex.test(newValue)) {
-        setLocalError("Please enter a valid phone number (e.g., +91XXXXXXXXXX).");
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    setLocalError("");
-
-    try {
-      // Prepare update data
-      const updateData = {
-        id: user.id,
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone.replace('+91', ''),
-        address: userData.address,
-        city: userData.city,
-        state: userData.state,
-        country: userData.country,
-        postalCode: userData.postalCode,
-        [editField]: editField === 'phone' ? newValue.replace('+91', '') : newValue
       };
 
       const result = await updateProfile(updateData, accessToken);
-      
       if (result.success) {
-        setUserData(prev => ({
-          ...prev,
-          [editField]: newValue
-        }));
+        setUserData(prev => ({ ...prev, [editField]: newValue }));
         setEditField(null);
         setNewValue("");
-        setLocalError("");
+        setSuccessMessage(`${editField.charAt(0).toUpperCase() + editField.slice(1)} updated!`);
+        setTimeout(() => setSuccessMessage(""), 5000);
       } else {
-        setLocalError(result.error || "Failed to update profile");
+        setLocalError(result.error || "Update failed");
       }
-    } catch (err) {
-      setLocalError("An error occurred while updating");
+    } catch {
+      setLocalError("Update error");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const validateField = (field, value) => {
+    if (field === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? null : "Invalid email";
+    if (field === 'phone') return /^\+91\d{10}$/.test(value) ? null : "Use +91XXXXXXXXXX";
+    if (field === 'name') return value.trim().length >= 2 ? null : "Name too short";
+    return null;
   };
 
   const handleCancel = () => {
     setEditField(null);
     setNewValue("");
     setLocalError("");
-    clearError();
   };
 
   const securityItems = [
@@ -213,6 +182,17 @@ export default function LoginSecurityTab() {
     },
   ];
 
+  if (!user) return (
+    <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
+      <div className="flex justify-center items-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black-900 mx-auto mb-4"></div>
+          <p className="text-black-300">Loading user information...</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
       {/* Header Section */}
@@ -228,6 +208,16 @@ export default function LoginSecurityTab() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {error || localError}
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-3 border border-green-200">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+          {successMessage}
         </div>
       )}
 
@@ -269,13 +259,24 @@ export default function LoginSecurityTab() {
                         disabled={isLoading || loading}
                         className="w-full h-[50px] px-4 py-3 border border-white-500 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none transition duration-200 text-black-900 placeholder-black-200 disabled:bg-gray-100"
                         placeholder={`Enter new ${item.label.toLowerCase()}`}
+                        autoFocus
                       />
                       <button
                         onClick={handleSave}
                         disabled={isLoading || loading}
-                        className="px-4 py-2 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300 disabled:opacity-50"
+                        className="px-4 py-2 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300 disabled:opacity-50 flex items-center gap-2"
                       >
-                        {(isLoading || loading) ? "Saving..." : "Save"}
+                        {(isLoading || loading) ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 text-white-50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                          </>
+                        ) : (
+                          "Save"
+                        )}
                       </button>
                       <button
                         onClick={handleCancel}
@@ -286,7 +287,9 @@ export default function LoginSecurityTab() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-base font-medium text-black-900 truncate">{item.value}</p>
+                    <p className="text-base font-medium text-black-900 break-words">
+                      {item.value || "Not set"}
+                    </p>
                   )}
                 </div>
               </div>

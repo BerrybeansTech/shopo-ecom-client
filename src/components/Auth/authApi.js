@@ -141,13 +141,23 @@ export const getCustomerProfile = async (customerId, token) => {
   }
 };
 
+
+// Update the updateCustomerProfile function
 export const updateCustomerProfile = async (customerData, token) => {
   try {
+    console.log('Updating customer profile:', customerData);
+    
+    // FIXED: Use the correct endpoint from your Postman
     const response = await apiService.apiCall('/customer/update-customer', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` })
+      },
       body: customerData,
     });
+    
+    console.log('Update customer profile response:', response);
     return response;
   } catch (error) {
     console.error('Update customer profile API error:', error);
