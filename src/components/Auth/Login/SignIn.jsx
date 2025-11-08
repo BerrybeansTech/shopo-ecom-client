@@ -34,50 +34,64 @@ export default function SignIn() {
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   // Handle password login
-  const handleSignIn = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+const handleSignIn = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
 
-    if (!formData.password.trim()) {
-      setError("Please enter your password");
+  if (!formData.password.trim()) {
+    setError("Please enter your password");
+    setIsLoading(false);
+    return;
+  }
+
+  try {
+    let result;
+    if (isEmail) {
+      // Email login
+      result = await login(identifier, formData.password);
+    } else if (isPhoneNumber(identifier)) {
+      // Phone password login
+      result = await loginWithPhonePassword(identifier, formData.password);
+    } else {
+      setError("Invalid identifier");
       setIsLoading(false);
       return;
     }
 
-    try {
-      let result;
-      if (isEmail) {
-        // Email login
-        result = await login(identifier, formData.password);
-      } else if (isPhoneNumber(identifier)) {
-        // Phone password login
-        result = await loginWithPhonePassword(identifier, formData.password);
-      } else {
-        setError("Invalid identifier");
-        setIsLoading(false);
-        return;
-      }
-
-      if (result.success) {
-        if (editField) {
-          if (editField === "password") {
-            navigate("/reset-password", { state: { identifier } });
-          } else {
-            navigate("/profile#profile", { state: { editField } });
-          }
-        } else {
-          navigate("/", { replace: true });
-        }
-      } else {
-        setError(result.error || "Login failed. Please check your credentials.");
-      }
-    } catch (err) {
-      setError("Login failed. Please try again.");
-    } finally {
-      setIsLoading(false);
+    // In your SignIn component - Update the success navigation part
+// In SignIn component - after successful login
+if (result.success) {
+  if (editField) {
+    if (editField === "password") {
+      navigate("/reset-password", { 
+        state: { 
+          identifier,
+          userData: user 
+        } 
+      });
+    } else {
+      // Navigate back to profile with edit field
+      navigate("/profile#profile", { 
+        state: { 
+          editField: editField,
+          isAuthenticated: true,
+          message: "Identity verified successfully. You can now update your information." 
+        } 
+      });
     }
-  };
+  } else {
+    navigate("/", { replace: true });
+  }
+} else {
+      setError(result.error || "Login failed. Please check your credentials.");
+    }
+  } catch (err) {
+    setError("Login failed. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   //  Handle OTP Login for phone users
   const handlePhoneOTPLogin = async () => {

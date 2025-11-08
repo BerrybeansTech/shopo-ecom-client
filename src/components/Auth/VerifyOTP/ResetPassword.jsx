@@ -52,16 +52,17 @@ export default function ResetPassword() {
 
       console.log("Password update result:", result);
 
-      if (result.success) {
-        const redirectPath = fromForgotPassword ? "/login" : "/profile#profile";
-        navigate(redirectPath, {
-          state: { 
-            message: "Password updated successfully",
-            fromPasswordReset: true
-          },
-          replace: true
-        });
-      } else {
+      // In your ResetPassword component - Update the success navigation
+if (result.success) {
+  const redirectPath = fromForgotPassword ? "/login" : "/profile#profile";
+  navigate(redirectPath, {
+    state: { 
+      message: "Password updated successfully",
+      fromPasswordReset: true
+    },
+    replace: true
+  });
+} else {
         if (result.error?.includes("Internal server error")) {
           setError("Server error. Please try again later or contact support.");
         } else if (result.error?.includes("expired") || result.error?.includes("invalid")) {
