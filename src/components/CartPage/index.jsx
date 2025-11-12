@@ -1,81 +1,147 @@
-import { useState } from "react";
+// components/Cart/CartPage.js
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/Layout";
+import { useCart } from "../CartPage/useCart";
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "METRONAUT Men Solid Casual Yellow Shirt",
-      deliveryDate: "Mon Oct 27",
-      size: "S",
-      seller: "RedBrocket",
-      assured: true,
-      originalPriceValue: 1999,
-      discountedPriceValue: 256,
-      discount: "86% Off",
-      image: "/assets/images/shirt1.webp",
-      quantity: 1,
-    },
-    {
-      id: 2,
-      name: "METRONAUT Men Solid Casual Dark Green Shirt",
-      deliveryDate: "Tue Oct 28",
-      size: "L",
-      seller: "Apple Store",
-      assured: true,
-      originalPriceValue: 1999,
-      discountedPriceValue: 1000,
-      discount: "50% Off",
-      image: "/assets/images/shirt3.webp",
-      quantity: 1,
-    },
-  ]);
+  const {
+    items,
+    savedItems,
+    loading,
+    error,
+    subtotal,
+    discount,
+    total,
+    updateItemQuantity,
+    removeItem,
+    saveForLater,
+    moveItemToCart,
+    removeFromSavedItems,
+    formatINR,
+    refreshCart,
+    dismissError,
+    isAuthenticated,
+    handleLoginRedirect
+  } = useCart();
 
-  const [savedItems, setSavedItems] = useState([]);
+  const [localCartItems, setLocalCartItems] = useState([]);
+  const [localSavedItems, setLocalSavedItems] = useState([]);
 
-  const formatINR = (amount) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshCart();
+    }
+  }, [isAuthenticated]);
 
-  const handleRemove = (id) => setCartItems(cartItems.filter((i) => i.id !== id));
+  useEffect(() => {
+    setLocalCartItems(items);
+  }, [items]);
+
+  useEffect(() => {
+    setLocalSavedItems(savedItems);
+  }, [savedItems]);
+
+  const handleRemove = async (id) => {
+    await removeItem(id);
+  };
+
   const handleSaveForLater = (id) => {
-    const item = cartItems.find((i) => i.id === id);
-    if (item) {
-      setCartItems(cartItems.filter((i) => i.id !== id));
-      setSavedItems([...savedItems, item]);
-    }
-  };
-  const handleMoveToCart = (id) => {
-    const item = savedItems.find((i) => i.id === id);
-    if (item) {
-      setSavedItems(savedItems.filter((i) => i.id !== id));
-      setCartItems([...cartItems, item]);
-    }
-  };
-  const handleRemoveFromSaved = (id) =>
-    setSavedItems(savedItems.filter((i) => i.id !== id));
-  const updateQuantity = (id, q) => {
-    if (q < 1) return;
-    setCartItems(cartItems.map((i) => (i.id === id ? { ...i, quantity: q } : i)));
+    saveForLater(id);
   };
 
-  const subtotal = cartItems.reduce(
-    (t, i) => t + i.discountedPriceValue * i.quantity,
+  const handleMoveToCart = (id) => {
+    moveItemToCart(id);
+  };
+
+  const handleRemoveFromSaved = (id) => {
+    removeFromSavedItems(id);
+  };
+
+  const updateQuantity = async (id, newQuantity) => {
+    if (newQuantity < 1) return;
+    await updateItemQuantity(id, newQuantity);
+  };
+
+  // Calculate totals based on API data
+  const calculatedSubtotal = localCartItems.reduce(
+    (t, i) => t + (i.product?.sellingPrice || i.discountedPriceValue || 0) * i.quantity,
     0
   );
-  const originalTotal = cartItems.reduce(
-    (t, i) => t + i.originalPriceValue * i.quantity,
+
+  const calculatedOriginalTotal = localCartItems.reduce(
+    (t, i) => t + (i.product?.mrp || i.originalPriceValue || 0) * i.quantity,
     0
   );
-  const discount = originalTotal - subtotal;
+
+  const calculatedDiscount = calculatedOriginalTotal - calculatedSubtotal;
   const platformFee = 7;
-  const totalAmount = subtotal + platformFee;
+  const calculatedTotalAmount = calculatedSubtotal + platformFee;
+
+  // Use API data if available, otherwise use calculated values
+  const displaySubtotal = subtotal || calculatedSubtotal;
+  const displayDiscount = discount || calculatedDiscount;
+  const displayTotal = total || calculatedTotalAmount;
+
+  if (loading) {
+    return (
+      <Layout childrenClasses="pt-0 pb-0">
+        <div className="cart-page-wrapper w-full bg-white pb-[30px]">
+          <div className="w-full">
+            <PageTitle
+              title="Your Cart"
+              breadcrumb={[
+                { name: "home", path: "/" },
+                { name: "cart", path: "/cart" },
+              ]}
+            />
+          </div>
+          <div className="w-full mt-[50px]">
+            <div className="container-x mx-auto text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading cart...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Layout childrenClasses="pt-0 pb-0">
+        <div className="cart-page-wrapper w-full bg-white pb-[30px]">
+          <div className="w-full">
+            <PageTitle
+              title="Your Cart"
+              breadcrumb={[
+                { name: "home", path: "/" },
+                { name: "cart", path: "/cart" },
+              ]}
+            />
+          </div>
+          <div className="w-full mt-[50px]">
+            <div className="container-x mx-auto">
+              <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <div className="text-6xl mb-4 text-gray-800">🔐</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Login Required
+                </h3>
+                <p className="text-gray-600 mb-6">Please login to view your cart</p>
+                <button
+                  onClick={() => handleLoginRedirect()}
+                  className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Login to Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
@@ -92,7 +158,21 @@ export default function CartPage() {
 
         <div className="w-full mt-[50px]">
           <div className="container-x mx-auto">
-            {cartItems.length === 0 ? (
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <p className="text-red-800 text-sm font-medium">{error}</p>
+                  <button
+                    onClick={dismissError}
+                    className="text-red-800 hover:text-red-900"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {localCartItems.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                 <div className="text-6xl mb-4 text-gray-800">Empty Cart</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -100,7 +180,7 @@ export default function CartPage() {
                 </h3>
                 <p className="text-gray-600 mb-6">Add some items to get started</p>
                 <Link
-                  to="/"
+                  to="/products"
                   className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Continue Shopping
@@ -111,155 +191,105 @@ export default function CartPage() {
                 {/* Left: Cart Items + Saved Items */}
                 <div className="lg:flex-1">
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                    Shopping Cart ({cartItems.length})
+                    Shopping Cart ({localCartItems.length})
                   </h1>
 
                   {/* Cart Items */}
                   <div className="space-y-6">
-                    {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-                      >
-                        <div className="flex flex-col md:flex-row gap-6">
-                          {/* Product Image */}
-                          <div className="flex-shrink-0">
-                            <div className="w-32 h-32 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          </div>
+                    {localCartItems.map((item) => {
+                      const product = item.product || {};
+                      const productName = product.name || "Product";
+                      const thumbnail = product.thumbnailImage || "Product thumbnail";
+                      const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
+                      const mrp = product.mrp || item.originalPriceValue || sellingPrice;
+                      const discountPercentage = mrp > sellingPrice 
+                        ? Math.round(((mrp - sellingPrice) / mrp) * 100)
+                        : 0;
 
-                          {/* Product Details */}
-                          <div className="flex-1 flex flex-col justify-between">
-                            <div>
-                              <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                                {item.name}
-                              </h2>
-                              <p className="text-sm text-gray-600 mb-2">
-                                Delivery by{" "}
-                                <span className="font-medium text-gray-800">
-                                  {item.deliveryDate}
-                                </span>
-                              </p>
-                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                                <span>
-                                  Size: <strong>{item.size}</strong>
-                                </span>
-                              </div>
-
-                              {/* Price */}
-                              <div className="flex items-center gap-2 mb-4">
-                                <span className="text-2xl font-bold text-gray-900">
-                                  {formatINR(item.discountedPriceValue * item.quantity)}
-                                </span>
-                                <span className="text-lg text-gray-500 line-through">
-                                  {formatINR(item.originalPriceValue * item.quantity)}
-                                </span>
-                                <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
-                                  {item.discount}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Bottom Actions */}
-                            <div className="flex items-center justify-between md:justify-start gap-4 mt-auto">
-                              {/* Quantity Selector */}
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">Qty:</span>
-                                <div className="flex items-center border border-gray-300 rounded-lg">
-                                  <button
-                                    className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
-                                    onClick={() =>
-                                      updateQuantity(item.id, item.quantity - 1)
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                  <span className="w-10 text-center font-medium text-gray-900">
-                                    {item.quantity}
-                                  </span>
-                                  <button
-                                    className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
-                                    onClick={() =>
-                                      updateQuantity(item.id, item.quantity + 1)
-                                    }
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Action Buttons */}
-                              <div className="flex gap-6 text-sm">
-                                <button
-                                  onClick={() => handleSaveForLater(item.id)}
-                                  className="text-gray-700 hover:text-black font-medium transition-colors"
-                                >
-                                  SAVE FOR LATER
-                                </button>
-                                <button
-                                  onClick={() => handleRemove(item.id)}
-                                  className="text-gray-700 hover:text-black font-medium transition-colors"
-                                >
-                                  REMOVE
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Saved for Later */}
-                  {savedItems.length > 0 && (
-                    <div className="mt-10">
-                      <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        Saved For Later ({savedItems.length})
-                      </h2>
-                      <div className="space-y-4">
-                        {savedItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm opacity-95"
-                          >
-                            <div className="flex gap-5">
-                              <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
+                      return (
+                        <div
+                          key={item.id}
+                          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+                        >
+                          <div className="flex flex-col md:flex-row gap-6">
+                            {/* Product Image */}
+                            <div className="flex-shrink-0">
+                              <div className="w-32 h-32 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                                 <img
-                                  src={item.image}
-                                  alt={item.name}
+                                  src={thumbnail}
+                                  alt={productName}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
-                              <div className="flex-1">
-                                <h3 className="text-md font-semibold text-gray-900 mb-1">
-                                  {item.name}
-                                </h3>
+                            </div>
+
+                            {/* Product Details */}
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div>
+                                <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                                  {productName}
+                                </h2>
                                 <p className="text-sm text-gray-600 mb-2">
-                                  Size: {item.size} • Seller: {item.seller}
-                                </p>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span className="text-lg font-bold text-gray-900">
-                                    {formatINR(item.discountedPriceValue)}
+                                  Delivery by{" "}
+                                  <span className="font-medium text-gray-800">
+                                    Mon Oct 27
                                   </span>
-                                  <span className="text-sm text-gray-500 line-through">
-                                    {formatINR(item.originalPriceValue)}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                                  <span>
+                                    Size: <strong>S</strong>
                                   </span>
                                 </div>
+
+                                {/* Price */}
+                                <div className="flex items-center gap-2 mb-4">
+                                  <span className="text-2xl font-bold text-gray-900">
+                                    {formatINR(sellingPrice * item.quantity)}
+                                  </span>
+                                  <span className="text-lg text-gray-500 line-through">
+                                    {formatINR(mrp * item.quantity)}
+                                  </span>
+                                  <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
+                                    {discountPercentage}% Off
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Bottom Actions */}
+                              <div className="flex items-center justify-between md:justify-start gap-4 mt-auto">
+                                {/* Quantity Selector */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-gray-600">Qty:</span>
+                                  <div className="flex items-center border border-gray-300 rounded-lg">
+                                    <button
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
+                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                    >
+                                      −
+                                    </button>
+                                    <span className="w-10 text-center font-medium text-gray-900">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
+                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Action Buttons */}
                                 <div className="flex gap-6 text-sm">
                                   <button
-                                    onClick={() => handleMoveToCart(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium"
+                                    onClick={() => handleSaveForLater(item.id)}
+                                    className="text-gray-700 hover:text-black font-medium transition-colors"
                                   >
-                                    MOVE TO CART
+                                    SAVE FOR LATER
                                   </button>
                                   <button
-                                    onClick={() => handleRemoveFromSaved(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium"
+                                    onClick={() => handleRemove(item.id)}
+                                    className="text-gray-700 hover:text-black font-medium transition-colors"
                                   >
                                     REMOVE
                                   </button>
@@ -267,21 +297,86 @@ export default function CartPage() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Saved for Later */}
+                  {localSavedItems.length > 0 && (
+                    <div className="mt-10">
+                      <h2 className="text-xl font-bold text-gray-900 mb-4">
+                        Saved For Later ({localSavedItems.length})
+                      </h2>
+                      <div className="space-y-4">
+                        {localSavedItems.map((item) => {
+                          const product = item.product || {};
+                          const productName = product.name || "Product";
+                          const thumbnail = product.thumbnailImage || "/assets/images/shirt1.webp";
+                          const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
+                          const mrp = product.mrp || item.originalPriceValue || sellingPrice;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm opacity-95"
+                            >
+                              <div className="flex gap-5">
+                                <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
+                                  <img
+                                    src={thumbnail}
+                                    alt={productName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-md font-semibold text-gray-900 mb-1">
+                                    {productName}
+                                  </h3>
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    Size: S • Seller: RedBrocket
+                                  </p>
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <span className="text-lg font-bold text-gray-900">
+                                      {formatINR(sellingPrice)}
+                                    </span>
+                                    <span className="text-sm text-gray-500 line-through">
+                                      {formatINR(mrp)}
+                                    </span>
+                                  </div>
+                                  <div className="flex gap-6 text-sm">
+                                    <button
+                                      onClick={() => handleMoveToCart(item.id)}
+                                      className="text-gray-700 hover:text-black font-medium"
+                                    >
+                                      MOVE TO CART
+                                    </button>
+                                    <button
+                                      onClick={() => handleRemoveFromSaved(item.id)}
+                                      className="text-gray-700 hover:text-black font-medium"
+                                    >
+                                      REMOVE
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
                   {/* Bottom CTA */}
-                  {cartItems.length > 0 && (
+                  {localCartItems.length > 0 && (
                     <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="text-lg font-semibold text-gray-900">
-                          Total: {formatINR(totalAmount)}
+                          Total: {formatINR(displayTotal)}
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                           <Link
-                            to="/"
+                            to="/products"
                             className="flex-1 sm:flex-initial px-5 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-center"
                           >
                             CONTINUE SHOPPING
@@ -290,7 +385,7 @@ export default function CartPage() {
                             to="/checkout"
                             className="flex-1 sm:flex-initial px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-center"
                           >
-                            PROCEED TO CHECKOUT ({cartItems.length})
+                            PROCEED TO CHECKOUT ({localCartItems.length})
                           </Link>
                         </div>
                       </div>
@@ -307,16 +402,16 @@ export default function CartPage() {
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Price ({cartItems.length} items)
+                          Price ({localCartItems.length} items)
                         </span>
                         <span className="font-medium text-gray-900">
-                          {formatINR(originalTotal)}
+                          {formatINR(calculatedOriginalTotal)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Discount</span>
                         <span className="font-medium text-gray-800">
-                          -{formatINR(discount)}
+                          -{formatINR(displayDiscount)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -328,12 +423,12 @@ export default function CartPage() {
                       <div className="h-px bg-gray-300 my-3"></div>
                       <div className="flex justify-between text-base font-medium text-gray-900">
                         <span>Total Amount</span>
-                        <span>{formatINR(totalAmount)}</span>
+                        <span>{formatINR(displayTotal)}</span>
                       </div>
                     </div>
                     <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-4">
                       <p className="text-sm text-center text-gray-700">
-                        <strong>You will save {formatINR(discount)}</strong> on this
+                        <strong>You will save {formatINR(displayDiscount)}</strong> on this
                         order
                       </p>
                     </div>

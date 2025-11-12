@@ -65,12 +65,19 @@ export default function Signup() {
         password: newValue.length < 6 ? "Password must be at least 6 characters" : "",
       });
     }
+
     if (name === "fname") {
+      // Only letters and spaces allowed
+      newValue = value.replace(/[^a-zA-Z\s]/g, "");
       setErrors({
         ...errors,
         fname: newValue.trim() === "" ? "Name is required" : "",
-      });
+      })
     }
+
+    setFormData({ ...formData, [name]: newValue });
+    clearError();
+    
     if (name === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setErrors({

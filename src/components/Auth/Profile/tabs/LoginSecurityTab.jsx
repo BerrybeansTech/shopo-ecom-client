@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../Auth/hooks/useAuth";
@@ -35,7 +34,7 @@ export default function LoginSecurityTab() {
       setSuccessMessage(location.state.message);
       setTimeout(() => setSuccessMessage(""), 5000);
     }
-    if (location.state?.editField && location.state?.isAuthenticated) {
+    if (location.state?.editField && location.state?.isAuthenticated && user) {
       setEditField(location.state.editField);
       const val = location.state.editField === 'phone' ? `+91${user.phone}` : user[location.state.editField] || "";
       setNewValue(val);
@@ -45,7 +44,10 @@ export default function LoginSecurityTab() {
 
   // Handle Edit Click
   const handleEdit = (field) => {
-    if (!user) return setLocalError("User not available.");
+    if (!user) {
+      setLocalError("Please log in to edit your information.");
+      return;
+    }
 
     setLocalError("");
     setSuccessMessage("");
@@ -70,6 +72,11 @@ export default function LoginSecurityTab() {
 
   // Save name/email/phone
   const handleSave = async () => {
+    if (!user) {
+      setLocalError("User not available. Please log in.");
+      return;
+    }
+
     if (!newValue.trim()) return setLocalError(`Enter valid ${editField}`);
     const validationError = validateField(editField, newValue);
     if (validationError) return setLocalError(validationError);
@@ -182,16 +189,44 @@ export default function LoginSecurityTab() {
     },
   ];
 
-  if (!user) return (
-    <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
-      <div className="flex justify-center items-center min-h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black-900 mx-auto mb-4"></div>
-          <p className="text-black-300">Loading user information...</p>
+  // Show loading state when user data is being fetched
+  if (loading) {
+    return (
+      <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
+        <div className="flex justify-center items-center min-h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black-900 mx-auto mb-4"></div>
+            <p className="text-black-300">Loading user information...</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Show login message when user is not logged in
+  if (!user && !loading) {
+    return (
+      <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">
+        <div className="flex justify-center items-center min-h-96">
+          <div className="text-center">
+            <div className="mb-4">
+              <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <p className="text-xl font-medium text-gray-600 mb-2">Login Required</p>
+            <p className="text-gray-500 text-sm mb-6">Please log in to view your account information</p>
+            <button
+              onClick={() => navigate("/signin")}
+              className="px-8 py-3 bg-black-900 text-white-50 rounded-lg font-medium text-sm hover:bg-black-700 transition-all duration-300"
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="profile" className="w-full max-w-4xl mx-auto px-4 py-6">

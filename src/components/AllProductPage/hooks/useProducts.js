@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   setCategories, 
@@ -10,44 +10,130 @@ import {
   setError,
   setSelectedFilters 
 } from '../productSlice';
-import { productDataApi, productUtils } from '../productApi';
+import { productDataApi, productUtils, categoryApi, reviewApi } from '../productApi';
+
+let globalIsFetchingAll = false;
+let globalHasFetchedAll = false;
 
 export const useProducts = () => {
   const dispatch = useDispatch();
   const productState = useSelector(state => state.product);
+  
+  // Use refs to track fetch status without causing re-renders
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState(null);
 
-  // Fetch all product data
-  const fetchAllProductData = useCallback(async () => {
+  const fetchAllProductData = useCallback(async (forceRefresh = false) => {
+    if ((isFetchingRef.current || globalIsFetchingAll) && !forceRefresh) {
+      return;
+    }
+    if ((hasFetchedRef.current || globalHasFetchedAll) && !forceRefresh && 
+        productState.categories.length > 0) {
+      return;
+    }
+    if (productState.loading && !forceRefresh) {
+      return;
+    }
+
     try {
+      isFetchingRef.current = true;
+      globalIsFetchingAll = true;
       dispatch(setLoading(true));
       setLocalLoading(true);
       setLocalError(null);
 
       const productData = await productDataApi.getAll();
 
-      // Transform and set data in Redux store
       dispatch(setCategories(productData.categories));
       dispatch(setSizes(productData.sizes));
       dispatch(setColors(productData.colors));
       dispatch(setOccasions(productData.occasions));
       dispatch(setMaterials(productData.materials));
-
-      dispatch(setLoading(false));
-      setLocalLoading(false);
+      hasFetchedRef.current = true;
+      globalHasFetchedAll = true;
       
       return productData;
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch product data';
       dispatch(setError(errorMessage));
       setLocalError(errorMessage);
-      setLocalLoading(false);
-      dispatch(setLoading(false));
       throw error;
+    } finally {
+      dispatch(setLoading(false));
+      setLocalLoading(false);
+      isFetchingRef.current = false;
+      globalIsFetchingAll = false;
     }
-  }, [dispatch]);
+  }, [dispatch, productState.categories.length, productState.loading]);
+  
+  const fetchCategoriesOnly = useCallback(async (forceRefresh = false) => {
+    if ((productState.loading || isFetchingRef.current) && !forceRefresh) return;
+    if (productState.categories.length > 0 && !forceRefresh) return;
+    try {
+      isFetchingRef.current = true;
+      dispatch(setLoading(true));
+      const response = await categoryApi.getAll();
+      const cats = response?.data || response || [];
+      dispatch(setCategories(cats));
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to fetch categories';
+      dispatch(setError(msg));
+      setLocalError(msg);
+      throw err;
+    } finally {
+      isFetchingRef.current = false;
+      dispatch(setLoading(false));
+    }
+  }, [dispatch, productState.categories.length, productState.loading]);
+
+  // Review functions
+  const createReview = useCallback(async (reviewData) => {
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      const response = await reviewApi.create(reviewData);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create review';
+      setLocalError(errorMessage);
+      throw error;
+    } finally {
+      setLocalLoading(false);
+    }
+  }, []);
+
+  const getProductReviews = useCallback(async (productId) => {
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      const response = await reviewApi.getByProduct(productId);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch reviews';
+      setLocalError(errorMessage);
+      throw error;
+    } finally {
+      setLocalLoading(false);
+    }
+  }, []);
+
+  const deleteReview = useCallback(async (reviewId) => {
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      const response = await reviewApi.delete(reviewId);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete review';
+      setLocalError(errorMessage);
+      throw error;
+    } finally {
+      setLocalLoading(false);
+    }
+  }, []);
 
   // Get unique sizes by type
   const getUniqueSizesByType = useCallback(() => {
@@ -94,14 +180,17 @@ export const useProducts = () => {
     return productState.materials.find(material => material.id === id);
   }, [productState.materials]);
 
-  // Initialize product data on component mount
   useEffect(() => {
-    if (productState.categories.length === 0 && 
-        productState.sizes.length === 0 && 
-        productState.colors.length === 0) {
+    const shouldFetchData = 
+      !hasFetchedRef.current && 
+      !isFetchingRef.current &&
+      !globalHasFetchedAll &&
+      productState.categories.length === 0;
+
+    if (shouldFetchData) {
       fetchAllProductData();
     }
-  }, [fetchAllProductData, productState.categories.length, productState.sizes.length, productState.colors.length]);
+  }, [fetchAllProductData, productState.categories.length]);
 
   return {
     // State
@@ -113,10 +202,17 @@ export const useProducts = () => {
     selectedFilters: productState.selectedFilters,
     loading: productState.loading || localLoading,
     error: productState.error || localError,
+    hasCategories: productState.categories && productState.categories.length > 0,
 
     // Actions
     fetchAllProductData,
+    fetchCategoriesOnly,
     updateSelectedFilters,
+    
+    // Review Actions
+    createReview,
+    getProductReviews,
+    deleteReview,
     
     // Utility functions
     getUniqueSizesByType,
