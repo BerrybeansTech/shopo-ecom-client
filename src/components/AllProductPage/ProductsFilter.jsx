@@ -71,7 +71,7 @@ const ProductsFilter = React.memo(({
     return tree;
   }, [categories]);
 
-  // Extract unique values from products
+  // Extract unique values from products - ONLY API DATA
   const { brands, seasonalCollections, availableColors, availableSizes } = useMemo(() => {
     const brandSet = new Set();
     const collectionSet = new Set();
@@ -82,12 +82,12 @@ const ProductsFilter = React.memo(({
       if (p.brand) brandSet.add(p.brand);
       if (p.seasonal_special_collection) collectionSet.add(p.seasonal_special_collection);
       
-      // Extract colors from product
+      // Extract colors from product - Use colors array directly from API
       if (Array.isArray(p.colors)) {
         p.colors.forEach(color => colorSet.add(color));
       }
       
-      // Extract sizes from product
+      // Extract sizes from product - Use sizes array directly from API
       if (Array.isArray(p.sizes)) {
         p.sizes.forEach(size => sizeSet.add(size));
       }
@@ -101,60 +101,68 @@ const ProductsFilter = React.memo(({
     };
   }, [products]);
 
-  // Combine colors from API and products
+  // Combine colors from API and products - ONLY API COLORS
   const allColors = useMemo(() => {
     const colorSet = new Set();
     
-    // Add colors from API
+    // Add colors from API only (no General)
     if (colors && Array.isArray(colors)) {
       colors.forEach(color => {
         if (color.color) colorSet.add(color.color);
       });
     }
     
-    // Add colors from products
-    availableColors.forEach(color => colorSet.add(color));
-    
-    return Array.from(colorSet).filter(Boolean);
-  }, [colors, availableColors]);
+    return Array.from(colorSet).filter(Boolean).sort();
+  }, [colors]); // Removed availableColors dependency
 
-  // Combine sizes from API and products
+  // Combine sizes from API and products - ONLY API SIZES
   const allSizes = useMemo(() => {
     const sizesByType = {};
     
-    // Add sizes from API
+    // Add sizes from API only (no General category)
     if (sizes && Array.isArray(sizes)) {
       sizes.forEach(sizeObj => {
-        const type = sizeObj.type || 'General';
+        const type = sizeObj.type || 'Standard';
         if (!sizesByType[type]) sizesByType[type] = new Set();
         
         if (Array.isArray(sizeObj.size)) {
           sizeObj.size.forEach(s => sizesByType[type].add(s));
+        } else if (sizeObj.size) {
+          sizesByType[type].add(sizeObj.size);
         }
       });
     }
     
-    // Add sizes from products (put in General if no type)
-    if (!sizesByType['General']) sizesByType['General'] = new Set();
-    availableSizes.forEach(size => sizesByType['General'].add(size));
-    
-    // Convert Sets to Arrays
+    // Convert Sets to Arrays and sort - ONLY API SIZES
     const result = {};
     Object.keys(sizesByType).forEach(type => {
-      result[type] = Array.from(sizesByType[type]).filter(Boolean);
+      result[type] = Array.from(sizesByType[type]).filter(Boolean).sort();
     });
     
     return result;
-  }, [sizes, availableSizes]);
+  }, [sizes]); // Removed availableSizes dependency
 
-  // Combine occasions from API
+  // Combine occasions from API - ONLY API OCCASIONS
   const allOccasions = useMemo(() => {
     if (!occasions || !Array.isArray(occasions)) return [];
-    return occasions.map(occ => occ.name || occ).filter(Boolean);
+    return occasions.map(occ => occ.name || occ).filter(Boolean).sort();
   }, [occasions]);
 
-  const reviewOptions = useMemo(() => ["4", "3", "2", "1"], []);
-  const discountRanges = useMemo(() => ["10-25", "26-50", "51-75", "76-100"], []);
+  // Static Review Options
+  const reviewOptions = useMemo(() => [
+    { value: "4", label: "4★ & above" },
+    { value: "3", label: "3★ & above" },
+    { value: "2", label: "2★ & above" },
+    { value: "1", label: "1★ & above" }
+  ], []);
+
+  // Static Discount Ranges
+  const discountRanges = useMemo(() => [
+    { value: "10-25", label: "10% - 25% off" },
+    { value: "26-50", label: "26% - 50% off" },
+    { value: "51-75", label: "51% - 75% off" },
+    { value: "76-100", label: "76% - 100% off" }
+  ], []);
 
   // Event handlers
   const handleSubCategoryChange = useCallback((subCategory) => {
@@ -691,9 +699,27 @@ const ProductsFilter = React.memo(({
                   key={`review-${review}`}
                   className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200"
                 >
-                  <span className="text-xs font-medium">{review}★+</span>
+                  <span className="text-xs font-medium">{review}★ & above</span>
                   <button
                     onClick={() => removeReview(review)}
+                    className="text-white hover:text-gray-200 transition-colors duration-200 text-sm leading-none font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              {/* Discount Chips */}
+              {(Array.isArray(selectedDiscountRanges) ? selectedDiscountRanges : []).map((discount) => (
+                <div
+                  key={`discount-${discount}`}
+                  className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200"
+                >
+                  <span className="text-xs font-medium">
+                    {discountRanges.find(d => d.value === discount)?.label || `${discount}% off`}
+                  </span>
+                  <button
+                    onClick={() => removeDiscount(discount)}
                     className="text-white hover:text-gray-200 transition-colors duration-200 text-sm leading-none font-bold"
                   >
                     ×
@@ -728,21 +754,6 @@ const ProductsFilter = React.memo(({
                   </span>
                   <button
                     onClick={() => removeAvailability(availability)}
-                    className="text-white hover:text-gray-200 transition-colors duration-200 text-sm leading-none font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-
-              {(Array.isArray(selectedDiscountRanges) ? selectedDiscountRanges : []).map((discount) => (
-                <div
-                  key={`discount-${discount}`}
-                  className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200"
-                >
-                  <span className="text-xs font-medium">{discount}% off</span>
-                  <button
-                    onClick={() => removeDiscount(discount)}
                     className="text-white hover:text-gray-200 transition-colors duration-200 text-sm leading-none font-bold"
                   >
                     ×
@@ -1067,7 +1078,7 @@ const ProductsFilter = React.memo(({
             </div>
           </div>
 
-          {/* Color Filter */}
+          {/* Color Filter - ONLY API COLORS */}
           <div className="filter-section">
             <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-bold text-gray-900">Colors</h3>
@@ -1115,12 +1126,12 @@ const ProductsFilter = React.memo(({
               </div>
             ) : (
               <div className="text-center py-4 text-gray-500 text-sm">
-                No colors available
+                {isLoading ? "Loading colors..." : "No colors available"}
               </div>
             )}
           </div>
 
-          {/* Size Filter */}
+          {/* Size Filter - ONLY API SIZES */}
           <div className="filter-section">
             <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-bold text-gray-900">Size</h3>
@@ -1160,12 +1171,12 @@ const ProductsFilter = React.memo(({
               </div>
             ) : (
               <div className="text-center py-4 text-gray-500 text-sm">
-                No sizes available
+                {isLoading ? "Loading sizes..." : "No sizes available"}
               </div>
             )}
           </div>
 
-          {/* Occasion Filter */}
+          {/* Occasion Filter - ONLY API OCCASIONS */}
           <div className="filter-section">
             <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-bold text-gray-900">Occasion</h3>
@@ -1202,12 +1213,12 @@ const ProductsFilter = React.memo(({
               </div>
             ) : (
               <div className="text-center py-4 text-gray-500 text-sm">
-                No occasions available
+                {isLoading ? "Loading occasions..." : "No occasions available"}
               </div>
             )}
           </div>
 
-          {/* Brand Filter */}
+          {/* Brand Filter - ONLY API BRANDS */}
           {brands.length > 0 && (
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
@@ -1242,7 +1253,7 @@ const ProductsFilter = React.memo(({
             </div>
           )}
 
-          {/* Seasonal Collection Filter */}
+          {/* Seasonal Collection Filter - ONLY API COLLECTIONS */}
           {seasonalCollections.length > 0 && (
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
@@ -1277,20 +1288,20 @@ const ProductsFilter = React.memo(({
             </div>
           )}
 
-          {/* Review Filter */}
+          {/* Review Filter - STATIC */}
           <div className="filter-section">
             <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-bold text-gray-900">Reviews</h3>
+              <h3 className="text-sm font-bold text-gray-900">Customer Reviews</h3>
             </div>
             <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
-              {reviewOptions.map((threshold) => {
-                const isChecked = Array.isArray(selectedReviewThresholds) ? selectedReviewThresholds.includes(threshold) : false;
+              {reviewOptions.map((option) => {
+                const isChecked = Array.isArray(selectedReviewThresholds) ? selectedReviewThresholds.includes(option.value) : false;
 
                 return (
                   <div
-                    key={threshold}
+                    key={option.value}
                     className="group flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 transition-all duration-200 cursor-pointer"
-                    onClick={() => handleReviewChange(threshold)}
+                    onClick={() => handleReviewChange(option.value)}
                   >
                     <div
                       className={`w-4 h-4 flex items-center justify-center border-2 rounded transition-all duration-200 ${
@@ -1303,7 +1314,7 @@ const ProductsFilter = React.memo(({
                     </div>
                     <label className="text-sm font-medium text-gray-600 group-hover:text-gray-900 cursor-pointer flex items-center gap-1">
                       <span className="text-yellow-400">★</span>
-                      {threshold}★ & above
+                      {option.label}
                     </label>
                   </div>
                 );
@@ -1311,7 +1322,40 @@ const ProductsFilter = React.memo(({
             </div>
           </div>
 
-          {/* Availability Filter */}
+          {/* Discount Filter - STATIC */}
+          <div className="filter-section">
+            <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-bold text-gray-900">Discount</h3>
+            </div>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+              {discountRanges.map((option) => {
+                const isChecked = Array.isArray(selectedDiscountRanges) ? selectedDiscountRanges.includes(option.value) : false;
+
+                return (
+                  <div
+                    key={option.value}
+                    className="group flex items-center gap-2.5 py-2 px-2.5 rounded-lg hover:bg-gray-50 transition-all duration-200 cursor-pointer"
+                    onClick={() => handleDiscountChange(option.value)}
+                  >
+                    <div
+                      className={`w-4 h-4 flex items-center justify-center border-2 rounded transition-all duration-200 ${
+                        isChecked
+                          ? "bg-gray-900 border-gray-900 text-white"
+                          : "border-gray-400 group-hover:border-gray-900"
+                      }`}
+                    >
+                      {isChecked && <span className="text-xs font-bold">✓</span>}
+                    </div>
+                    <label className="text-sm font-medium text-gray-600 group-hover:text-gray-900 cursor-pointer">
+                      {option.label}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Availability Filter - STATIC */}
           <div className="filter-section">
             <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-bold text-gray-900">Availability</h3>
@@ -1337,39 +1381,6 @@ const ProductsFilter = React.memo(({
                     </div>
                     <label className="text-sm font-medium text-gray-600 group-hover:text-gray-900 cursor-pointer">
                       {["In Stock", "Out of Stock"][idx]}
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Discount Filter */}
-          <div className="filter-section">
-            <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-bold text-gray-900">Discount</h3>
-            </div>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
-              {discountRanges.map((item) => {
-                const isChecked = Array.isArray(selectedDiscountRanges) ? selectedDiscountRanges.includes(item) : false;
-
-                return (
-                  <div
-                    key={item}
-                    className="group flex items-center gap-2.5 py-2 px-2.5 rounded-lg hover:bg-gray-50 transition-all duration-200 cursor-pointer"
-                    onClick={() => handleDiscountChange(item)}
-                  >
-                    <div
-                      className={`w-4 h-4 flex items-center justify-center border-2 rounded transition-all duration-200 ${
-                        isChecked
-                          ? "bg-gray-900 border-gray-900 text-white"
-                          : "border-gray-400 group-hover:border-gray-900"
-                      }`}
-                    >
-                      {isChecked && <span className="text-xs font-bold">✓</span>}
-                    </div>
-                    <label className="text-sm font-medium text-gray-600 group-hover:text-gray-900 cursor-pointer">
-                      {item}% off
                     </label>
                   </div>
                 );

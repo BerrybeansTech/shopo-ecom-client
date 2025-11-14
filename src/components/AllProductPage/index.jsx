@@ -8,6 +8,7 @@ import {
   X,
   Filter,
   SlidersHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import Layout from "../Partials/Layout";
 import ProductsFilter from "./ProductsFilter";
@@ -19,7 +20,7 @@ export default function AllProductPage({ type = 1 }) {
   const { addItemToCart } = useCart();
   const [filterToggle, setFilterToggle] = useState(false);
   const [sortOption, setSortOption] = useState("New Arrivals");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // API Products State
   const [apiProducts, setApiProducts] = useState([]);
@@ -52,7 +53,7 @@ export default function AllProductPage({ type = 1 }) {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedSeasonalCollections, setSelectedSeasonalCollections] = useState([]);
 
-  // Use products hook for filter data - SINGLE INSTANCE
+  // Use products hook for filter data
   const {
     categories,
     sizes,
@@ -64,20 +65,27 @@ export default function AllProductPage({ type = 1 }) {
     fetchAllProductData
   } = useProducts();
 
-  // Initialize product data once
+  // Initialize product data once with error handling
   useEffect(() => {
     const initializeData = async () => {
       try {
+        setLoading(true);
         await fetchAllProductData();
       } catch (error) {
         console.error("Failed to initialize product data:", error);
+        // Error is already handled in the hook
+      } finally {
+        setLoading(false);
       }
     };
     
-    initializeData();
-  }, [fetchAllProductData]);
+    // Only initialize if we have an error or no data
+    if (filtersError || !categories.length) {
+      initializeData();
+    }
+  }, [fetchAllProductData, filtersError, categories.length]);
 
-  // Fetch products from API with debouncing
+  // Fetch products from API with enhanced debouncing and error handling
   useEffect(() => {
     const fetchProducts = async () => {
       // Clear any pending timeout
@@ -107,10 +115,10 @@ export default function AllProductPage({ type = 1 }) {
           );
 
           // Handle response structure
-          const productsData = response.data || [];
-          const total = response.pagination?.total || productsData.length;
+          const productsData = response.data || response || [];
+          const total = response.pagination?.total || productsData.length || 0;
 
-          setApiProducts(productsData);
+          setApiProducts(Array.isArray(productsData) ? productsData : []);
           setPagination((prev) => ({
             ...prev,
             totalItems: total,
@@ -118,13 +126,17 @@ export default function AllProductPage({ type = 1 }) {
           }));
         } catch (error) {
           console.error("Error fetching products:", error);
-          setProductsError(error.message || "Failed to load products");
+          setProductsError(
+            error.message === 'Unable to connect to server. Please check your connection.' 
+              ? "Unable to load products. Please check your internet connection."
+              : "Failed to load products. Please try again later."
+          );
           setApiProducts([]);
         } finally {
           setProductsLoading(false);
           fetchGuardRef.current.inFlight = false;
         }
-      }, 300); // 300ms debounce
+      }, 500); // Increased debounce to 500ms
     };
 
     fetchProducts();
@@ -136,6 +148,17 @@ export default function AllProductPage({ type = 1 }) {
       }
     };
   }, [pagination.currentPage, pagination.itemsPerPage]);
+
+  // Retry function for products
+  const retryProductsFetch = () => {
+    setProductsError(null);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  // Retry function for filters
+  const retryFiltersFetch = () => {
+    fetchAllProductData(true); // force refresh
+  };
 
   const clearAllFilters = () => {
     setSelectedSubCategories([]);
@@ -281,207 +304,220 @@ export default function AllProductPage({ type = 1 }) {
     selectedSeasonalCollections,
   ]);
 
-  // Placeholder image URL - using a reliable external source
+  // Placeholder image URL
   const PLACEHOLDER_IMAGE =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
 
   // Transform API products to match the expected format
-  const transformedProducts = useMemo(() => {
-    return apiProducts.map((product) => {
-      // Calculate prices
-      const mrp = parseFloat(product.mrp || 0);
-      const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
-      const discount =
-        mrp > 0 && sellingPrice < mrp
-          ? Math.round(((mrp - sellingPrice) / mrp) * 100)
-          : 0;
+ const transformedProducts = useMemo(() => {
+  return apiProducts.map((product) => {
+    // Calculate prices
+    const mrp = parseFloat(product.mrp || 0);
+    const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
+    const discount =
+      mrp > 0 && sellingPrice < mrp
+        ? Math.round(((mrp - sellingPrice) / mrp) * 100)
+        : 0;
 
-      // Get proper image - use thumbnailImage from API response
-      // Only use placeholder if no image exists
-      const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
+    // Get proper image - use thumbnailImage from API response
+    const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
 
-      // Get stock from inventories
-      const totalStock =
-        product.inventories?.reduce(
-          (sum, inv) => sum + (inv.quantity || 0),
-          0
-        ) || 0;
+    // Get stock from inventories
+    const totalStock =
+      product.inventories?.reduce(
+        (sum, inv) => sum + (inv.availableQuantity || 0),
+        0
+      ) || 0;
 
-      // Extract colors and sizes from inventories
-      const productColors = [
-        ...new Set(
-          product.inventories
-            ?.map((inv) => inv.color?.name || inv.color)
-            .filter(Boolean) || []
-        ),
-      ];
+    // Extract colors and sizes from inventories
+    const productColors = [
+      ...new Set(
+        product.inventories
+          ?.map((inv) => inv.productColor?.color)
+          .filter(Boolean) || []
+      ),
+    ];
 
-      const productSizes = [
-        ...new Set(
-          product.inventories
-            ?.map((inv) => inv.size?.name || inv.size)
-            .filter(Boolean) || []
-        ),
-      ];
+    const productSizes = [
+      ...new Set(
+        product.inventories
+          ?.flatMap((inv) => inv.productSize?.size || [])
+          .filter(Boolean) || []
+      ),
+    ];
 
-      return {
-        id: product.id,
-        name: product.name || "Unnamed Product",
-        image: productImage,
-        price: `₹${mrp.toLocaleString()}`,
-        offer_price: `₹${sellingPrice.toLocaleString()}`,
-        discount: discount,
-        review: parseFloat(product.averageRating || 0),
-        reviewCount: product.reviewCount || 0,
-        stock: totalStock,
-        subCategory: product.subCategory?.name || "",
-        subCategoryDetail: product.childCategory?.name || "",
-        colors: productColors,
-        sizes: productSizes,
-        occasion: product.occasion ? [product.occasion.name] : [],
-        brand: product.brand || "Generic",
-        seasonal_special_collection: product.seasonal || "",
-        product_type:
-          product.status === "featured"
-            ? "featured"
-            : product.status === "popular"
-            ? "popular"
-            : "",
-      };
-    });
-  }, [apiProducts]);
+    return {
+      id: product.id,
+      name: product.name || "Unnamed Product",
+      image: productImage,
+      price: `₹${mrp.toLocaleString()}`,
+      offer_price: `₹${sellingPrice.toLocaleString()}`,
+      discount: discount,
+      review: parseFloat(product.averageRating || 0),
+      reviewCount: product.reviewCount || 0,
+      stock: totalStock,
+      subCategory: product.subCategory?.name || "",
+      subCategoryDetail: product.childCategory?.name || "",
+      colors: productColors,
+      sizes: productSizes,
+      occasion: product.occasion ? [product.occasion.name] : [],
+      brand: product.brand || "Generic",
+      seasonal_special_collection: product.seasonal || "",
+      product_type:
+        product.status === "featured"
+          ? "featured"
+          : product.status === "popular"
+          ? "popular"
+          : "",
+    };
+  });
+}, [apiProducts]);
 
-  const filteredProducts = useMemo(() => {
-    let result = [...transformedProducts];
+const filteredProducts = useMemo(() => {
+  let result = [...transformedProducts];
 
-    // Category filters
-    if (selectedDetails.length > 0) {
-      result = result.filter((p) => {
-        return selectedDetails.some((detailKey) => {
-          const [subCategory, detail] = detailKey.split("||");
-          return (
-            p.subCategory === subCategory && p.subCategoryDetail === detail
-          );
-        });
-      });
-    }
-
-    if (selectedSubCategories.length > 0) {
-      result = result.filter((p) =>
-        selectedSubCategories.includes(p.subCategory)
-      );
-    }
-
-    // Price filter
+  // Category filters
+  if (selectedDetails.length > 0) {
     result = result.filter((p) => {
-      const price = parseFloat(p.offer_price.replace("₹", "").replace(",", ""));
-      return (
-        price >= (priceRange?.min ?? 0) && price <= (priceRange?.max ?? 10000)
-      );
+      return selectedDetails.some((detailKey) => {
+        const [subCategory, detail] = detailKey.split("||");
+        return (
+          p.subCategory === subCategory && p.subCategoryDetail === detail
+        );
+      });
     });
+  }
 
-    // Color filter
-    if (selectedColors.length > 0) {
-      result = result.filter((p) =>
-        p.colors.some((c) => selectedColors.includes(c))
-      );
-    }
+  if (selectedSubCategories.length > 0) {
+    result = result.filter((p) =>
+      selectedSubCategories.includes(p.subCategory)
+    );
+  }
 
-    // Size filter
-    if (selectedSizes.length > 0) {
-      result = result.filter((p) =>
-        p.sizes.some((s) => selectedSizes.includes(s))
-      );
-    }
+  // Price filter
+  result = result.filter((p) => {
+    const price = parseFloat(p.offer_price.replace("₹", "").replace(",", ""));
+    return (
+      price >= (priceRange?.min ?? 0) && price <= (priceRange?.max ?? 10000)
+    );
+  });
 
-    // Review filter
-    if (selectedReviewThresholds.length > 0) {
-      result = result.filter((p) =>
-        selectedReviewThresholds.some((t) => p.review >= parseFloat(t))
-      );
-    }
+  // Color filter - Case insensitive matching
+  if (selectedColors.length > 0) {
+    result = result.filter((p) =>
+      p.colors.some((c) => 
+        selectedColors.some(selectedColor => 
+          selectedColor.toLowerCase() === c.toLowerCase()
+        )
+      )
+    );
+  }
 
-    // Availability filter
-    if (selectedAvailability.length > 0) {
-      result = result.filter((p) => {
-        const inStock = p.stock > 0 ? "in" : "out";
-        return selectedAvailability.includes(inStock);
+  // Size filter - Case insensitive matching
+  if (selectedSizes.length > 0) {
+    result = result.filter((p) =>
+      p.sizes.some((s) => 
+        selectedSizes.some(selectedSize => 
+          selectedSize.toLowerCase() === s.toLowerCase()
+        )
+      )
+    );
+  }
+
+  // Review filter - Static (4★ & above, 3★ & above, etc.)
+  if (selectedReviewThresholds.length > 0) {
+    result = result.filter((p) =>
+      selectedReviewThresholds.some((t) => p.review >= parseFloat(t))
+    );
+  }
+
+  // Availability filter
+  if (selectedAvailability.length > 0) {
+    result = result.filter((p) => {
+      const inStock = p.stock > 0 ? "in" : "out";
+      return selectedAvailability.includes(inStock);
+    });
+  }
+
+  // Discount filter - Static ranges (10-25%, 26-50%, etc.)
+  if (selectedDiscountRanges.length > 0) {
+    result = result.filter((p) => {
+      return selectedDiscountRanges.some((range) => {
+        const [min, max] = range.split("-").map(Number);
+        return p.discount >= min && p.discount <= max;
       });
-    }
+    });
+  }
 
-    // Discount filter
-    if (selectedDiscountRanges.length > 0) {
-      result = result.filter((p) => {
-        return selectedDiscountRanges.some((range) => {
-          const [min, max] = range.split("-").map(Number);
-          return p.discount >= min && (max ? p.discount <= max : true);
-        });
-      });
-    }
+  // Occasion filter - Case insensitive matching
+  if (selectedOccasions.length > 0) {
+    result = result.filter((p) =>
+      p.occasion.some((o) => 
+        selectedOccasions.some(selectedOccasion => 
+          selectedOccasion.toLowerCase() === o.toLowerCase()
+        )
+      )
+    );
+  }
 
-    // Occasion filter
-    if (selectedOccasions.length > 0) {
-      result = result.filter((p) =>
-        p.occasion.some((o) => selectedOccasions.includes(o))
-      );
-    }
+  // Brand filter - Case insensitive matching
+  if (selectedBrands.length > 0) {
+    result = result.filter((p) =>
+      selectedBrands.some(brand => 
+        brand.toLowerCase() === p.brand.toLowerCase()
+      )
+    );
+  }
 
-    // Brand filter
-    if (selectedBrands.length > 0) {
-      result = result.filter((p) =>
-        selectedBrands.includes(p.brand.toLowerCase())
-      );
-    }
+  // Seasonal Collection filter
+  if (selectedSeasonalCollections.length > 0) {
+    result = result.filter((p) =>
+      selectedSeasonalCollections.includes(p.seasonal_special_collection)
+    );
+  }
 
-    // Seasonal Collection filter
-    if (selectedSeasonalCollections.length > 0) {
-      result = result.filter((p) =>
-        selectedSeasonalCollections.includes(p.seasonal_special_collection)
-      );
-    }
+  // Sorting
+  if (sortOption === "New Arrivals") {
+    result.sort((a, b) => b.id - a.id);
+  } else if (sortOption === "Best Sellers") {
+    result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+  } else if (sortOption === "Sale / Clearance") {
+    result.sort((a, b) => b.discount - a.discount);
+  } else if (sortOption === "Trending Now") {
+    result.sort(
+      (a, b) =>
+        b.review * (b.reviewCount || 1) - a.review * (a.reviewCount || 1)
+    );
+  } else if (sortOption === "Price: Low to High") {
+    result.sort(
+      (a, b) =>
+        parseFloat(a.offer_price.replace("₹", "").replace(",", "")) -
+        parseFloat(b.offer_price.replace("₹", "").replace(",", ""))
+    );
+  } else if (sortOption === "Price: High to Low") {
+    result.sort(
+      (a, b) =>
+        parseFloat(b.offer_price.replace("₹", "").replace(",", "")) -
+        parseFloat(a.offer_price.replace("₹", "").replace(",", ""))
+    );
+  }
 
-    // Sorting
-    if (sortOption === "New Arrivals") {
-      result.sort((a, b) => b.id - a.id);
-    } else if (sortOption === "Best Sellers") {
-      result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
-    } else if (sortOption === "Sale / Clearance") {
-      result.sort((a, b) => b.discount - a.discount);
-    } else if (sortOption === "Trending Now") {
-      result.sort(
-        (a, b) =>
-          b.review * (b.reviewCount || 1) - a.review * (a.reviewCount || 1)
-      );
-    } else if (sortOption === "Price: Low to High") {
-      result.sort(
-        (a, b) =>
-          parseFloat(a.offer_price.replace("₹", "").replace(",", "")) -
-          parseFloat(b.offer_price.replace("₹", "").replace(",", ""))
-      );
-    } else if (sortOption === "Price: High to Low") {
-      result.sort(
-        (a, b) =>
-          parseFloat(b.offer_price.replace("₹", "").replace(",", "")) -
-          parseFloat(a.offer_price.replace("₹", "").replace(",", ""))
-      );
-    }
-
-    return result;
-  }, [
-    transformedProducts,
-    selectedSubCategories,
-    selectedDetails,
-    priceRange,
-    selectedColors,
-    selectedSizes,
-    selectedReviewThresholds,
-    selectedAvailability,
-    selectedDiscountRanges,
-    selectedOccasions,
-    selectedBrands,
-    selectedSeasonalCollections,
-    sortOption,
-  ]);
+  return result;
+}, [
+  transformedProducts,
+  selectedSubCategories,
+  selectedDetails,
+  priceRange,
+  selectedColors,
+  selectedSizes,
+  selectedReviewThresholds,
+  selectedAvailability,
+  selectedDiscountRanges,
+  selectedOccasions,
+  selectedBrands,
+  selectedSeasonalCollections,
+  sortOption,
+]);
 
   const activeFiltersCount = useMemo(() => {
     return [
@@ -514,17 +550,16 @@ export default function AllProductPage({ type = 1 }) {
   const handleAddToCart = async (product) => {
     try {
       const cartData = {
-        cartId: 1, // You might want to get this from user context
+        cartId: 1,
         productId: product.id,
-        productColorVariationId: 1, // Get from product variations
-        productSizeVariationId: 1, // Get from product variations
+        productColorVariationId: 1,
+        productSizeVariationId: 1,
         quantity: 1,
       };
 
       const result = await addItemToCart(cartData);
 
       if (result.success) {
-        // Show success message
         console.log("Product added to cart successfully");
         alert("Add to cart")
       } else {
@@ -535,19 +570,39 @@ export default function AllProductPage({ type = 1 }) {
     }
   };
 
-  // Combined loading state
-  const isLoading = loading || productsLoading || filtersLoading;
+  // Combined loading state - only show loading when actually loading
+  const isLoading = (productsLoading || filtersLoading) && !productsError && !filtersError;
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="products-page-wrapper w-full bg-gray-50 min-h-screen">
         <div className="container-x mx-auto p-10 px-3 sm:px-4 lg:px-6 max-w-[1920px]">
-          {/* Error Display */}
+          {/* Enhanced Error Display */}
           {(productsError || filtersError) && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800 text-sm font-medium">
-                {productsError || filtersError}
-              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center">
+                    <span className="text-red-600 text-sm font-bold">!</span>
+                  </div>
+                  <p className="text-red-800 text-sm font-medium">
+                    {productsError || filtersError}
+                  </p>
+                </div>
+                <button
+                  onClick={productsError ? retryProductsFetch : retryFiltersFetch}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
             </div>
           )}
 
@@ -791,7 +846,6 @@ export default function AllProductPage({ type = 1 }) {
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                               onError={(e) => {
-                                // Prevent infinite error loop
                                 if (e.target.src !== PLACEHOLDER_IMAGE) {
                                   e.target.src = PLACEHOLDER_IMAGE;
                                 }

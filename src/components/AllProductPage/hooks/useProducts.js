@@ -12,7 +12,7 @@ import {
 } from '../productSlice';
 import { productDataApi, productUtils, categoryApi, reviewApi } from '../productApi';
 
-// Global cache with expiration
+// Global cache with enhanced error handling
 const globalCache = {
   categories: null,
   sizes: null,
@@ -20,6 +20,7 @@ const globalCache = {
   occasions: null,
   materials: null,
   lastFetched: null,
+  error: null,
   CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
 };
 
@@ -31,47 +32,48 @@ export const useProducts = () => {
   
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
 
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState(null);
 
   // Check if cache is valid
   const isCacheValid = useCallback(() => {
-    if (!globalCache.lastFetched) return false;
+    if (!globalCache.lastFetched || globalCache.error) return false;
     return Date.now() - globalCache.lastFetched < globalCache.CACHE_DURATION;
   }, []);
 
   // Get data from cache or Redux store
   const getCachedData = useCallback((key) => {
-    if (globalCache[key] && isCacheValid()) {
+    if (globalCache[key] && isCacheValid() && !globalCache.error) {
       return globalCache[key];
     }
     return productState[key];
   }, [isCacheValid, productState]);
 
   const fetchAllProductData = useCallback(async (forceRefresh = false) => {
-    // Return cached data if valid and not forcing refresh
-    if (isCacheValid() && !forceRefresh && 
-        globalCache.categories && globalCache.categories.length > 0) {
-      dispatch(setCategories(globalCache.categories));
-      dispatch(setSizes(globalCache.sizes));
-      dispatch(setColors(globalCache.colors));
-      dispatch(setOccasions(globalCache.occasions));
-      dispatch(setMaterials(globalCache.materials));
-      return globalCache;
-    }
-
     // Prevent duplicate requests
-    if (globalFetchPromise && !forceRefresh) {
+    if (isFetchingRef.current && !forceRefresh) {
       return globalFetchPromise;
     }
 
-    if ((isFetchingRef.current) && !forceRefresh) {
-      return;
+    // Return cached data if valid and not forcing refresh
+    if (isCacheValid() && !forceRefresh && globalCache.categories) {
+      if (!hasFetchedRef.current) {
+        dispatch(setCategories(globalCache.categories));
+        dispatch(setSizes(globalCache.sizes));
+        dispatch(setColors(globalCache.colors));
+        dispatch(setOccasions(globalCache.occasions));
+        dispatch(setMaterials(globalCache.materials));
+        hasFetchedRef.current = true;
+      }
+      return globalCache;
     }
 
-    if (productState.loading && !forceRefresh) {
-      return;
+    // Use global promise to prevent duplicate requests
+    if (globalFetchPromise && !forceRefresh) {
+      return globalFetchPromise;
     }
 
     try {
@@ -79,27 +81,31 @@ export const useProducts = () => {
       dispatch(setLoading(true));
       setLocalLoading(true);
       setLocalError(null);
+      globalCache.error = null;
 
-      // Create global promise to prevent duplicate requests
+      // Create global promise
       globalFetchPromise = (async () => {
         const productData = await productDataApi.getAll();
 
         // Update cache
-        globalCache.categories = productData.categories;
-        globalCache.sizes = productData.sizes;
-        globalCache.colors = productData.colors;
-        globalCache.occasions = productData.occasions;
-        globalCache.materials = productData.materials;
+        globalCache.categories = productData.categories || [];
+        globalCache.sizes = productData.sizes || [];
+        globalCache.colors = productData.colors || [];
+        globalCache.occasions = productData.occasions || [];
+        globalCache.materials = productData.materials || [];
         globalCache.lastFetched = Date.now();
+        globalCache.error = null;
 
         // Update Redux store
-        dispatch(setCategories(productData.categories));
-        dispatch(setSizes(productData.sizes));
-        dispatch(setColors(productData.colors));
-        dispatch(setOccasions(productData.occasions));
-        dispatch(setMaterials(productData.materials));
+        dispatch(setCategories(globalCache.categories));
+        dispatch(setSizes(globalCache.sizes));
+        dispatch(setColors(globalCache.colors));
+        dispatch(setOccasions(globalCache.occasions));
+        dispatch(setMaterials(globalCache.materials));
         
         hasFetchedRef.current = true;
+        retryCountRef.current = 0;
+        
         return productData;
       })();
 
@@ -107,8 +113,21 @@ export const useProducts = () => {
       return result;
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch product data';
+      
+      // Update cache with error
+      globalCache.error = errorMessage;
+      globalCache.lastFetched = Date.now(); // Still update timestamp to prevent immediate retry
+      
       dispatch(setError(errorMessage));
       setLocalError(errorMessage);
+      
+      // Retry logic
+      if (retryCountRef.current < maxRetries && errorMessage.includes('Unable to connect')) {
+        retryCountRef.current++;
+        console.warn(`Retrying product data fetch (${retryCountRef.current}/${maxRetries})`);
+        setTimeout(() => fetchAllProductData(true), 2000 * retryCountRef.current);
+      }
+      
       throw error;
     } finally {
       dispatch(setLoading(false));
@@ -116,7 +135,7 @@ export const useProducts = () => {
       isFetchingRef.current = false;
       globalFetchPromise = null;
     }
-  }, [dispatch, productState.loading, isCacheValid]);
+  }, [dispatch, isCacheValid]);
 
   const fetchCategoriesOnly = useCallback(async (forceRefresh = false) => {
     const cachedCategories = getCachedData('categories');
@@ -135,11 +154,13 @@ export const useProducts = () => {
       // Update cache
       globalCache.categories = cats;
       globalCache.lastFetched = Date.now();
+      globalCache.error = null;
       
       dispatch(setCategories(cats));
       return cats;
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to fetch categories';
+      globalCache.error = msg;
       dispatch(setError(msg));
       setLocalError(msg);
       throw err;
@@ -148,6 +169,28 @@ export const useProducts = () => {
       dispatch(setLoading(false));
     }
   }, [dispatch, getCachedData, productState.loading]);
+
+  // Initialize data on mount with proper error handling
+  useEffect(() => {
+    const initializeData = async () => {
+      // Only fetch if we don't have valid data and aren't already fetching
+      if (
+        !hasFetchedRef.current && 
+        !isFetchingRef.current &&
+        (!isCacheValid() || globalCache.error) &&
+        (!productState.categories || productState.categories.length === 0)
+      ) {
+        try {
+          await fetchAllProductData();
+        } catch (error) {
+          console.error('Failed to initialize product data:', error);
+          // Error is already handled in fetchAllProductData
+        }
+      }
+    };
+
+    initializeData();
+  }, [fetchAllProductData, productState.categories, isCacheValid]);
 
   // Review functions
   const createReview = useCallback(async (reviewData) => {
@@ -247,19 +290,6 @@ export const useProducts = () => {
     const materials = getCachedData('materials') || productState.materials;
     return materials.find(material => material.id === id);
   }, [getCachedData, productState.materials]);
-
-  // Initialize data on mount
-  useEffect(() => {
-    const shouldFetchData = 
-      !hasFetchedRef.current && 
-      !isFetchingRef.current &&
-      !isCacheValid() &&
-      (!productState.categories || productState.categories.length === 0);
-
-    if (shouldFetchData) {
-      fetchAllProductData();
-    }
-  }, [fetchAllProductData, productState.categories, isCacheValid]);
 
   // Get data from cache or Redux store for components
   const categories = getCachedData('categories') || productState.categories;
