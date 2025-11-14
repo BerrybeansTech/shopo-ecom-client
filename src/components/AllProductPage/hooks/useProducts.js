@@ -12,50 +12,99 @@ import {
 } from '../productSlice';
 import { productDataApi, productUtils, categoryApi, reviewApi } from '../productApi';
 
-let globalIsFetchingAll = false;
-let globalHasFetchedAll = false;
+// Global cache with expiration
+const globalCache = {
+  categories: null,
+  sizes: null,
+  colors: null,
+  occasions: null,
+  materials: null,
+  lastFetched: null,
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+};
+
+let globalFetchPromise = null;
 
 export const useProducts = () => {
   const dispatch = useDispatch();
   const productState = useSelector(state => state.product);
   
-  // Use refs to track fetch status without causing re-renders
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState(null);
 
+  // Check if cache is valid
+  const isCacheValid = useCallback(() => {
+    if (!globalCache.lastFetched) return false;
+    return Date.now() - globalCache.lastFetched < globalCache.CACHE_DURATION;
+  }, []);
+
+  // Get data from cache or Redux store
+  const getCachedData = useCallback((key) => {
+    if (globalCache[key] && isCacheValid()) {
+      return globalCache[key];
+    }
+    return productState[key];
+  }, [isCacheValid, productState]);
+
   const fetchAllProductData = useCallback(async (forceRefresh = false) => {
-    if ((isFetchingRef.current || globalIsFetchingAll) && !forceRefresh) {
+    // Return cached data if valid and not forcing refresh
+    if (isCacheValid() && !forceRefresh && 
+        globalCache.categories && globalCache.categories.length > 0) {
+      dispatch(setCategories(globalCache.categories));
+      dispatch(setSizes(globalCache.sizes));
+      dispatch(setColors(globalCache.colors));
+      dispatch(setOccasions(globalCache.occasions));
+      dispatch(setMaterials(globalCache.materials));
+      return globalCache;
+    }
+
+    // Prevent duplicate requests
+    if (globalFetchPromise && !forceRefresh) {
+      return globalFetchPromise;
+    }
+
+    if ((isFetchingRef.current) && !forceRefresh) {
       return;
     }
-    if ((hasFetchedRef.current || globalHasFetchedAll) && !forceRefresh && 
-        productState.categories.length > 0) {
-      return;
-    }
+
     if (productState.loading && !forceRefresh) {
       return;
     }
 
     try {
       isFetchingRef.current = true;
-      globalIsFetchingAll = true;
       dispatch(setLoading(true));
       setLocalLoading(true);
       setLocalError(null);
 
-      const productData = await productDataApi.getAll();
+      // Create global promise to prevent duplicate requests
+      globalFetchPromise = (async () => {
+        const productData = await productDataApi.getAll();
 
-      dispatch(setCategories(productData.categories));
-      dispatch(setSizes(productData.sizes));
-      dispatch(setColors(productData.colors));
-      dispatch(setOccasions(productData.occasions));
-      dispatch(setMaterials(productData.materials));
-      hasFetchedRef.current = true;
-      globalHasFetchedAll = true;
-      
-      return productData;
+        // Update cache
+        globalCache.categories = productData.categories;
+        globalCache.sizes = productData.sizes;
+        globalCache.colors = productData.colors;
+        globalCache.occasions = productData.occasions;
+        globalCache.materials = productData.materials;
+        globalCache.lastFetched = Date.now();
+
+        // Update Redux store
+        dispatch(setCategories(productData.categories));
+        dispatch(setSizes(productData.sizes));
+        dispatch(setColors(productData.colors));
+        dispatch(setOccasions(productData.occasions));
+        dispatch(setMaterials(productData.materials));
+        
+        hasFetchedRef.current = true;
+        return productData;
+      })();
+
+      const result = await globalFetchPromise;
+      return result;
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch product data';
       dispatch(setError(errorMessage));
@@ -65,19 +114,30 @@ export const useProducts = () => {
       dispatch(setLoading(false));
       setLocalLoading(false);
       isFetchingRef.current = false;
-      globalIsFetchingAll = false;
+      globalFetchPromise = null;
     }
-  }, [dispatch, productState.categories.length, productState.loading]);
-  
+  }, [dispatch, productState.loading, isCacheValid]);
+
   const fetchCategoriesOnly = useCallback(async (forceRefresh = false) => {
+    const cachedCategories = getCachedData('categories');
+    if (cachedCategories && cachedCategories.length > 0 && !forceRefresh) {
+      return cachedCategories;
+    }
+
     if ((productState.loading || isFetchingRef.current) && !forceRefresh) return;
-    if (productState.categories.length > 0 && !forceRefresh) return;
+    
     try {
       isFetchingRef.current = true;
       dispatch(setLoading(true));
       const response = await categoryApi.getAll();
       const cats = response?.data || response || [];
+      
+      // Update cache
+      globalCache.categories = cats;
+      globalCache.lastFetched = Date.now();
+      
       dispatch(setCategories(cats));
+      return cats;
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to fetch categories';
       dispatch(setError(msg));
@@ -87,7 +147,7 @@ export const useProducts = () => {
       isFetchingRef.current = false;
       dispatch(setLoading(false));
     }
-  }, [dispatch, productState.categories.length, productState.loading]);
+  }, [dispatch, getCachedData, productState.loading]);
 
   // Review functions
   const createReview = useCallback(async (reviewData) => {
@@ -137,18 +197,21 @@ export const useProducts = () => {
 
   // Get unique sizes by type
   const getUniqueSizesByType = useCallback(() => {
-    return productUtils.getUniqueSizesByType(productState.sizes);
-  }, [productState.sizes]);
+    const sizes = getCachedData('sizes') || productState.sizes;
+    return productUtils.getUniqueSizesByType(sizes);
+  }, [getCachedData, productState.sizes]);
 
   // Get unique colors
   const getUniqueColors = useCallback(() => {
-    return productUtils.getUniqueColors(productState.colors);
-  }, [productState.colors]);
+    const colors = getCachedData('colors') || productState.colors;
+    return productUtils.getUniqueColors(colors);
+  }, [getCachedData, productState.colors]);
 
   // Get flattened categories
   const getFlattenedCategories = useCallback(() => {
-    return productUtils.flattenCategories(productState.categories);
-  }, [productState.categories]);
+    const categories = getCachedData('categories') || productState.categories;
+    return productUtils.flattenCategories(categories);
+  }, [getCachedData, productState.categories]);
 
   // Update selected filters
   const updateSelectedFilters = useCallback((newFilters) => {
@@ -157,52 +220,65 @@ export const useProducts = () => {
 
   // Get category by ID
   const getCategoryById = useCallback((id) => {
-    return productState.categories.find(cat => cat.id === id);
-  }, [productState.categories]);
+    const categories = getCachedData('categories') || productState.categories;
+    return categories.find(cat => cat.id === id);
+  }, [getCachedData, productState.categories]);
 
   // Get size by ID
   const getSizeById = useCallback((id) => {
-    return productState.sizes.find(size => size.id === id);
-  }, [productState.sizes]);
+    const sizes = getCachedData('sizes') || productState.sizes;
+    return sizes.find(size => size.id === id);
+  }, [getCachedData, productState.sizes]);
 
   // Get color by ID
   const getColorById = useCallback((id) => {
-    return productState.colors.find(color => color.id === id);
-  }, [productState.colors]);
+    const colors = getCachedData('colors') || productState.colors;
+    return colors.find(color => color.id === id);
+  }, [getCachedData, productState.colors]);
 
   // Get occasion by ID
   const getOccasionById = useCallback((id) => {
-    return productState.occasions.find(occasion => occasion.id === id);
-  }, [productState.occasions]);
+    const occasions = getCachedData('occasions') || productState.occasions;
+    return occasions.find(occasion => occasion.id === id);
+  }, [getCachedData, productState.occasions]);
 
   // Get material by ID
   const getMaterialById = useCallback((id) => {
-    return productState.materials.find(material => material.id === id);
-  }, [productState.materials]);
+    const materials = getCachedData('materials') || productState.materials;
+    return materials.find(material => material.id === id);
+  }, [getCachedData, productState.materials]);
 
+  // Initialize data on mount
   useEffect(() => {
     const shouldFetchData = 
       !hasFetchedRef.current && 
       !isFetchingRef.current &&
-      !globalHasFetchedAll &&
-      productState.categories.length === 0;
+      !isCacheValid() &&
+      (!productState.categories || productState.categories.length === 0);
 
     if (shouldFetchData) {
       fetchAllProductData();
     }
-  }, [fetchAllProductData, productState.categories.length]);
+  }, [fetchAllProductData, productState.categories, isCacheValid]);
+
+  // Get data from cache or Redux store for components
+  const categories = getCachedData('categories') || productState.categories;
+  const sizes = getCachedData('sizes') || productState.sizes;
+  const colors = getCachedData('colors') || productState.colors;
+  const occasions = getCachedData('occasions') || productState.occasions;
+  const materials = getCachedData('materials') || productState.materials;
 
   return {
-    // State
-    categories: productState.categories,
-    sizes: productState.sizes,
-    colors: productState.colors,
-    occasions: productState.occasions,
-    materials: productState.materials,
+    // State (prioritize cached data)
+    categories,
+    sizes,
+    colors,
+    occasions,
+    materials,
     selectedFilters: productState.selectedFilters,
     loading: productState.loading || localLoading,
     error: productState.error || localError,
-    hasCategories: productState.categories && productState.categories.length > 0,
+    hasCategories: categories && categories.length > 0,
 
     // Actions
     fetchAllProductData,

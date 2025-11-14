@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../Partials/Layout";
 import { useAuth } from "../hooks/useAuth";
-import { OTP_TYPES } from "../authApi";
 
 export default function Login() {
   const [formData, setFormData] = useState({ identifier: "" });
