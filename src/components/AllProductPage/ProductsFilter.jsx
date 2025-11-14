@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import RangeSlider from "react-range-slider-input";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { useProducts } from "../AllProductPage/hooks/useProducts";
 
-export default function ProductsFilter({
+// Memoized filter component to prevent unnecessary re-renders
+const ProductsFilter = React.memo(({
   products = [],
   selectedSubCategories,
   setSelectedSubCategories,
@@ -30,12 +31,12 @@ export default function ProductsFilter({
   className,
   filterToggle,
   filterToggleHandler,
-}) {
+}) => {
   const [openAccordion, setOpenAccordion] = useState(null);
   const [openSubAccordions, setOpenSubAccordions] = useState({});
   const [isMobile, setIsMobile] = useState(false);
   
-  // Use the products hook to get data from Redux store
+  // Use the products hook to get data from cache/Redux
   const {
     categories,
     occasions,
@@ -1496,4 +1497,6 @@ export default function ProductsFilter({
       `}</style>
     </>
   );
-}
+});
+
+export default ProductsFilter;

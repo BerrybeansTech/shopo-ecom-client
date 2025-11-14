@@ -1,42 +1,93 @@
 import { apiService } from '../../services/apiservice';
 
+// Request deduplication cache
+const requestCache = new Map();
+const CACHE_DURATION = 30000; // 30 seconds
+
+// Helper function for deduplication
+const deduplicateRequest = async (key, requestFn) => {
+  const now = Date.now();
+  const cached = requestCache.get(key);
+  
+  // Return cached promise if it exists and is fresh
+  if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+    return cached.promise;
+  }
+  
+  // Create new request
+  const promise = requestFn();
+  requestCache.set(key, { promise, timestamp: now });
+  
+  // Clean up cache after request completes
+  promise.finally(() => {
+    // Keep it in cache for the duration, it will be cleaned up on next request
+  });
+  
+  return promise;
+};
+
+// Clear expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.timestamp >= CACHE_DURATION) {
+      requestCache.delete(key);
+    }
+  }
+}, 60000); // Clean every minute
+
 // CATEGORY API
 export const categoryApi = {
   getAll: async () => {
-    const response = await apiService.apiCall("/product/category/get-all");
-    return response;
+    const key = 'category-getAll';
+    return deduplicateRequest(key, async () => {
+      const response = await apiService.apiCall("/product/category/get-all");
+      return response;
+    });
   },
 };
 
 // SIZE API
 export const sizeApi = {
   getAll: async () => {
-    const response = await apiService.apiCall("/product/size/get-all");
-    return response;
+    const key = 'size-getAll';
+    return deduplicateRequest(key, async () => {
+      const response = await apiService.apiCall("/product/size/get-all");
+      return response;
+    });
   },
 };
 
 // COLOR API
 export const colorApi = {
   getAll: async () => {
-    const response = await apiService.apiCall("/product/color/get-all");
-    return response;
+    const key = 'color-getAll';
+    return deduplicateRequest(key, async () => {
+      const response = await apiService.apiCall("/product/color/get-all");
+      return response;
+    });
   },
 };
 
 // OCCASION API
 export const occasionApi = {
   getAll: async () => {
-    const response = await apiService.apiCall("/product/occasion/get-all");
-    return response;
+    const key = 'occasion-getAll';
+    return deduplicateRequest(key, async () => {
+      const response = await apiService.apiCall("/product/occasion/get-all");
+      return response;
+    });
   },
 };
 
 // MATERIAL API
 export const materialApi = {
   getAll: async () => {
-    const response = await apiService.apiCall("/product/material/get-all");
-    return response;
+    const key = 'material-getAll';
+    return deduplicateRequest(key, async () => {
+      const response = await apiService.apiCall("/product/material/get-all");
+      return response;
+    });
   },
 };
 
@@ -45,8 +96,11 @@ export const productApi = {
   // Get all products
   getAll: async (page = 1, limit = 10) => {
     try {
-      const response = await apiService.apiCall(`/product/get-all-product?page=${page}&limit=${limit}`);
-      return response;
+      const key = `product-getAll-${page}-${limit}`;
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.apiCall(`/product/get-all-product?page=${page}&limit=${limit}`);
+        return response;
+      });
     } catch (error) {
       console.error("Error fetching all products:", error);
       throw error;
@@ -56,8 +110,26 @@ export const productApi = {
   // Get product by ID
   getById: async (id) => {
     try {
-      const response = await apiService.apiCall(`/product/get-product/${id}`);
-      return response;
+      const key = `product-getById-${id}`;
+      
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.apiCall(`/product/get-product/${id}`);
+        
+        // Handle different response structures
+        if (response && response.success && response.data) {
+          return response;
+        }
+        
+        if (response && response.data) {
+          return response;
+        }
+        
+        if (response && response.id) {
+          return { success: true, data: response };
+        }
+        
+        throw new Error('Invalid response structure from API');
+      });
     } catch (error) {
       console.error(`Error fetching product with ID ${id}:`, error);
       throw error;
@@ -67,19 +139,24 @@ export const productApi = {
   // Filter products
   filter: async (filters = {}) => {
     try {
-      const queryParams = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
-          if (Array.isArray(value)) {
-            value.forEach(item => queryParams.append(key, item));
-          } else {
-            queryParams.append(key, value);
+      const filterString = JSON.stringify(filters);
+      const key = `product-filter-${filterString}`;
+      
+      return deduplicateRequest(key, async () => {
+        const queryParams = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            if (Array.isArray(value)) {
+              value.forEach(item => queryParams.append(key, item));
+            } else {
+              queryParams.append(key, value);
+            }
           }
-        }
-      });
+        });
 
-      const response = await apiService.apiCall(`/product/filter?${queryParams.toString()}`);
-      return response;
+        const response = await apiService.apiCall(`/product/filter?${queryParams.toString()}`);
+        return response;
+      });
     } catch (error) {
       console.error("Error filtering products:", error);
       throw error;
@@ -106,8 +183,11 @@ export const reviewApi = {
   // Get all reviews (for admin use)
   getAll: async () => {
     try {
-      const response = await apiService.apiCall("/product/review/get-all");
-      return response;
+      const key = 'review-getAll';
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.apiCall("/product/review/get-all");
+        return response;
+      });
     } catch (error) {
       console.error("Error fetching all reviews:", error);
       throw error;
@@ -117,8 +197,11 @@ export const reviewApi = {
   // Get reviews by product ID
   getByProduct: async (productId) => {
     try {
-      const response = await apiService.apiCall(`/product/review/get-by-product/${productId}`);
-      return response;
+      const key = `review-getByProduct-${productId}`;
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.apiCall(`/product/review/get-by-product/${productId}`);
+        return response;
+      });
     } catch (error) {
       console.error(`Error fetching reviews for product ${productId}:`, error);
       throw error;
@@ -128,8 +211,11 @@ export const reviewApi = {
   // Get single review by ID
   getById: async (id) => {
     try {
-      const response = await apiService.apiCall(`/product/review/get-review/${id}`);
-      return response;
+      const key = `review-getById-${id}`;
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.apiCall(`/product/review/get-review/${id}`);
+        return response;
+      });
     } catch (error) {
       console.error(`Error fetching review ${id}:`, error);
       throw error;
@@ -168,23 +254,26 @@ export const reviewApi = {
 export const productDataApi = {
   getAll: async () => {
     try {
-      const [categories, sizes, colors, occasions, materials] = await Promise.all([
-        categoryApi.getAll(),
-        sizeApi.getAll(),
-        colorApi.getAll(),
-        occasionApi.getAll(),
-        materialApi.getAll(),
-      ]);
+      const key = 'productData-getAll';
+      return deduplicateRequest(key, async () => {
+        const [categories, sizes, colors, occasions, materials] = await Promise.all([
+          categoryApi.getAll(),
+          sizeApi.getAll(),
+          colorApi.getAll(),
+          occasionApi.getAll(),
+          materialApi.getAll(),
+        ]);
 
-      const result = {
-        categories: categories.data || categories,
-        sizes: sizes.data || sizes,
-        colors: colors.data || colors,
-        occasions: occasions.data || occasions,
-        materials: materials.data || materials,
-      };
+        const result = {
+          categories: categories.data || categories,
+          sizes: sizes.data || sizes,
+          colors: colors.data || colors,
+          occasions: occasions.data || occasions,
+          materials: materials.data || materials,
+        };
 
-      return result;
+        return result;
+      });
     } catch (error) {
       console.error("Error fetching all product data:", error);
       throw error;

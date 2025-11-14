@@ -31,7 +31,13 @@ export default function AllProductPage({ type = 1 }) {
     totalItems: 0,
     totalPages: 0,
   });
-  const fetchGuardRef = useRef({ inFlight: false, lastKey: null });
+  
+  // Use ref to prevent duplicate fetches
+  const fetchGuardRef = useRef({ 
+    inFlight: false, 
+    lastKey: null,
+    timeoutId: null 
+  });
 
   // Filter States
   const [selectedSubCategories, setSelectedSubCategories] = useState([]);
@@ -44,10 +50,9 @@ export default function AllProductPage({ type = 1 }) {
   const [selectedDiscountRanges, setSelectedDiscountRanges] = useState([]);
   const [selectedOccasions, setSelectedOccasions] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
-  const [selectedSeasonalCollections, setSelectedSeasonalCollections] =
-    useState([]);
+  const [selectedSeasonalCollections, setSelectedSeasonalCollections] = useState([]);
 
-  // Use products hook for filter data
+  // Use products hook for filter data - SINGLE INSTANCE
   const {
     categories,
     sizes,
@@ -56,51 +61,80 @@ export default function AllProductPage({ type = 1 }) {
     materials,
     loading: filtersLoading,
     error: filtersError,
+    fetchAllProductData
   } = useProducts();
 
-  // Fetch products from API
+  // Initialize product data once
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        await fetchAllProductData();
+      } catch (error) {
+        console.error("Failed to initialize product data:", error);
+      }
+    };
+    
+    initializeData();
+  }, [fetchAllProductData]);
+
+  // Fetch products from API with debouncing
   useEffect(() => {
     const fetchProducts = async () => {
-      setProductsLoading(true);
-      setProductsError(null);
+      // Clear any pending timeout
+      if (fetchGuardRef.current.timeoutId) {
+        clearTimeout(fetchGuardRef.current.timeoutId);
+      }
 
-      try {
+      // Set a timeout to debounce rapid filter changes
+      fetchGuardRef.current.timeoutId = setTimeout(async () => {
         const key = `${pagination.currentPage}-${pagination.itemsPerPage}`;
-        if (
-          fetchGuardRef.current.inFlight &&
-          fetchGuardRef.current.lastKey === key
-        ) {
+        
+        // Prevent duplicate requests
+        if (fetchGuardRef.current.inFlight && fetchGuardRef.current.lastKey === key) {
           return;
         }
+
         fetchGuardRef.current.inFlight = true;
         fetchGuardRef.current.lastKey = key;
 
-        const response = await productApi.getAll(
-          pagination.currentPage,
-          pagination.itemsPerPage
-        );
+        setProductsLoading(true);
+        setProductsError(null);
 
-        // Handle response structure
-        const productsData = response.data || [];
-        const total = response.pagination?.total || productsData.length;
+        try {
+          const response = await productApi.getAll(
+            pagination.currentPage,
+            pagination.itemsPerPage
+          );
 
-        setApiProducts(productsData);
-        setPagination((prev) => ({
-          ...prev,
-          totalItems: total,
-          totalPages: Math.ceil(total / prev.itemsPerPage),
-        }));
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setProductsError(error.message || "Failed to load products");
-        setApiProducts([]);
-      } finally {
-        setProductsLoading(false);
-        fetchGuardRef.current.inFlight = false;
-      }
+          // Handle response structure
+          const productsData = response.data || [];
+          const total = response.pagination?.total || productsData.length;
+
+          setApiProducts(productsData);
+          setPagination((prev) => ({
+            ...prev,
+            totalItems: total,
+            totalPages: Math.ceil(total / prev.itemsPerPage),
+          }));
+        } catch (error) {
+          console.error("Error fetching products:", error);
+          setProductsError(error.message || "Failed to load products");
+          setApiProducts([]);
+        } finally {
+          setProductsLoading(false);
+          fetchGuardRef.current.inFlight = false;
+        }
+      }, 300); // 300ms debounce
     };
 
     fetchProducts();
+
+    // Cleanup function
+    return () => {
+      if (fetchGuardRef.current.timeoutId) {
+        clearTimeout(fetchGuardRef.current.timeoutId);
+      }
+    };
   }, [pagination.currentPage, pagination.itemsPerPage]);
 
   const clearAllFilters = () => {
@@ -117,6 +151,7 @@ export default function AllProductPage({ type = 1 }) {
     setSelectedSeasonalCollections([]);
   };
 
+  // Loading state for UI transitions
   useEffect(() => {
     setLoading(true);
     const timer = setTimeout(() => setLoading(false), 500);
@@ -136,6 +171,7 @@ export default function AllProductPage({ type = 1 }) {
     sortOption,
   ]);
 
+  // Body overflow management
   useEffect(() => {
     if (filterToggle) {
       document.body.style.overflow = "hidden";

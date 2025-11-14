@@ -1,19 +1,22 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../components/Auth/authSlice";
-import productReducer from "../components/AllProductPage/productSlice";
-import cartReducer from "../components/CartPage/cartSlice";
+// store/index.js
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../components/Auth/authSlice';
+import cartReducer from '../components/CartPage/cartSlice';
+import productReducer from '../components/AllProductPage/productSlice';
 
-// Create and configure the Redux store
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    cart: cartReducer,
     product: productReducer,
-    cart: cartReducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ["persist/PERSIST"], 
+        ignoredActions: ['persist/PERSIST'],
       },
     }),
 });
+
+
+export default store;
