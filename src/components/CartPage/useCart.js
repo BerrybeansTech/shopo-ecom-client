@@ -1,4 +1,4 @@
-// features/cart/hooks/useCart.js
+// features/cart/hooks/useCart.js - FIXED VERSION
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -49,9 +49,20 @@ export const useCart = () => {
 
   const addItemToCart = useCallback(async (cartData) => {
     try {
+      console.log("Adding item to cart:", cartData);
+      
       const result = await dispatch(addToCart(cartData)).unwrap();
+      
+      console.log("Add to cart result:", result);
+      
+      // The cart will be automatically refreshed by the addToCart thunk
+      // Wait a bit for the refresh to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return { success: true, data: result };
     } catch (error) {
+      console.error("Add to cart error:", error);
+      
       if (error.includes('Please login')) {
         // Redirect to login if not authenticated
         navigate('/login', { 
@@ -139,6 +150,7 @@ export const useCart = () => {
 
   const refreshCart = useCallback(() => {
     if (cartState.isAuthenticated) {
+      console.log("Refreshing cart...");
       dispatch(fetchCartItems());
     }
   }, [dispatch, cartState.isAuthenticated]);

@@ -5,15 +5,52 @@ import Star from "../icons/Star";
 import ThinLove from "../icons/ThinLove";
 
 export default function ProductCardStyleOne({ datas, type }) {
-  const available =
-    (datas.cam_product_sale /
-      (datas.cam_product_available + datas.cam_product_sale)) *
-    100;
+  // Safe data access with fallbacks
+  const available = datas?.cam_product_sale && datas?.cam_product_available
+    ? (datas.cam_product_sale / (datas.cam_product_available + datas.cam_product_sale)) * 100
+    : 0;
 
-  // Determine if the image is a full URL or a relative path
-  const imageUrl = datas.image.startsWith("http")
-    ? datas.image
-    : `${import.meta.env.VITE_PUBLIC_URL}/assets/images/${datas.image}`;
+  // Safe image URL handling with fallbacks
+  const getImageUrl = () => {
+    if (!datas?.image) {
+      // Return a placeholder image or empty string
+      return '/assets/images/placeholder-product.jpg';
+    }
+    
+    // Check if image is a full URL or a relative path
+    if (typeof datas.image === 'string' && datas.image.startsWith("http")) {
+      return datas.image;
+    }
+    
+    // Handle different image data structures
+    if (typeof datas.image === 'string') {
+      return `${import.meta.env.VITE_PUBLIC_URL || ''}/assets/images/${datas.image}`;
+    }
+    
+    // If image is an object with url property
+    if (datas.image?.url) {
+      return datas.image.url;
+    }
+    
+    // If image is an array, take the first one
+    if (Array.isArray(datas.image) && datas.image.length > 0) {
+      const firstImage = datas.image[0];
+      if (typeof firstImage === 'string') {
+        if (firstImage.startsWith("http")) {
+          return firstImage;
+        }
+        return `${import.meta.env.VITE_PUBLIC_URL || ''}/assets/images/${firstImage}`;
+      }
+      if (firstImage?.url) {
+        return firstImage.url;
+      }
+    }
+    
+    // Fallback to placeholder
+    return '/assets/images/placeholder-product.jpg';
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
     <div
@@ -21,14 +58,14 @@ export default function ProductCardStyleOne({ datas, type }) {
       style={{ boxShadow: "0px 15px 64px 0px rgba(0, 0, 0, 0.05)" }}
     >
       <div
-        className="product-card-img w-full h-[300px]"
+        className="product-card-img w-full h-[300px] bg-gray-100"
         style={{
           background: `url(${imageUrl}) no-repeat center`,
           backgroundSize: "contain",
         }}
       >
         {/* product available progress */}
-        {datas.campaingn_product && (
+        {datas?.campaingn_product && (
           <>
             <div className="px-[30px] absolute left-0 top-3 w-full">
               <div className="progress-title flex justify-between ">
@@ -36,7 +73,7 @@ export default function ProductCardStyleOne({ datas, type }) {
                   Prodcuts Available
                 </p>
                 <span className="text-sm text-qblack font-600 leading-6">
-                  {datas.cam_product_available}
+                  {datas.cam_product_available || 0}
                 </span>
               </div>
               <div className="progress w-full h-[5px] rounded-[22px] bg-primarygray relative overflow-hidden">
@@ -53,7 +90,7 @@ export default function ProductCardStyleOne({ datas, type }) {
           </>
         )}
         {/* product type */}
-        {datas.product_type && !datas.campaingn_product && (
+        {datas?.product_type && !datas?.campaingn_product && (
           <div className="product-type absolute right-[14px] top-[17px]">
             <span
               className={`text-[9px] font-700 leading-none py-[6px] px-3 uppercase text-white rounded-full tracking-wider ${
@@ -90,23 +127,25 @@ export default function ProductCardStyleOne({ datas, type }) {
           </button>
         </div>
         <div className="reviews flex space-x-[1px] mb-3">
-          {Array.from(Array(Math.floor(datas.review) || 0), () => (
+          {Array.from(Array(Math.floor(datas?.review) || 0), () => (
             <span key={Math.random()}>
               <Star />
             </span>
           ))}
         </div>
-        <Link to="/single-product">
+        <Link to={`/single-product/${datas?.id || '#'}`}>
           <p className="title mb-2 text-[15px] font-600 text-qblack leading-[24px] line-clamp-2 hover:text-blue-600">
-            {datas.title}
+            {datas?.title || datas?.name || 'Product Name'}
           </p>
         </Link>
         <p className="price">
-          <span className="main-price text-qgray line-through font-600 text-[18px]">
-            {datas.price}
-          </span>
+          {datas?.price && (
+            <span className="main-price text-qgray line-through font-600 text-[18px]">
+              {datas.price}
+            </span>
+          )}
           <span className="offer-price text-qred font-600 text-[18px] ml-2">
-            {datas.offer_price}
+            {datas?.offer_price || datas?.sellingPrice || 'N/A'}
           </span>
         </p>
       </div>

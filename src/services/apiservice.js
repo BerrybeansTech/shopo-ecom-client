@@ -1,15 +1,55 @@
-// services/apiService.js
+// services/apiservice.js
 const BASE_URL = 'http://luxcycs.com:5501';
+
+// Request deduplication cache
+const requestCache = new Map();
+const CACHE_DURATION = 30000; // 30 seconds
+
+// Global request tracker
+const activeRequests = new Map();
 
 export const apiService = (() => {
   const baseURL = BASE_URL;
 
-  // Get token from localStorage
   const getToken = () => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('accessToken');
     }
     return null;
+  };
+
+  const getCurrentUserId = () => {
+    if (typeof window !== 'undefined') {
+      const user = localStorage.getItem('user');
+      return user ? JSON.parse(user).id : null;
+    }
+    return null;
+  };
+
+  // Request deduplication helper
+  const deduplicateRequest = async (key, requestFn) => {
+    const now = Date.now();
+    const cached = requestCache.get(key);
+    
+    // Return cached promise if it exists and is fresh
+    if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+      return cached.promise;
+    }
+    
+    // Prevent duplicate active requests
+    if (activeRequests.has(key)) {
+      return activeRequests.get(key);
+    }
+    
+    // Create new request
+    const promise = requestFn().finally(() => {
+      activeRequests.delete(key);
+    });
+    
+    requestCache.set(key, { promise, timestamp: now });
+    activeRequests.set(key, promise);
+    
+    return promise;
   };
 
   const apiCall = async (endpoint, options = {}) => {
@@ -26,17 +66,27 @@ export const apiService = (() => {
       ...options,
     };
 
-    if (
-      options.body &&
-      ['POST', 'PUT', 'PATCH'].includes(config.method.toUpperCase())
-    ) {
+    if (options.body && ['POST', 'PUT', 'PATCH'].includes(config.method.toUpperCase())) {
       config.body = JSON.stringify(options.body);
     }
 
     try {
       const response = await fetch(url, config);
+      
+      // Handle connection errors
+      if (!response.ok && response.status !== 304) {
+        if (response.status === 401) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+          }
+          throw new Error('Session expired. Please login again.');
+        }
+        
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
 
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
       let data;
 
@@ -46,37 +96,6 @@ export const apiService = (() => {
         data = await response.text();
       }
 
-      // 304 Not Modified is actually a success status
-      if (response.ok || response.status === 304) {
-        // If we got JSON data with success: true, return it
-        if (typeof data === 'object' && data.success) {
-          return data;
-        }
-        // If we got valid data, return it
-        if (data) {
-          return data;
-        }
-      }
-
-      // Only throw error for actual error status codes
-      if (!response.ok && response.status !== 304) {
-        // Handle token expiration or invalid token
-        if (response.status === 401) {
-          // Clear invalid token
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('user');
-          }
-          throw new Error('Session expired. Please login again.');
-        }
-        
-        // For other errors
-        const errorMessage = typeof data === 'object' && data.message 
-          ? data.message 
-          : `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
       return data;
     } catch (error) {
       console.error('API Call Error:', {
@@ -84,20 +103,79 @@ export const apiService = (() => {
         error: error.message,
         stack: error.stack
       });
+      
+      // Enhanced error handling
+      if (error.message.includes('Failed to fetch') || error.message.includes('Connection refused')) {
+        throw new Error('Unable to connect to server. Please check your connection.');
+      }
+      
       throw error;
     }
   };
 
-  // Public methods
-  const get = (endpoint) => apiCall(endpoint);
-  const post = (endpoint, body) => apiCall(endpoint, { method: 'POST', body });
-  const put = (endpoint, body) => apiCall(endpoint, { method: 'PUT', body });
-  const patch = (endpoint, body) => apiCall(endpoint, { method: 'PATCH', body });
-  const del = (endpoint) => apiCall(endpoint, { method: 'DELETE' });
+  // Public methods with deduplication
+  const get = (endpoint) => {
+    const key = `GET-${endpoint}`;
+    return deduplicateRequest(key, () => apiCall(endpoint));
+  };
 
-  // Return named functions
-  return { apiCall, get, post, put, patch, delete: del, getToken };
+  const post = (endpoint, body) => {
+    const key = `POST-${endpoint}-${JSON.stringify(body)}`;
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'POST', body }));
+  };
+
+  const put = (endpoint, body) => {
+    const key = `PUT-${endpoint}-${JSON.stringify(body)}`;
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PUT', body }));
+  };
+
+  const patch = (endpoint, body) => {
+    const key = `PATCH-${endpoint}-${JSON.stringify(body)}`;
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PATCH', body }));
+  };
+
+  const del = (endpoint) => {
+    const key = `DELETE-${endpoint}`;
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'DELETE' }));
+  };
+
+  // Clear cache methods
+  const clearCache = () => {
+    requestCache.clear();
+    activeRequests.clear();
+  };
+
+  const clearCacheForKey = (keyPattern) => {
+    for (const [key] of requestCache.entries()) {
+      if (key.includes(keyPattern)) {
+        requestCache.delete(key);
+      }
+    }
+  };
+
+  return { 
+    apiCall, 
+    get, 
+    post, 
+    put, 
+    patch, 
+    delete: del, 
+    getToken,
+    getCurrentUserId,
+    clearCache,
+    clearCacheForKey
+  };
 })();
+
+// Clear expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.timestamp >= CACHE_DURATION) {
+      requestCache.delete(key);
+    }
+  }
+}, 60000);
 
 
 
