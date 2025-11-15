@@ -3,11 +3,18 @@ import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 
 export default function ProductView({ product, className, reportHandler }) {
-  const { addItemToCart } = useCart();
+  const { addItemToCart, refreshCart } = useCart();
 
-  // Transform API product data
+  // Add state for add to cart feedback
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [addToCartSuccess, setAddToCartSuccess] = useState(false);
+
+  // Transform API product data to handle inventory structure
   const transformedProduct = useMemo(() => {
     if (!product) return null;
+
+    console.log("Original product data:", product);
+    console.log("Inventory structure:", product.inventories);
 
     const mrp = parseFloat(product.mrp || 0);
     const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
@@ -15,42 +22,87 @@ export default function ProductView({ product, className, reportHandler }) {
       ? Math.round(((mrp - sellingPrice) / mrp) * 100)
       : 0;
 
-    // Get images - prioritize galleryImage, fallback to thumbnailImage
+    // Get images
     const images = product.galleryImage && product.galleryImage.length > 0
       ? product.galleryImage
       : product.thumbnailImage
       ? [product.thumbnailImage]
       : [];
 
-    // Get available colors and sizes from inventories
-    const availableColors = product.inventories?.length > 0
-      ? product.inventories.map(inv => ({
-          id: inv.colorId || inv.color?.id || 1,
-          name: inv.color?.name || inv.color || 'Default',
-          inventoryId: inv.id,
-          stock: inv.quantity || 0
-        }))
-      : [{ id: 1, name: 'Default', inventoryId: null, stock: 100 }];
+    // Process available colors and sizes from inventories
+    const colorMap = new Map();
+    const sizeMap = new Map();
+    const inventoryMap = new Map();
 
-    const availableSizes = product.inventories?.length > 0
-      ? product.inventories.map(inv => ({
-          id: inv.sizeId || inv.size?.id || 1,
-          name: inv.size?.name || inv.size || 'One Size',
-          inventoryId: inv.id,
-          stock: inv.quantity || 0
-        }))
-      : [{ id: 1, name: 'One Size', inventoryId: null, stock: 100 }];
+    if (product.inventories && product.inventories.length > 0) {
+      product.inventories.forEach(inv => {
+        // Process colors
+        if (inv.productColor) {
+          const colorId = inv.productColor.id;
+          if (!colorMap.has(colorId)) {
+            colorMap.set(colorId, {
+              id: colorId,
+              name: inv.productColor.color,
+              inventoryIds: [inv.id],
+              totalStock: inv.availableQuantity || 0
+            });
+          } else {
+            const existingColor = colorMap.get(colorId);
+            existingColor.inventoryIds.push(inv.id);
+            existingColor.totalStock += (inv.availableQuantity || 0);
+          }
+        }
 
-    // Remove duplicates
-    const uniqueColors = Array.from(
-      new Map(availableColors.map(c => [c.name, c])).values()
-    );
-    
-    const uniqueSizes = Array.from(
-      new Map(availableSizes.map(s => [s.name, s])).values()
-    );
+        // Process sizes - handle array of sizes
+        if (inv.productSize && inv.productSize.size && Array.isArray(inv.productSize.size)) {
+          inv.productSize.size.forEach(sizeName => {
+            const sizeKey = `${inv.productSize.id}-${sizeName}`;
+            if (!sizeMap.has(sizeKey)) {
+              sizeMap.set(sizeKey, {
+                id: sizeKey,
+                originalSizeId: inv.productSize.id,
+                name: sizeName,
+                inventoryIds: [inv.id],
+                totalStock: inv.availableQuantity || 0,
+                colorId: inv.productColor?.id
+              });
+            } else {
+              const existingSize = sizeMap.get(sizeKey);
+              existingSize.inventoryIds.push(inv.id);
+              existingSize.totalStock += (inv.availableQuantity || 0);
+            }
+            
+            // Create inventory mapping key
+            const inventoryKey = `${inv.productColor?.id}-${sizeName}`;
+            inventoryMap.set(inventoryKey, inv.id);
+          });
+        }
+      });
+    }
 
-    return {
+    // Convert maps to arrays
+    const availableColors = Array.from(colorMap.values());
+    const availableSizes = Array.from(sizeMap.values());
+
+    // Fallback if no inventories
+    if (availableColors.length === 0) {
+      availableColors.push({ 
+        id: 1, 
+        name: 'Not available', 
+        inventoryIds: [null], 
+        totalStock: 100 
+      });
+    }
+    if (availableSizes.length === 0) {
+      availableSizes.push({ 
+        id: 1, 
+        name: 'Not available', 
+        inventoryIds: [null], 
+        totalStock: 100 
+      });
+    }
+
+    const result = {
       id: product.id,
       name: product.name,
       description: product.description,
@@ -60,9 +112,10 @@ export default function ProductView({ product, className, reportHandler }) {
       discount: discount,
       gst: product.gst || 0,
       images: images,
-      colors: uniqueColors,
-      sizes: uniqueSizes,
+      colors: availableColors,
+      sizes: availableSizes,
       inventories: product.inventories || [],
+      inventoryMap: inventoryMap,
       specifications: {
         fabric: product.material?.name || 'Not specified',
         fitType: product.fitType || 'Regular',
@@ -73,8 +126,11 @@ export default function ProductView({ product, className, reportHandler }) {
       },
       rating: parseFloat(product.averageRating || 0),
       reviewCount: product.reviewCount || 0,
-      totalStock: product.inventories?.reduce((sum, inv) => sum + (inv.quantity || 0), 0) || 0
+      totalStock: product.inventories?.reduce((sum, inv) => sum + (inv.availableQuantity || 0), 0) || 0
     };
+
+    console.log("Transformed product:", result);
+    return result;
   }, [product]);
 
   // State management
@@ -98,20 +154,64 @@ export default function ProductView({ product, className, reportHandler }) {
 
   const thumbnailRef = useRef(null);
 
+  // Calculate price based on quantity
+  const calculatedPrice = useMemo(() => {
+    if (!transformedProduct) return { sellingPrice: 0, mrp: 0, discount: 0 };
+    
+    const baseSellingPrice = transformedProduct.sellingPrice;
+    const baseMrp = transformedProduct.mrp;
+    
+    return {
+      sellingPrice: baseSellingPrice * quantity,
+      mrp: baseMrp * quantity,
+      discount: transformedProduct.discount
+    };
+  }, [transformedProduct, quantity]);
+
   // Initialize states when product changes
   useEffect(() => {
     if (transformedProduct) {
       setMainImage(transformedProduct.images[0] || null);
+      
+      // Auto-select first available color
       if (transformedProduct.colors.length > 0) {
-        setSelectedColorId(transformedProduct.colors[0].id);
-      }
-      if (transformedProduct.sizes.length > 0) {
-        setSelectedSizeId(transformedProduct.sizes[0].id);
+        const firstColor = transformedProduct.colors[0];
+        setSelectedColorId(firstColor.id);
+        console.log("Auto-selected color:", firstColor);
       }
     }
   }, [transformedProduct]);
 
-  // Fetch reviews
+  // Update available sizes when color changes
+  useEffect(() => {
+    if (transformedProduct && selectedColorId) {
+      const availableSizesForColor = transformedProduct.sizes.filter(
+        size => !size.colorId || size.colorId === selectedColorId
+      );
+      
+      if (selectedSizeId && !availableSizesForColor.find(size => size.id === selectedSizeId)) {
+        if (availableSizesForColor.length > 0) {
+          setSelectedSizeId(availableSizesForColor[0].id);
+        } else {
+          setSelectedSizeId(null);
+        }
+      } else if (!selectedSizeId && availableSizesForColor.length > 0) {
+        setSelectedSizeId(availableSizesForColor[0].id);
+      }
+    }
+  }, [selectedColorId, transformedProduct, selectedSizeId]);
+
+  // Reset success message after 3 seconds
+  useEffect(() => {
+    if (addToCartSuccess) {
+      const timer = setTimeout(() => {
+        setAddToCartSuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [addToCartSuccess]);
+
+  // Fetch reviews with better error handling
   useEffect(() => {
     const fetchReviews = async () => {
       if (!product?.id) return;
@@ -132,38 +232,59 @@ export default function ProductView({ product, className, reportHandler }) {
     fetchReviews();
   }, [product?.id]);
 
-  if (!transformedProduct) {
-    return <div className="text-center py-10">Loading product...</div>;
-  }
+  // Get selected color and size objects
+  const selectedColor = useMemo(() => {
+    return transformedProduct?.colors.find(color => color.id === selectedColorId) || null;
+  }, [transformedProduct, selectedColorId]);
 
-  // Get selected inventory
-  const selectedInventory = useMemo(() => {
-    // If no inventories, create a mock inventory for display
-    if (!transformedProduct.inventories || transformedProduct.inventories.length === 0) {
-      return {
-        id: 'mock-inventory',
-        quantity: transformedProduct.totalStock || 100,
-        colorId: selectedColorId,
-        sizeId: selectedSizeId
-      };
-    }
+  const selectedSize = useMemo(() => {
+    return transformedProduct?.sizes.find(size => size.id === selectedSizeId) || null;
+  }, [transformedProduct, selectedSizeId]);
+
+  // Get available stock for selected combination
+  const currentStock = useMemo(() => {
+    if (!selectedColor || !selectedSize) return 0;
+
+    const matchingInventory = transformedProduct.inventories.find(inv => {
+      const colorMatch = inv.productColor?.id === selectedColor.id;
+      const sizeMatch = inv.productSize?.size?.includes(selectedSize.name);
+      return colorMatch && sizeMatch;
+    });
+
+    return matchingInventory?.availableQuantity || 0;
+  }, [selectedColor, selectedSize, transformedProduct]);
+
+  // Get matching inventory for selected combination
+  const matchingInventory = useMemo(() => {
+    if (!selectedColor || !selectedSize || !transformedProduct) return null;
     
-    if (!selectedColorId || !selectedSizeId) return null;
-    return transformedProduct.inventories.find(
-      inv => 
-        (inv.colorId === selectedColorId || inv.color?.id === selectedColorId) &&
-        (inv.sizeId === selectedSizeId || inv.size?.id === selectedSizeId)
-    );
-  }, [selectedColorId, selectedSizeId, transformedProduct.inventories, transformedProduct.totalStock]);
+    const inventory = transformedProduct.inventories.find(inv => {
+      const colorMatch = inv.productColor?.id === selectedColor.id;
+      const sizeMatch = inv.productSize?.size?.includes(selectedSize.name);
+      return colorMatch && sizeMatch;
+    });
+    
+    console.log("Matching inventory:", inventory);
+    return inventory;
+  }, [selectedColor, selectedSize, transformedProduct]);
 
-  const currentStock = selectedInventory?.quantity || 100;
+  // Get available sizes for selected color
+  const availableSizesForSelectedColor = useMemo(() => {
+    if (!transformedProduct || !selectedColorId) return [];
+    
+    return transformedProduct.sizes.filter(
+      size => !size.colorId || size.colorId === selectedColorId
+    );
+  }, [transformedProduct, selectedColorId]);
 
   // Handlers
   const handleColorChange = (colorId) => {
+    console.log("Color changed to:", colorId);
     setSelectedColorId(colorId);
   };
 
   const handleSizeChange = (sizeId) => {
+    console.log("Size changed to:", sizeId);
     setSelectedSizeId(sizeId);
   };
 
@@ -176,6 +297,13 @@ export default function ProductView({ product, className, reportHandler }) {
   const decrement = () => {
     if (quantity > 1) {
       setQuantity(prev => prev - 1);
+    }
+  };
+
+  const handleQuantityChange = (e) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value >= 1 && value <= currentStock) {
+      setQuantity(value);
     }
   };
 
@@ -201,36 +329,84 @@ export default function ProductView({ product, className, reportHandler }) {
     }
   };
 
+  // FIXED Add to Cart function with proper feedback
   const handleAddToCart = async () => {
-    if (!selectedColorId || !selectedSizeId) {
-      alert("Please select color and size");
+    // Validation
+    if (!selectedColor || !selectedSize) {
+      alert("⚠️ Please select both color and size");
       return;
     }
 
-    try {
-      // For products without inventory system
-      if (!selectedInventory || selectedInventory.id === 'mock-inventory') {
-        console.log("Adding product to cart (no inventory):", {
-          productId: transformedProduct.id,
-          quantity: quantity,
-          color: transformedProduct.colors.find(c => c.id === selectedColorId)?.name,
-          size: transformedProduct.sizes.find(s => s.id === selectedSizeId)?.name
-        });
-        alert("Product added to cart successfully!");
-        return;
-      }
+    if (currentStock === 0) {
+      alert("❌ Selected combination is out of stock");
+      return;
+    }
 
+    if (quantity > currentStock) {
+      alert(`⚠️ Only ${currentStock} items available in stock`);
+      return;
+    }
+
+    // Check if we have matching inventory
+    if (!matchingInventory) {
+      console.error("No matching inventory found", {
+        selectedColorId: selectedColor.id,
+        selectedSizeName: selectedSize.name,
+        availableInventories: transformedProduct.inventories
+      });
+      alert("❌ Selected combination not available in inventory");
+      return;
+    }
+
+    // Validate inventory has required IDs
+    if (!matchingInventory.productColor?.id || !matchingInventory.productSize?.id) {
+      console.error("Inventory missing required IDs:", matchingInventory);
+      alert("❌ Invalid inventory configuration");
+      return;
+    }
+
+    setIsAddingToCart(true);
+
+    try {
+      // Prepare cart data with correct structure
       const cartData = {
         productId: transformedProduct.id,
-        inventoryId: selectedInventory.id,
-        quantity: quantity,
+        productColorVariationId: matchingInventory.productColor.id,
+        productSizeVariationId: matchingInventory.productSize.id,
+        quantity: quantity
       };
 
-      await addItemToCart(cartData);
-      alert("Product added to cart successfully!");
+      console.log("Adding to cart with data:", cartData);
+      console.log("Matching inventory details:", matchingInventory);
+
+      const result = await addItemToCart(cartData);
+      
+      if (result.success) {
+        setAddToCartSuccess(true);
+        
+        // Show success message
+        alert(`✅ Successfully added to cart!`);
+        
+        // Refresh cart to get updated data
+        await refreshCart();
+        
+        console.log("Cart result:", result);
+      } else {
+        throw new Error(result.error || "Failed to add to cart");
+      }
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert("Failed to add product to cart");
+      alert(`❌ Failed to add product to cart\n\n${error.message}\n\nPlease try again or contact support.`);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    await handleAddToCart();
+    if (addToCartSuccess) {
+      // After successful add to cart, redirect to cart page
+      window.location.href = '/cart';
     }
   };
 
@@ -266,8 +442,13 @@ export default function ProductView({ product, className, reportHandler }) {
   const isOutOfStock = currentStock === 0;
   const isLowStock = currentStock > 0 && currentStock < 10;
 
+  if (!transformedProduct) {
+    return <div className="text-center py-10">Loading product...</div>;
+  }
+
   return (
     <div className={`product-view w-full lg:flex flex-col lg:flex-row justify-between ${className || ""}`}>
+
       {/* Image Section */}
       <div data-aos="fade-right" className="lg:w-1/2 xl:mr-[70px] lg:mr-[50px] flex flex-row">
         <div className="w-[120px] flex flex-col gap-2 mr-4">
@@ -356,23 +537,26 @@ export default function ProductView({ product, className, reportHandler }) {
             </span>
           </div>
 
-          {/* Price */}
+          {/* Price Section */}
           <div className="mb-7">
             <div className="flex items-center mb-2">
               <span className="text-2xl font-bold text-qblack">
-                ₹{transformedProduct.sellingPrice.toLocaleString()}
+                ₹{calculatedPrice.sellingPrice.toLocaleString()}
               </span>
-              {transformedProduct.discount > 0 && (
+              {calculatedPrice.discount > 0 && (
                 <>
                   <span className="text-lg font-medium text-qgray line-through ml-3">
-                    ₹{transformedProduct.mrp.toLocaleString()}
+                    ₹{calculatedPrice.mrp.toLocaleString()}
                   </span>
                   <span className="text-sm font-semibold text-qred ml-3 bg-qred-light px-2 py-1 rounded">
-                    {transformedProduct.discount}% off
+                    {calculatedPrice.discount}% off
                   </span>
                 </>
               )}
             </div>
+            <p className="text-sm text-qgray">
+              {quantity} item{quantity > 1 ? 's' : ''} • ₹{transformedProduct.sellingPrice.toLocaleString()} per item
+            </p>
           </div>
 
           {/* Color Selection */}
@@ -386,13 +570,18 @@ export default function ProductView({ product, className, reportHandler }) {
                   <button
                     key={color.id}
                     onClick={() => handleColorChange(color.id)}
-                    className={`px-4 py-2 border rounded ${
+                    className={`px-4 py-2 border rounded transition-all duration-200 ${
                       selectedColorId === color.id
-                        ? "border-qblack bg-qblack text-white"
-                        : "border-qgray-border hover:border-qblack"
+                        ? "border-black bg-black text-white shadow-md"
+                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500"
+                    } ${
+                      color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
                     }`}
+                    disabled={color.totalStock === 0}
+                    title={color.totalStock === 0 ? "Out of stock" : color.name}
                   >
                     {color.name}
+                    {color.totalStock === 0 && " (X)"}
                   </button>
                 ))}
               </div>
@@ -400,23 +589,28 @@ export default function ProductView({ product, className, reportHandler }) {
           )}
 
           {/* Size Selection */}
-          {transformedProduct.sizes.length > 0 && (
+          {availableSizesForSelectedColor.length > 0 && (
             <div className="product-size mb-[30px]">
               <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
                 SIZE
               </span>
-              <div className="flex space-x-2">
-                {transformedProduct.sizes.map((size) => (
+              <div className="flex flex-wrap gap-2">
+                {availableSizesForSelectedColor.map((size) => (
                   <button
                     key={size.id}
                     onClick={() => handleSizeChange(size.id)}
-                    className={`px-4 py-2 border rounded ${
+                    className={`px-4 py-2 border rounded min-w-[50px] text-center transition-all duration-200 ${
                       selectedSizeId === size.id
-                        ? "border-qblack bg-qblack text-white"
-                        : "border-qgray-border hover:border-qblack"
+                        ? "border-black bg-black text-white shadow-md"
+                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500"
+                    } ${
+                      size.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
                     }`}
+                    disabled={size.totalStock === 0}
+                    title={size.totalStock === 0 ? "Out of stock" : size.name}
                   >
                     {size.name}
+                    {size.totalStock === 0 && " (X)"}
                   </button>
                 ))}
               </div>
@@ -424,151 +618,103 @@ export default function ProductView({ product, className, reportHandler }) {
           )}
 
           {/* Stock Status */}
-          {isLowStock && (
-            <p className="text-orange-600 font-semibold mb-4">
-              Only {currentStock} left in stock!
-            </p>
+          <div className="mb-4">
+            {isOutOfStock ? (
+              <p className="text-red-600 font-semibold">Out of Stock</p>
+            ) : isLowStock ? (
+              <p className="text-orange-600 font-semibold">
+                Only {currentStock} left in stock!
+              </p>
+            ) : (
+              <p className="text-green-600 font-semibold">
+                In Stock ({currentStock} available)
+              </p>
+            )}
+          </div>
+
+          {/* Selected Combination Info */}
+          {(selectedColor || selectedSize) && (
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <p className="text-sm text-qblack">
+                Selected:{" "}
+                {selectedColor && <span className="font-semibold">{selectedColor.name}</span>}
+                {selectedColor && selectedSize && " - "}
+                {selectedSize && <span className="font-semibold">{selectedSize.name}</span>}
+              </p>
+            </div>
           )}
 
-          {/* Quantity and Add to Cart */}
-          <div className="quantity-card-wrapper w-full flex items-center h-[50px] space-x-[10px] mb-[30px]">
-            <div className="w-[120px] h-full px-[26px] flex items-center border border-qgray-border">
+          {/* Quantity and Action Buttons */}
+          <div className="quantity-card-wrapper w-full flex flex-col sm:flex-row items-center gap-3 mb-[30px]">
+            <div className="w-[120px] h-[50px] px-[26px] flex items-center border border-gray-300 rounded">
               <div className="flex justify-between items-center w-full">
                 <button
                   onClick={decrement}
                   type="button"
-                  className="text-base text-qgray"
-                  disabled={isOutOfStock}
+                  className="text-base text-gray-600 hover:text-black transition-colors"
+                  disabled={isOutOfStock || isAddingToCart}
                 >
                   -
                 </button>
-                <span className="text-qblack">{quantity}</span>
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={handleQuantityChange}
+                  min="1"
+                  max={currentStock}
+                  className="w-12 text-center border-none outline-none text-black bg-transparent"
+                  disabled={isOutOfStock || isAddingToCart}
+                />
                 <button
                   onClick={increment}
                   type="button"
-                  className="text-base text-qgray"
-                  disabled={isOutOfStock || quantity >= currentStock}
+                  className="text-base text-gray-600 hover:text-black transition-colors"
+                  disabled={isOutOfStock || quantity >= currentStock || isAddingToCart}
                 >
                   +
                 </button>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className={`flex-1 h-full text-sm font-semibold ${
-                isOutOfStock || !selectedColorId || !selectedSizeId
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-black text-white hover:bg-gray-800"
-              }`}
-              disabled={isOutOfStock || !selectedColorId || !selectedSizeId}
-            >
-              {isOutOfStock
-                ? "Out of Stock"
-                : !selectedColorId || !selectedSizeId
-                ? "Select Options"
-                : "Add To Cart"}
-            </button>
-          </div>
-
-          {/* Product Details */}
-          <div className="product-details-section mb-[20px] p-4 bg-white border border-qgray-border">
-            <div
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => setShowProductDetails(!showProductDetails)}
-            >
-              <h3 className="text-lg font-semibold text-qblack">Product Details</h3>
-              <span className="text-2xl font-bold">
-                {showProductDetails ? "−" : "+"}
-              </span>
-            </div>
-            {showProductDetails && (
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex">
-                  <span className="text-qgray w-1/3">Fabric:</span>
-                  <span className="text-qblack font-medium">
-                    {transformedProduct.specifications.fabric}
-                  </span>
-                </div>
-                <div className="flex">
-                  <span className="text-qgray w-1/3">Fit Type:</span>
-                  <span className="text-qblack font-medium">
-                    {transformedProduct.specifications.fitType}
-                  </span>
-                </div>
-                <div className="flex">
-                  <span className="text-qgray w-1/3">Occasion:</span>
-                  <span className="text-qblack font-medium">
-                    {transformedProduct.specifications.occasion}
-                  </span>
-                </div>
-                <div className="flex">
-                  <span className="text-qgray w-1/3">Care:</span>
-                  <span className="text-qblack font-medium">
-                    {transformedProduct.specifications.careInstructions}
-                  </span>
-                </div>
-                {transformedProduct.specifications.description && (
-                  <div className="mt-2">
-                    <p className="text-qblack">
-                      {transformedProduct.specifications.description}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Reviews Section */}
-          <div className="reviews-section mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-qblack">
-                Customer Reviews
-              </h3>
+            {/* Action Buttons Container */}
+            <div className="flex flex-1 w-full sm:w-auto gap-3">
               <button
-                onClick={() => setShowReviews(!showReviews)}
-                className="px-4 py-2 bg-qblack text-white rounded hover:bg-qgray"
+                type="button"
+                onClick={handleAddToCart}
+                className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded flex items-center justify-center gap-2 ${
+                  isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-800 text-white hover:bg-gray-700"
+                }`}
+                disabled={isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart}
               >
-                Write Review
+                {isAddingToCart ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Adding...
+                  </>
+                ) : isOutOfStock ? (
+                  "Out of Stock"
+                ) : !selectedColorId || !selectedSizeId ? (
+                  "Select Options"
+                ) : (
+                  `Add To Cart`
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded ${
+                  isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-black text-white hover:bg-gray-800"
+                }`}
+                disabled={isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart}
+              >
+                Buy Now
               </button>
             </div>
-
-            {reviewsLoading ? (
-              <p className="text-gray-500">Loading reviews...</p>
-            ) : reviews.length === 0 ? (
-              <p className="text-gray-500">No reviews yet. Be the first to review!</p>
-            ) : (
-              <div className="space-y-4">
-                {reviews.slice(0, visibleReviews).map((review) => (
-                  <div
-                    key={review.id}
-                    className="p-4 border border-qgray-border rounded-lg"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">{review.user?.name || 'Anonymous'}</span>
-                        <span className="text-yellow-500">
-                          {'★'.repeat(review.rating)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-qgray">
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-qblack">{review.comment}</p>
-                  </div>
-                ))}
-                {reviews.length > visibleReviews && (
-                  <button
-                    onClick={() => setVisibleReviews(prev => prev + 2)}
-                    className="text-qblue hover:underline text-sm font-medium"
-                  >
-                    Load More Reviews
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>

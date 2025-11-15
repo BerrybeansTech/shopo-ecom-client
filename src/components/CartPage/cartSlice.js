@@ -27,12 +27,16 @@ export const fetchCartItems = createAsyncThunk(
 
 export const addToCart = createAsyncThunk(
   'cart/addToCart',
-  async (cartData, { rejectWithValue }) => {
+  async (cartData, { rejectWithValue, dispatch }) => {
     try {
       if (!isAuthenticated()) {
         return rejectWithValue('Please login to add items to cart');
       }
       const response = await cartApi.addToCart(cartData);
+      
+      // Fetch updated cart to ensure sync with server
+      dispatch(fetchCartItems());
+      
       return response;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -129,6 +133,8 @@ const cartSlice = createSlice({
       if (item && quantity > 0) {
         item.quantity = quantity;
       }
+      // Recalculate totals after quantity update
+      cartSlice.caseReducers.calculateTotals(state);
     },
     calculateTotals: (state) => {
       state.subtotal = state.items.reduce((total, item) => {
@@ -182,6 +188,8 @@ const cartSlice = createSlice({
         state.items = action.payload.data || [];
         state.lastAction = 'fetch';
         state.isAuthenticated = true;
+        // Calculate totals after fetching
+        cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(fetchCartItems.rejected, (state, action) => {
         state.loading = false;
@@ -191,27 +199,16 @@ const cartSlice = createSlice({
         state.items = [];
       })
       
-      // Add to Cart
+      // Add to Cart - FIXED: No longer manually updates state, waits for fetchCartItems
       .addCase(addToCart.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.loading = false;
-        const newItem = action.payload.data;
-        const existingItem = state.items.find(item => 
-          item.productId === newItem.productId &&
-          item.productColorVariationId === newItem.productColorVariationId &&
-          item.productSizeVariationId === newItem.productSizeVariationId
-        );
-        
-        if (existingItem) {
-          existingItem.quantity += newItem.quantity;
-        } else {
-          state.items.push(newItem);
-        }
         state.lastAction = 'add';
         state.isAuthenticated = true;
+        // State will be updated by fetchCartItems dispatch
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.loading = false;
@@ -233,6 +230,8 @@ const cartSlice = createSlice({
         }
         state.lastAction = 'update';
         state.isAuthenticated = true;
+        // Recalculate totals after update
+        cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(updateCartItem.rejected, (state, action) => {
         state.loading = false;
@@ -251,6 +250,8 @@ const cartSlice = createSlice({
         state.items = state.items.filter(item => item.id !== itemId);
         state.lastAction = 'delete';
         state.isAuthenticated = true;
+        // Recalculate totals after deletion
+        cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(deleteCartItem.rejected, (state, action) => {
         state.loading = false;
@@ -268,6 +269,10 @@ const cartSlice = createSlice({
         state.items = [];
         state.lastAction = 'clear';
         state.isAuthenticated = true;
+        // Reset totals
+        state.subtotal = 0;
+        state.discount = 0;
+        state.total = 0;
       })
       .addCase(clearCart.rejected, (state, action) => {
         state.loading = false;
