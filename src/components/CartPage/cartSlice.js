@@ -1,3 +1,4 @@
+// src/features/cart/cartSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { cartApi } from './cartApi';
 
@@ -76,14 +77,47 @@ export const deleteCartItem = createAsyncThunk(
 
 export const clearCart = createAsyncThunk(
   'cart/clearCart',
-  async (cartId, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
       if (!isAuthenticated()) {
         return rejectWithValue('Please login to clear cart');
       }
-      const response = await cartApi.clearCart(cartId);
-      return { cartId, response };
+      
+      let response;
+      try {
+        response = await cartApi.clearCart();
+      } catch (error) {
+        console.warn('Primary clear cart method failed, trying alternative:', error);
+        response = await cartApi.clearCartByItems();
+      }
+      
+      return { response };
     } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// NEW: Clear cart after successful order
+export const clearCartAfterOrder = createAsyncThunk(
+  'cart/clearCartAfterOrder',
+  async (_, { rejectWithValue, dispatch }) => {
+    try {
+      if (!isAuthenticated()) {
+        return rejectWithValue('Please login to clear cart');
+      }
+      
+      // Clear cart from server
+      await dispatch(clearCart()).unwrap();
+      
+      // Also clear local state immediately
+      dispatch(clearCartState());
+      
+      return { success: true, message: 'Cart cleared after order' };
+    } catch (error) {
+      console.error('Error clearing cart after order:', error);
+      // Even if API fails, clear local state
+      dispatch(clearCartState());
       return rejectWithValue(error.message);
     }
   }
@@ -100,7 +134,8 @@ const cartSlice = createSlice({
     subtotal: 0,
     discount: 0,
     total: 0,
-    isAuthenticated: false
+    isAuthenticated: false,
+    orderCompleted: false
   },
   reducers: {
     clearError: (state) => {
@@ -133,7 +168,6 @@ const cartSlice = createSlice({
       if (item && quantity > 0) {
         item.quantity = quantity;
       }
-      // Recalculate totals after quantity update
       cartSlice.caseReducers.calculateTotals(state);
     },
     calculateTotals: (state) => {
@@ -153,7 +187,6 @@ const cartSlice = createSlice({
     setAuthStatus: (state, action) => {
       state.isAuthenticated = action.payload;
       
-      // FIXED: Clear cart when auth status changes to false (logout)
       if (!action.payload) {
         state.items = [];
         state.savedItems = [];
@@ -161,9 +194,9 @@ const cartSlice = createSlice({
         state.discount = 0;
         state.total = 0;
         state.error = null;
+        state.orderCompleted = false;
       }
     },
-    // FIXED: Renamed and enhanced to be called explicitly on logout
     clearCartState: (state) => {
       state.items = [];
       state.savedItems = [];
@@ -171,9 +204,12 @@ const cartSlice = createSlice({
       state.discount = 0;
       state.total = 0;
       state.error = null;
-      state.isAuthenticated = false;
       state.loading = false;
       state.lastAction = null;
+      state.orderCompleted = true;
+    },
+    resetOrderCompleted: (state) => {
+      state.orderCompleted = false;
     }
   },
   extraReducers: (builder) => {
@@ -185,30 +221,28 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCartItems.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.data || [];
+        state.items = action.payload?.data || [];
         state.lastAction = 'fetch';
         state.isAuthenticated = true;
-        // Calculate totals after fetching
+        state.orderCompleted = false;
         cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(fetchCartItems.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
-        // FIXED: Clear cart items on authentication failure
         state.items = [];
       })
       
-      // Add to Cart - FIXED: No longer manually updates state, waits for fetchCartItems
+      // Add to Cart
       .addCase(addToCart.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(addToCart.fulfilled, (state, action) => {
+      .addCase(addToCart.fulfilled, (state) => {
         state.loading = false;
         state.lastAction = 'add';
         state.isAuthenticated = true;
-        // State will be updated by fetchCartItems dispatch
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.loading = false;
@@ -230,7 +264,6 @@ const cartSlice = createSlice({
         }
         state.lastAction = 'update';
         state.isAuthenticated = true;
-        // Recalculate totals after update
         cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(updateCartItem.rejected, (state, action) => {
@@ -250,7 +283,6 @@ const cartSlice = createSlice({
         state.items = state.items.filter(item => item.id !== itemId);
         state.lastAction = 'delete';
         state.isAuthenticated = true;
-        // Recalculate totals after deletion
         cartSlice.caseReducers.calculateTotals(state);
       })
       .addCase(deleteCartItem.rejected, (state, action) => {
@@ -269,7 +301,7 @@ const cartSlice = createSlice({
         state.items = [];
         state.lastAction = 'clear';
         state.isAuthenticated = true;
-        // Reset totals
+        state.orderCompleted = true;
         state.subtotal = 0;
         state.discount = 0;
         state.total = 0;
@@ -278,6 +310,33 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
+      })
+      
+      // Clear Cart After Order
+      .addCase(clearCartAfterOrder.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(clearCartAfterOrder.fulfilled, (state) => {
+        state.loading = false;
+        state.items = [];
+        state.savedItems = [];
+        state.subtotal = 0;
+        state.discount = 0;
+        state.total = 0;
+        state.lastAction = 'order_complete';
+        state.orderCompleted = true;
+        state.error = null;
+      })
+      .addCase(clearCartAfterOrder.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.items = [];
+        state.savedItems = [];
+        state.subtotal = 0;
+        state.discount = 0;
+        state.total = 0;
+        state.orderCompleted = true;
       });
   }
 });
@@ -290,7 +349,8 @@ export const {
   updateLocalQuantity,
   calculateTotals,
   setAuthStatus,
-  clearCartState
+  clearCartState,
+  resetOrderCompleted
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

@@ -1,10 +1,39 @@
-// features/order/ordersApi.js
+// src/features/order/ordersApi.js
 import { apiService } from "../../services/apiservice";
 
 export const ordersApi = {
-  // Get all orders (admin)
-  getAllOrders: async () => {
-    return await apiService.get('/order/get-all-orders');
+  // Get all orders with filters
+  getAllOrders: async (filters = {}) => {
+    const { status, page = 1, limit = 10 } = filters;
+    let url = '/order/get-all-orders';
+    const params = new URLSearchParams();
+    
+    if (status) params.append('status', status);
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return await apiService.get(url);
+  },
+
+  // Get customer's orders
+  getCustomerOrders: async (customerId, filters = {}) => {
+    const { status, page = 1, limit = 10 } = filters;
+    let url = `/order/get-customer-order/${customerId}`;
+    const params = new URLSearchParams();
+    
+    if (status) params.append('status', status);
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return await apiService.get(url);
   },
 
   // Get specific order by ID
@@ -12,54 +41,22 @@ export const ordersApi = {
     return await apiService.get(`/order/get-order/${orderId}`);
   },
 
-  // Get customer's orders
-  getCustomerOrders: async (customerId) => {
-    return await apiService.get(`/order/get-customer-order/${customerId}`);
-  },
-
   // Create new order
   createOrder: async (orderData) => {
     return await apiService.post('/order/create-order', orderData);
   },
 
-  // Update order
-  updateOrder: async (orderData) => {
-    return await apiService.put('/order/update-order', orderData);
+ // Cancel order using update-order endpoint
+  cancelOrder: async (orderId) => {
+    const cancelData = {
+      id: orderId,
+      status: "cancelled"
+    };
+    return await apiService.put('/order/update-order', cancelData);
   },
 
-  // Invoice APIs
-  // Get all invoices
-  getAllInvoices: async () => {
-    return await apiService.get('/order/invoices');
-  },
-
-  // Get specific invoice by ID
-  getInvoiceById: async (invoiceId) => {
-    return await apiService.get(`/order/invoices/${invoiceId}`);
-  },
-
-  // Create new invoice
-  createInvoice: async (invoiceData) => {
-    return await apiService.post('/order/invoices', invoiceData);
-  },
-
-  // Update invoice
-  updateInvoice: async (invoiceId, invoiceData) => {
-    return await apiService.put(`/order/invoices/${invoiceId}`, invoiceData);
-  },
-
-  // Delete invoice
-  deleteInvoice: async (invoiceId) => {
-    return await apiService.delete(`/order/invoices/${invoiceId}`);
-  },
-
-  // View invoice PDF
-  viewInvoice: async (filename) => {
-    return await apiService.get(`/order/invoices/view/${filename}`);
-  },
-
-  // Download invoice PDF
-  downloadInvoice: async (filename) => {
-    return await apiService.get(`/order/invoices/download/${filename}`);
+  // Track order
+  trackOrder: async (orderId) => {
+    return await apiService.get(`/order/track-order/${orderId}`);
   }
 };

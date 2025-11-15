@@ -1,4 +1,4 @@
-// features/cart/hooks/useCart.js - FIXED VERSION
+// src/features/cart/hooks/useCart.js - FIXED VERSION
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import {
   updateCartItem,
   deleteCartItem,
   clearCart,
+  clearCartAfterOrder,
   moveToSaved,
   moveToCart,
   removeFromSaved,
@@ -15,7 +16,8 @@ import {
   calculateTotals,
   clearError,
   setAuthStatus,
-  clearCartState
+  clearCartState,
+  resetOrderCompleted
 } from './cartSlice';
 
 export const useCart = () => {
@@ -37,34 +39,38 @@ export const useCart = () => {
 
   // Load cart items on mount if authenticated
   useEffect(() => {
-    if (cartState.isAuthenticated) {
+    if (cartState.isAuthenticated && !cartState.orderCompleted) {
       dispatch(fetchCartItems());
     }
-  }, [dispatch, cartState.isAuthenticated]);
+  }, [dispatch, cartState.isAuthenticated, cartState.orderCompleted]);
 
   // Calculate totals whenever items change
   useEffect(() => {
-    dispatch(calculateTotals());
-  }, [dispatch, cartState.items]);
+    if (!cartState.orderCompleted) {
+      dispatch(calculateTotals());
+    }
+  }, [dispatch, cartState.items, cartState.orderCompleted]);
 
   const addItemToCart = useCallback(async (cartData) => {
     try {
+      // Reset order completed flag when adding new items
+      if (cartState.orderCompleted) {
+        dispatch(resetOrderCompleted());
+      }
+
       console.log("Adding item to cart:", cartData);
       
       const result = await dispatch(addToCart(cartData)).unwrap();
       
       console.log("Add to cart result:", result);
       
-      // The cart will be automatically refreshed by the addToCart thunk
-      // Wait a bit for the refresh to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       
       return { success: true, data: result };
     } catch (error) {
       console.error("Add to cart error:", error);
       
-      if (error.includes('Please login')) {
-        // Redirect to login if not authenticated
+      if (error?.includes?.('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -72,9 +78,9 @@ export const useCart = () => {
           } 
         });
       }
-      return { success: false, error };
+      return { success: false, error: error?.message || error };
     }
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, cartState.orderCompleted]);
 
   const updateItemQuantity = useCallback(async (itemId, quantity) => {
     // Update locally first for immediate UI response
@@ -88,7 +94,7 @@ export const useCart = () => {
       return { success: true };
     } catch (error) {
       // Revert local change if API fails
-      if (error.includes('Please login')) {
+      if (error?.includes?.('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -98,7 +104,7 @@ export const useCart = () => {
       } else {
         dispatch(fetchCartItems()); // Reload from server
       }
-      return { success: false, error };
+      return { success: false, error: error?.message || error };
     }
   }, [dispatch, navigate]);
 
@@ -107,7 +113,7 @@ export const useCart = () => {
       await dispatch(deleteCartItem(itemId)).unwrap();
       return { success: true };
     } catch (error) {
-      if (error.includes('Please login')) {
+      if (error?.includes?.('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -115,16 +121,16 @@ export const useCart = () => {
           } 
         });
       }
-      return { success: false, error };
+      return { success: false, error: error?.message || error };
     }
   }, [dispatch, navigate]);
 
-  const clearAllItems = useCallback(async (cartId) => {
+  const clearAllItems = useCallback(async () => {
     try {
-      await dispatch(clearCart(cartId)).unwrap();
+      await dispatch(clearCart()).unwrap();
       return { success: true };
     } catch (error) {
-      if (error.includes('Please login')) {
+      if (error?.includes?.('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -132,9 +138,22 @@ export const useCart = () => {
           } 
         });
       }
-      return { success: false, error };
+      return { success: false, error: error?.message || error };
     }
   }, [dispatch, navigate]);
+
+  // NEW: Clear cart after successful order
+  const clearCartAfterSuccessfulOrder = useCallback(async () => {
+    try {
+      console.log("Clearing cart after successful order...");
+      await dispatch(clearCartAfterOrder()).unwrap();
+      return { success: true, message: 'Cart cleared after order' };
+    } catch (error) {
+      console.error("Error clearing cart after order:", error);
+      // Even if it fails, we still want to proceed
+      return { success: false, error: error?.message || error, message: 'Cart cleared locally' };
+    }
+  }, [dispatch]);
 
   const saveForLater = useCallback((itemId) => {
     dispatch(moveToSaved(itemId));
@@ -150,6 +169,7 @@ export const useCart = () => {
 
   const refreshCart = useCallback(() => {
     if (cartState.isAuthenticated) {
+      dispatch(resetOrderCompleted()); // Reset flag before refresh
       console.log("Refreshing cart...");
       dispatch(fetchCartItems());
     }
@@ -188,12 +208,14 @@ export const useCart = () => {
     discount: cartState.discount,
     total: cartState.total,
     isAuthenticated: cartState.isAuthenticated,
+    orderCompleted: cartState.orderCompleted,
     
     // Actions
     addItemToCart,
     updateItemQuantity,
     removeItem,
     clearAllItems,
+    clearCartAfterSuccessfulOrder,
     saveForLater,
     moveItemToCart,
     removeFromSavedItems,
@@ -205,6 +227,6 @@ export const useCart = () => {
     // Computed values
     itemCount: cartState.items.reduce((total, item) => total + item.quantity, 0),
     uniqueItemCount: cartState.items.length,
-    isEmpty: cartState.items.length === 0
+    isEmpty: cartState.items.length === 0 && !cartState.loading
   };
 };
