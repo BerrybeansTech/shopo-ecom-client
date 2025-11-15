@@ -11,6 +11,9 @@ export default function BlogCard({ className = "", datas }) {
     });
   };
 
+  // Use featuredImage from API response, fallback to bannerImage
+  const imageUrl = datas.featuredImage || datas.bannerImage;
+
   return (
     <div
       className={`blog-card-wrapper w-full border border-[#D3D3D3] ${className}`}
@@ -18,7 +21,7 @@ export default function BlogCard({ className = "", datas }) {
       <div className="img w-full h-[340px] overflow-hidden">
         <Link to={`/blogs/${datas.slug}`}>
           <img
-            src={datas.thumbnail_image}
+            src={imageUrl}
             alt={datas.title}
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
           />
@@ -64,7 +67,7 @@ export default function BlogCard({ className = "", datas }) {
               strokeLinejoin="round"
             />
           </svg>
-          <span>{formatDate(datas.date)}</span>
+          <span>{formatDate(datas.createdAt)}</span>
         </div>
 
         <Link to={`/blogs/${datas.slug}`}>
@@ -74,7 +77,7 @@ export default function BlogCard({ className = "", datas }) {
         </Link>
 
         <p className="text-qgraytwo text-[15px] leading-[30px] line-clamp-2 mb-3">
-          {datas.description}
+          {datas.shortDescription}
         </p>
 
         <Link to={`/blogs/${datas.slug}`}>

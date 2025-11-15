@@ -1,5 +1,6 @@
 // services/apiservice.js
-const BASE_URL = 'http://luxcycs.com:5501';
+// const BASE_URL = 'http://luxcycs.com:5501';
+const BASE_URL = 'http://localhost:3000';                                                                                                                                                                                       
 
 // Request deduplication cache
 const requestCache = new Map();
@@ -114,29 +115,29 @@ export const apiService = (() => {
   };
 
   // Public methods with deduplication
-  const get = (endpoint) => {
+  const get = (endpoint, options = {}) => {
     const key = `GET-${endpoint}`;
-    return deduplicateRequest(key, () => apiCall(endpoint));
+    return deduplicateRequest(key, () => apiCall(endpoint, options));
   };
 
-  const post = (endpoint, body) => {
+  const post = (endpoint, body, options = {}) => {
     const key = `POST-${endpoint}-${JSON.stringify(body)}`;
-    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'POST', body }));
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'POST', body, ...options }));
   };
 
-  const put = (endpoint, body) => {
+  const put = (endpoint, body, options = {}) => {
     const key = `PUT-${endpoint}-${JSON.stringify(body)}`;
-    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PUT', body }));
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PUT', body, ...options }));
   };
 
-  const patch = (endpoint, body) => {
+  const patch = (endpoint, body, options = {}) => {
     const key = `PATCH-${endpoint}-${JSON.stringify(body)}`;
-    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PATCH', body }));
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PATCH', body, ...options }));
   };
 
-  const del = (endpoint) => {
+  const del = (endpoint, options = {}) => {
     const key = `DELETE-${endpoint}`;
-    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'DELETE' }));
+    return deduplicateRequest(key, () => apiCall(endpoint, { method: 'DELETE', ...options }));
   };
 
   // Clear cache methods

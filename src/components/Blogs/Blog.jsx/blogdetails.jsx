@@ -1,28 +1,52 @@
 // src/components/Blogs/Blogdetails.jsx
 import { useParams, Link } from "react-router-dom";
-import blogData from "../../../data/blogs.json";
+import { useState, useEffect } from "react";
+import blogApi from "../Blog.jsx/blogApi";
 import PageTitle from "../../Helpers/PageTitle";
 import Layout from "../../Partials/Layout";
 
 export default function Blogdetails() {
   const { slug } = useParams();
-  const blog = blogData.blogs.find((b) => b.slug === slug);
+  const [blog, setBlog] = useState(null);
+  const [allBlogs, setAllBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 404 if blog not found
-  if (!blog) {
-    return (
-      <Layout>
-        <div className="container-x mx-auto py-20 text-center">
-          <h1 className="text-3xl font-bold text-qblack mb-4">
-            Blog Not Found
-          </h1>
-          <Link to="/blogs" className="text-qyellow hover:underline">
-            Back to Blogs
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
+  useEffect(() => {
+    const fetchBySlugOrId = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all blogs first (used for sidebar and to resolve slug)
+        const allResponse = await blogApi.getAllBlogs();
+        if (!allResponse.success) throw new Error("Failed to fetch all blogs");
+        const blogs = allResponse.data || [];
+        setAllBlogs(blogs);
+
+        // Try to resolve by slug first
+        let matched = blogs.find((b) => b.slug === slug);
+
+        // If not found and slug is numeric, try fetching by id
+        if (!matched && /^\d+$/.test(slug)) {
+          const blogResponse = await blogApi.getBlogById(slug);
+          if (blogResponse.success) matched = blogResponse.data;
+        }
+
+        if (matched) {
+          setBlog(matched);
+        } else {
+          setError("Blog not found");
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message || "Failed to load blog");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (slug) fetchBySlugOrId();
+  }, [slug]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -31,6 +55,35 @@ export default function Blogdetails() {
       day: "numeric",
     });
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container-x mx-auto py-20 text-center">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-qyellow"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // 404 if blog not found or error
+  if (error || !blog) {
+    return (
+      <Layout>
+        <div className="container-x mx-auto py-20 text-center">
+          <h1 className="text-3xl font-bold text-qblack mb-4">
+            {error ? "Error Loading Blog" : "Blog Not Found"}
+          </h1>
+          <Link to="/blogs" className="text-qyellow hover:underline">
+            Back to Blogs
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
@@ -52,60 +105,61 @@ export default function Blogdetails() {
               {/* Main Content */}
               <div className="flex-1">
                 {/* Banner Image */}
-                <div className="img w-full h-[457px] mb-6 overflow-hidden rounded">
-                  <img
-                    src={blog.banner_image}
-                    alt={blog.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                {blog.bannerImage && (
+                  <div className="img w-full h-[457px] mb-6 overflow-hidden rounded">
+                    <img
+                      src={blog.bannerImage}
+                      alt={blog.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
                 {/* Meta Info - Show only Date */}
-<div className="short-data flex items-center mb-3 space-x-2">
-  <svg
-    width="14"
-    height="13"
-    viewBox="0 0 14 13"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M0 2.81801C0.0698925 2.59859 0.108016 2.36327 0.212854 2.15974C0.571847 1.44423 1.16593 1.06263 1.9697 1.01811C2.19526 1.00539 2.424 1.01493 2.66544 1.01493C2.66544 0.852747 2.66544 0.700105 2.66544 0.550643C2.66544 0.229459 2.87512 0.00367645 3.17058 0.000496408C3.46603 0.000496408 3.67571 0.226279 3.67889 0.547463C3.67889 0.700105 3.67889 0.849567 3.67889 1.00857C4.44135 1.00857 5.1911 1.00857 5.9631 1.00857C5.9631 0.840027 5.95674 0.668305 5.9631 0.496583C5.97581 0.146778 6.30621 -0.0821846 6.63343 0.0291168C6.83358 0.0958976 6.97018 0.28034 6.97654 0.499763C6.98289 0.665125 6.97654 0.830487 6.97654 1.00539C7.74536 1.00539 8.50782 1.00539 9.28617 1.00539C9.28617 0.836847 9.27981 0.665125 9.28617 0.493402C9.30523 0.0958976 9.72776 -0.129885 10.0613 0.0799974C10.217 0.178579 10.2933 0.32168 10.2996 0.502943C10.3028 0.668305 10.2996 0.830487 10.2996 1.01493C10.4489 1.01493 10.5919 1.01811 10.7317 1.01493C11.0494 1.00857 11.3639 1.03083 11.6657 1.14531C12.4218 1.42515 12.9682 2.15974 12.9809 2.96747C12.9968 3.95647 12.9873 4.94864 12.9841 5.93763C12.9841 6.23019 12.7586 6.44962 12.479 6.44962C12.1931 6.44962 11.9738 6.22701 11.9738 5.92809C11.9707 4.98998 11.9738 4.04869 11.9738 3.11057C11.9738 2.67491 11.7959 2.34101 11.3988 2.14384C11.2845 2.0866 11.151 2.05162 11.0239 2.04526C10.7889 2.02936 10.5506 2.04208 10.2996 2.04208C10.2996 2.19472 10.2996 2.34737 10.2996 2.49683C10.2964 2.82755 10.0868 3.05651 9.78494 3.05333C9.48949 3.05015 9.28617 2.82437 9.28299 2.50001C9.28299 2.35373 9.28299 2.20426 9.28299 2.04844C8.51417 2.04844 7.75171 2.04844 6.97336 2.04844C6.97336 2.18836 6.97336 2.32511 6.97336 2.46503C6.97336 2.82119 6.77639 3.05333 6.46823 3.05333C6.16007 3.05651 5.95992 2.82437 5.95674 2.46821C5.95674 2.32829 5.95674 2.19154 5.95674 2.04526C5.19428 2.04526 4.44453 2.04526 3.67253 2.04526C3.67253 2.2138 3.67888 2.38553 3.67253 2.55407C3.65982 2.90387 3.32942 3.13284 3.00538 3.02471C2.80205 2.95793 2.66544 2.77031 2.66227 2.54135C2.65909 2.37917 2.66227 2.2138 2.66227 2.02618C2.36364 2.04208 2.07136 2.023 1.79497 2.07706C1.34066 2.15338 1.04203 2.55089 1.01662 3.02471C1.01344 3.05969 1.01662 3.09149 1.01662 3.12648C1.01662 5.71503 1.01662 8.30676 1.01662 10.8953C1.01662 11.3342 1.18817 11.6808 1.59164 11.8716C1.74731 11.9447 1.93157 11.9765 2.1063 11.9797C3.35484 11.9892 4.60019 11.9861 5.84873 11.9829C6.01393 11.9829 6.16007 12.0179 6.27761 12.1387C6.52224 12.3868 6.44599 12.8002 6.13148 12.9496C6.09335 12.9687 6.05523 12.9846 6.01711 13.0005C4.6129 13.0005 3.2087 13.0005 1.8045 13.0005C1.78543 12.9941 1.76637 12.9814 1.74731 12.9782C1.0325 12.8638 0.514663 12.479 0.203324 11.8302C0.108016 11.6331 0.0698925 11.4105 0.00317693 11.1974C0 8.40534 0 5.61327 0 2.81801Z"
-      fill="#FFBB38"
-    />
-  </svg>
-  <span className="text-base text-qgraytwo">{formatDate(blog.date)}</span>
-</div>
-
+                <div className="short-data flex items-center mb-3 space-x-2">
+                  <svg
+                    width="14"
+                    height="13"
+                    viewBox="0 0 14 13"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 2.81801C0.0698925 2.59859 0.108016 2.36327 0.212854 2.15974C0.571847 1.44423 1.16593 1.06263 1.9697 1.01811C2.19526 1.00539 2.424 1.01493 2.66544 1.01493C2.66544 0.852747 2.66544 0.700105 2.66544 0.550643C2.66544 0.229459 2.87512 0.00367645 3.17058 0.000496408C3.46603 0.000496408 3.67571 0.226279 3.67889 0.547463C3.67889 0.700105 3.67889 0.849567 3.67889 1.00857C4.44135 1.00857 5.1911 1.00857 5.9631 1.00857C5.9631 0.840027 5.95674 0.668305 5.9631 0.496583C5.97581 0.146778 6.30621 -0.0821846 6.63343 0.0291168C6.83358 0.0958976 6.97018 0.28034 6.97654 0.499763C6.98289 0.665125 6.97654 0.830487 6.97654 1.00539C7.74536 1.00539 8.50782 1.00539 9.28617 1.00539C9.28617 0.836847 9.27981 0.665125 9.28617 0.493402C9.30523 0.0958976 9.72776 -0.129885 10.0613 0.0799974C10.217 0.178579 10.2933 0.32168 10.2996 0.502943C10.3028 0.668305 10.2996 0.830487 10.2996 1.01493C10.4489 1.01493 10.5919 1.01811 10.7317 1.01493C11.0494 1.00857 11.3639 1.03083 11.6657 1.14531C12.4218 1.42515 12.9682 2.15974 12.9809 2.96747C12.9968 3.95647 12.9873 4.94864 12.9841 5.93763C12.9841 6.23019 12.7586 6.44962 12.479 6.44962C12.1931 6.44962 11.9738 6.22701 11.9738 5.92809C11.9707 4.98998 11.9738 4.04869 11.9738 3.11057C11.9738 2.67491 11.7959 2.34101 11.3988 2.14384C11.2845 2.0866 11.151 2.05162 11.0239 2.04526C10.7889 2.02936 10.5506 2.04208 10.2996 2.04208C10.2996 2.19472 10.2996 2.34737 10.2996 2.49683C10.2964 2.82755 10.0868 3.05651 9.78494 3.05333C9.48949 3.05015 9.28617 2.82437 9.28299 2.50001C9.28299 2.35373 9.28299 2.20426 9.28299 2.04844C8.51417 2.04844 7.75171 2.04844 6.97336 2.04844C6.97336 2.18836 6.97336 2.32511 6.97336 2.46503C6.97336 2.82119 6.77639 3.05333 6.46823 3.05333C6.16007 3.05651 5.95992 2.82437 5.95674 2.46821C5.95674 2.32829 5.95674 2.19154 5.95674 2.04526C5.19428 2.04526 4.44453 2.04526 3.67253 2.04526C3.67253 2.2138 3.67888 2.38553 3.67253 2.55407C3.65982 2.90387 3.32942 3.13284 3.00538 3.02471C2.80205 2.95793 2.66544 2.77031 2.66227 2.54135C2.65909 2.37917 2.66227 2.2138 2.66227 2.02618C2.36364 2.04208 2.07136 2.023 1.79497 2.07706C1.34066 2.15338 1.04203 2.55089 1.01662 3.02471C1.01344 3.05969 1.01662 3.09149 1.01662 3.12648C1.01662 5.71503 1.01662 8.30676 1.01662 10.8953C1.01662 11.3342 1.18817 11.6808 1.59164 11.8716C1.74731 11.9447 1.93157 11.9765 2.1063 11.9797C3.35484 11.9892 4.60019 11.9861 5.84873 11.9829C6.01393 11.9829 6.16007 12.0179 6.27761 12.1387C6.52224 12.3868 6.44599 12.8002 6.13148 12.9496C6.09335 12.9687 6.05523 12.9846 6.01711 13.0005C4.6129 13.0005 3.2087 13.0005 1.8045 13.0005C1.78543 12.9941 1.76637 12.9814 1.74731 12.9782C1.0325 12.8638 0.514663 12.479 0.203324 11.8302C0.108016 11.6331 0.0698925 11.4105 0.00317693 11.1974C0 8.40534 0 5.61327 0 2.81801Z"
+                      fill="#FFBB38"
+                    />
+                  </svg>
+                  <span className="text-base text-qgraytwo">{formatDate(blog.createdAt)}</span>
+                </div>
 
                 {/* Title */}
                 <h1 className="text-[22px] text-qblack font-semibold line-clamp-2 mb-4 capitalize">
                   {blog.title}
                 </h1>
 
-                {/* Description */}
+                {/* Short Description */}
+                {blog.shortDescription && (
+                  <p className="text-qgraytwo text-[15px] leading-[30px] mb-4">
+                    {blog.shortDescription}
+                  </p>
+                )}
+
+                {/* Main Content */}
                 <div
                   className="prose max-w-none text-qgraytwo text-[15px] leading-[30px] mb-10 prose-headings:text-qblack prose-img:rounded-lg prose-a:text-qyellow prose-a:underline hover:prose-a:text-qblack"
-                  dangerouslySetInnerHTML={{ __html: blog.description }}
+                  dangerouslySetInnerHTML={{ __html: blog.content }}
                 ></div>
 
-                {/* Extra Images */}
-                <div className="w-full sm:flex sm:space-x-[30px] mb-10">
-                  <div className="sm:w-[370px] h-[235px] mb-4 sm:mb-0">
+                {/* Featured Image - Show if different from banner */}
+                {blog.featuredImage && blog.featuredImage !== blog.bannerImage && (
+                  <div className="w-full h-[400px] mb-10">
                     <img
-                      src={blog.thumbnail_image}
+                      src={blog.featuredImage}
                       alt={blog.title}
                       className="w-full h-full object-cover rounded"
                     />
                   </div>
-                  <div className="flex-1 h-[235px]">
-                    <img
-                      src={blog.banner_image}
-                      alt={blog.title}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Sidebar - Latest Posts */}
@@ -116,21 +170,23 @@ export default function Blogdetails() {
                   </h1>
                   <div className="w-full h-[1px] bg-[#DCDCDC] mb-5"></div>
                   <ul className="flex flex-col space-y-5">
-                    {blogData.blogs
-                      .filter((b) => b.id !== blog.id)
+                    {allBlogs
+                      .filter((b) => b.slug !== slug)
                       .slice(0, 3)
                       .map((b) => (
                         <li
                           key={b.id}
                           className="flex space-x-5 items-center h-[95px]"
                         >
-                          <div className="w-[85px] h-full overflow-hidden rounded">
-                            <img
-                              src={b.thumbnail_image}
-                              alt={b.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          {(b.featuredImage || b.bannerImage) && (
+                            <div className="w-[85px] h-full overflow-hidden rounded">
+                              <img
+                                src={b.featuredImage || b.bannerImage}
+                                alt={b.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
                           <div className="flex-1 h-full flex flex-col justify-between">
                             <Link
                               to={`/blogs/${b.slug}`}
@@ -146,7 +202,6 @@ export default function Blogdetails() {
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
                               >
-                                {/* Calendar icon path */}
                                 <path
                                   d="M0 2.81801C0.0698925 2.59859 0.108016 2.36327 0.212854 2.15974C0.571847 1.44423 1.16593 1.06263 1.9697 1.01811C2.19526 1.00539 2.424 1.01493 2.66544 1.01493C2.66544 0.852747 2.66544 0.700105 2.66544 0.550643C2.66544 0.229459 2.87512 0.00367645 3.17058 0.000496408C3.46603 0.000496408 3.67571 0.226279 3.67889 0.547463C3.67889 0.700105 3.67889 0.849567 3.67889 1.00857C4.44135 1.00857 5.1911 1.00857 5.9631 1.00857C5.9631 0.840027 5.95674 0.668305 5.9631 0.496583C5.97581 0.146778 6.30621 -0.0821846 6.63343 0.0291168C6.83358 0.0958976 6.97018 0.28034 6.97654 0.499763C6.98289 0.665125 6.97654 0.830487 6.97654 1.00539C7.74536 1.00539 8.50782 1.00539 9.28617 1.00539C9.28617 0.836847 9.27981 0.665125 9.28617 0.493402C9.30523 0.0958976 9.72776 -0.129885 10.0613 0.0799974C10.217 0.178579 10.2933 0.32168 10.2996 0.502943C10.3028 0.668305 10.2996 0.830487 10.2996 1.01493C10.4489 1.01493 10.5919 1.01811 10.7317 1.01493C11.0494 1.00857 11.3639 1.03083 11.6657 1.14531C12.4218 1.42515 12.9682 2.15974 12.9809 2.96747C12.9968 3.95647 12.9873 4.94864 12.9841 5.93763C12.9841 6.23019 12.7586 6.44962 12.479 6.44962C12.1931 6.44962 11.9738 6.22701 11.9738 5.92809C11.9707 4.98998 11.9738 4.04869 11.9738 3.11057C11.9738 2.67491 11.7959 2.34101 11.3988 2.14384C11.2845 2.0866 11.151 2.05162 11.0239 2.04526C10.7889 2.02936 10.5506 2.04208 10.2996 2.04208C10.2996 2.19472 10.2996 2.34737 10.2996 2.49683C10.2964 2.82755 10.0868 3.05651 9.78494 3.05333C9.48949 3.05015 9.28617 2.82437 9.28299 2.50001C9.28299 2.35373 9.28299 2.20426 9.28299 2.04844C8.51417 2.04844 7.75171 2.04844 6.97336 2.04844C6.97336 2.18836 6.97336 2.32511 6.97336 2.46503C6.97336 2.82119 6.77639 3.05333 6.46823 3.05333C6.16007 3.05651 5.95992 2.82437 5.95674 2.46821C5.95674 2.32829 5.95674 2.19154 5.95674 2.04526C5.19428 2.04526 4.44453 2.04526 3.67253 2.04526C3.67253 2.2138 3.67888 2.38553 3.67253 2.55407C3.65982 2.90387 3.32942 3.13284 3.00538 3.02471C2.80205 2.95793 2.66544 2.77031 2.66227 2.54135C2.65909 2.37917 2.66227 2.2138 2.66227 2.02618C2.36364 2.04208 2.07136 2.023 1.79497 2.07706C1.34066 2.15338 1.04203 2.55089 1.01662 3.02471C1.01344 3.05969 1.01662 3.09149 1.01662 3.12648C1.01662 5.71503 1.01662 8.30676 1.01662 10.8953C1.01662 11.3342 1.18817 11.6808 1.59164 11.8716C1.74731 11.9447 1.93157 11.9765 2.1063 11.9797C3.35484 11.9892 4.60019 11.9861 5.84873 11.9829C6.01393 11.9829 6.16007 12.0179 6.27761 12.1387C6.52224 12.3868 6.44599 12.8002 6.13148 12.9496C6.09335 12.9687 6.05523 12.9846 6.01711 13.0005C4.6129 13.0005 3.2087 13.0005 1.8045 13.0005C1.78543 12.9941 1.76637 12.9814 1.74731 12.9782C1.0325 12.8638 0.514663 12.479 0.203324 11.8302C0.108016 11.6331 0.0698925 11.4105 0.00317693 11.1974C0 8.40534 0 5.61327 0 2.81801Z"
                                   fill="#FFBB38"
@@ -157,7 +212,7 @@ export default function Blogdetails() {
                                 />
                               </svg>
                               <span className="text-sm text-qgraytwo">
-                                {formatDate(b.date)}
+                                {formatDate(b.createdAt)}
                               </span>
                             </div>
                           </div>
