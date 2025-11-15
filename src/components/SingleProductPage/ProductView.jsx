@@ -8,6 +8,7 @@ export default function ProductView({ product, className, reportHandler }) {
   // Add state for add to cart feedback
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addToCartSuccess, setAddToCartSuccess] = useState(false);
+  const [userMessage, setUserMessage] = useState(""); // For showing messages to user
 
   // Transform API product data to handle inventory structure
   const transformedProduct = useMemo(() => {
@@ -168,70 +169,6 @@ export default function ProductView({ product, className, reportHandler }) {
     };
   }, [transformedProduct, quantity]);
 
-  // Initialize states when product changes
-  useEffect(() => {
-    if (transformedProduct) {
-      setMainImage(transformedProduct.images[0] || null);
-      
-      // Auto-select first available color
-      if (transformedProduct.colors.length > 0) {
-        const firstColor = transformedProduct.colors[0];
-        setSelectedColorId(firstColor.id);
-        console.log("Auto-selected color:", firstColor);
-      }
-    }
-  }, [transformedProduct]);
-
-  // Update available sizes when color changes
-  useEffect(() => {
-    if (transformedProduct && selectedColorId) {
-      const availableSizesForColor = transformedProduct.sizes.filter(
-        size => !size.colorId || size.colorId === selectedColorId
-      );
-      
-      if (selectedSizeId && !availableSizesForColor.find(size => size.id === selectedSizeId)) {
-        if (availableSizesForColor.length > 0) {
-          setSelectedSizeId(availableSizesForColor[0].id);
-        } else {
-          setSelectedSizeId(null);
-        }
-      } else if (!selectedSizeId && availableSizesForColor.length > 0) {
-        setSelectedSizeId(availableSizesForColor[0].id);
-      }
-    }
-  }, [selectedColorId, transformedProduct, selectedSizeId]);
-
-  // Reset success message after 3 seconds
-  useEffect(() => {
-    if (addToCartSuccess) {
-      const timer = setTimeout(() => {
-        setAddToCartSuccess(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [addToCartSuccess]);
-
-  // Fetch reviews with better error handling
-  useEffect(() => {
-    const fetchReviews = async () => {
-      if (!product?.id) return;
-      
-      setReviewsLoading(true);
-      try {
-        const response = await reviewApi.getByProduct(product.id);
-        const reviewsData = response.data || response || [];
-        setReviews(Array.isArray(reviewsData) ? reviewsData : []);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
-        setReviews([]);
-      } finally {
-        setReviewsLoading(false);
-      }
-    };
-
-    fetchReviews();
-  }, [product?.id]);
-
   // Get selected color and size objects
   const selectedColor = useMemo(() => {
     return transformedProduct?.colors.find(color => color.id === selectedColorId) || null;
@@ -270,22 +207,106 @@ export default function ProductView({ product, className, reportHandler }) {
 
   // Get available sizes for selected color
   const availableSizesForSelectedColor = useMemo(() => {
-    if (!transformedProduct || !selectedColorId) return [];
+    if (!transformedProduct || !selectedColorId) return transformedProduct?.sizes || [];
     
     return transformedProduct.sizes.filter(
       size => !size.colorId || size.colorId === selectedColorId
     );
   }, [transformedProduct, selectedColorId]);
 
+  // Check if both color and size are selected
+  const isOptionsSelected = useMemo(() => {
+    return selectedColorId && selectedSizeId;
+  }, [selectedColorId, selectedSizeId]);
+
+  // Stock status variables
+  const isOutOfStock = currentStock === 0;
+  const isLowStock = currentStock > 0 && currentStock < 10;
+
+  // Check if add to cart button should be disabled
+  const isAddToCartDisabled = useMemo(() => {
+    return isOutOfStock || !isOptionsSelected || isAddingToCart;
+  }, [isOutOfStock, isOptionsSelected, isAddingToCart]);
+
+  // Initialize states when product changes - REMOVED AUTO-SELECTION
+  useEffect(() => {
+    if (transformedProduct) {
+      setMainImage(transformedProduct.images[0] || null);
+      
+      // REMOVED: Auto-selection of first color and size
+      // Let user manually select both color and size
+      setSelectedColorId(null);
+      setSelectedSizeId(null);
+      setQuantity(1);
+    }
+  }, [transformedProduct]);
+
+  // Update available sizes when color changes
+  useEffect(() => {
+    if (transformedProduct && selectedColorId) {
+      const availableSizesForColor = transformedProduct.sizes.filter(
+        size => !size.colorId || size.colorId === selectedColorId
+      );
+      
+      // Reset size selection when color changes
+      setSelectedSizeId(null);
+      
+      console.log("Available sizes for selected color:", availableSizesForColor);
+    }
+  }, [selectedColorId, transformedProduct]);
+
+  // Reset success message after 3 seconds
+  useEffect(() => {
+    if (addToCartSuccess) {
+      const timer = setTimeout(() => {
+        setAddToCartSuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [addToCartSuccess]);
+
+  // Reset user message after 5 seconds
+  useEffect(() => {
+    if (userMessage) {
+      const timer = setTimeout(() => {
+        setUserMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [userMessage]);
+
+  // Fetch reviews with better error handling
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!product?.id) return;
+      
+      setReviewsLoading(true);
+      try {
+        const response = await reviewApi.getByProduct(product.id);
+        const reviewsData = response.data || response || [];
+        setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        setReviews([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [product?.id]);
+
   // Handlers
   const handleColorChange = (colorId) => {
     console.log("Color changed to:", colorId);
     setSelectedColorId(colorId);
+    setUserMessage(""); // Clear any previous messages
   };
 
   const handleSizeChange = (sizeId) => {
     console.log("Size changed to:", sizeId);
     setSelectedSizeId(sizeId);
+    setUserMessage(""); // Clear any previous messages
   };
 
   const increment = () => {
@@ -329,21 +350,34 @@ export default function ProductView({ product, className, reportHandler }) {
     }
   };
 
+  // Handle disabled button click
+  const handleDisabledButtonClick = () => {
+    if (!selectedColorId && !selectedSizeId) {
+      setUserMessage("⚠️ Please select both color and size to continue");
+    } else if (!selectedColorId) {
+      setUserMessage("⚠️ Please select a color first");
+    } else if (!selectedSizeId) {
+      setUserMessage("⚠️ Please select a size first");
+    } else if (isOutOfStock) {
+      setUserMessage("❌ This combination is out of stock. Please choose different options.");
+    }
+  };
+
   // FIXED Add to Cart function with proper feedback
   const handleAddToCart = async () => {
     // Validation
     if (!selectedColor || !selectedSize) {
-      alert("⚠️ Please select both color and size");
+      setUserMessage("⚠️ Please select both color and size");
       return;
     }
 
     if (currentStock === 0) {
-      alert("❌ Selected combination is out of stock");
+      setUserMessage("❌ Selected combination is out of stock");
       return;
     }
 
     if (quantity > currentStock) {
-      alert(`⚠️ Only ${currentStock} items available in stock`);
+      setUserMessage(`⚠️ Only ${currentStock} items available in stock`);
       return;
     }
 
@@ -354,18 +388,19 @@ export default function ProductView({ product, className, reportHandler }) {
         selectedSizeName: selectedSize.name,
         availableInventories: transformedProduct.inventories
       });
-      alert("❌ Selected combination not available in inventory");
+      setUserMessage("❌ Selected combination not available in inventory");
       return;
     }
 
     // Validate inventory has required IDs
     if (!matchingInventory.productColor?.id || !matchingInventory.productSize?.id) {
       console.error("Inventory missing required IDs:", matchingInventory);
-      alert("❌ Invalid inventory configuration");
+      setUserMessage("❌ Invalid inventory configuration");
       return;
     }
 
     setIsAddingToCart(true);
+    setUserMessage(""); // Clear previous messages
 
     try {
       // Prepare cart data with correct structure
@@ -384,8 +419,8 @@ export default function ProductView({ product, className, reportHandler }) {
       if (result.success) {
         setAddToCartSuccess(true);
         
-        // Show success message
-        alert(`✅ Successfully added to cart!`);
+        // Show success alert
+        alert("✅ Successfully added to cart!");
         
         // Refresh cart to get updated data
         await refreshCart();
@@ -438,9 +473,6 @@ export default function ProductView({ product, className, reportHandler }) {
       thumbnailRef.current.scrollBy({ top: 120, behavior: "smooth" });
     }
   };
-
-  const isOutOfStock = currentStock === 0;
-  const isLowStock = currentStock > 0 && currentStock < 10;
 
   if (!transformedProduct) {
     return <div className="text-center py-10">Loading product...</div>;
@@ -559,41 +591,52 @@ export default function ProductView({ product, className, reportHandler }) {
             </p>
           </div>
 
-          {/* Color Selection */}
-          {transformedProduct.colors.length > 0 && (
-            <div className="colors mb-[30px]">
-              <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
-                COLOR
-              </span>
-              <div className="flex space-x-4 items-center">
-                {transformedProduct.colors.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => handleColorChange(color.id)}
-                    className={`px-4 py-2 border rounded transition-all duration-200 ${
-                      selectedColorId === color.id
-                        ? "border-black bg-black text-white shadow-md"
-                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500"
-                    } ${
-                      color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
-                    }`}
-                    disabled={color.totalStock === 0}
-                    title={color.totalStock === 0 ? "Out of stock" : color.name}
-                  >
-                    {color.name}
-                    {color.totalStock === 0 && " (X)"}
-                  </button>
-                ))}
-              </div>
+          {/* User Message Display */}
+          {userMessage && (
+            <div className={`mb-4 p-3 rounded text-sm font-medium ${
+              userMessage.includes('✅') 
+                ? 'bg-green-100 text-green-800 border border-green-300' 
+                : userMessage.includes('❌')
+                ? 'bg-red-100 text-red-800 border border-red-300'
+                : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+            }`}>
+              {userMessage}
             </div>
           )}
 
+          {/* Color Selection */}
+          <div className="colors mb-[30px]">
+            <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
+              COLOR
+            </span>
+            <div className="flex space-x-4 items-center">
+              {transformedProduct.colors.map((color) => (
+                <button
+                  key={color.id}
+                  onClick={() => handleColorChange(color.id)}
+                  className={`px-4 py-2 border rounded transition-all duration-200 ${
+                    selectedColorId === color.id
+                      ? "border-black bg-black text-white shadow-md transform scale-105"
+                      : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
+                  } ${
+                    color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
+                  }`}
+                  disabled={color.totalStock === 0}
+                  title={color.totalStock === 0 ? "Out of stock" : `Select ${color.name}`}
+                >
+                  {color.name}
+                  {color.totalStock === 0 && " (X)"}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Size Selection */}
-          {availableSizesForSelectedColor.length > 0 && (
-            <div className="product-size mb-[30px]">
-              <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
-                SIZE
-              </span>
+          <div className="product-size mb-[30px]">
+            <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
+              SIZE
+            </span>
+            {selectedColorId ? (
               <div className="flex flex-wrap gap-2">
                 {availableSizesForSelectedColor.map((size) => (
                   <button
@@ -601,46 +644,66 @@ export default function ProductView({ product, className, reportHandler }) {
                     onClick={() => handleSizeChange(size.id)}
                     className={`px-4 py-2 border rounded min-w-[50px] text-center transition-all duration-200 ${
                       selectedSizeId === size.id
-                        ? "border-black bg-black text-white shadow-md"
-                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500"
+                        ? "border-black bg-black text-white shadow-md transform scale-105"
+                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
                     } ${
                       size.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
                     }`}
                     disabled={size.totalStock === 0}
-                    title={size.totalStock === 0 ? "Out of stock" : size.name}
+                    title={size.totalStock === 0 ? "Out of stock" : `Select ${size.name}`}
                   >
                     {size.name}
                     {size.totalStock === 0 && " (X)"}
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Stock Status */}
-          <div className="mb-4">
-            {isOutOfStock ? (
-              <p className="text-red-600 font-semibold">Out of Stock</p>
-            ) : isLowStock ? (
-              <p className="text-orange-600 font-semibold">
-                Only {currentStock} left in stock!
-              </p>
             ) : (
-              <p className="text-green-600 font-semibold">
-                In Stock ({currentStock} available)
-              </p>
+              <div className="flex flex-wrap gap-2">
+                {transformedProduct.sizes.map((size) => (
+                  <button
+                    key={size.id}
+                    className="px-4 py-2 border border-gray-300 rounded min-w-[50px] text-center bg-gray-100 text-gray-400 cursor-not-allowed"
+                    disabled
+                    title="Please select a color first"
+                  >
+                    {size.name}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
+          {/* Stock Status - Only show when both options are selected */}
+          {isOptionsSelected && (
+            <div className="mb-4">
+              {isOutOfStock ? (
+                <p className="text-red-600 font-semibold">Out of Stock</p>
+              ) : isLowStock ? (
+                <p className="text-orange-600 font-semibold">
+                  Only {currentStock} left in stock!
+                </p>
+              ) : (
+                <p className="text-green-600 font-semibold">
+                  In Stock ({currentStock} available)
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Selected Combination Info */}
           {(selectedColor || selectedSize) && (
-            <div className="mb-4 p-3 bg-gray-50 rounded">
-              <p className="text-sm text-qblack">
-                Selected:{" "}
-                {selectedColor && <span className="font-semibold">{selectedColor.name}</span>}
+            <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+              <p className="text-sm text-qblack font-medium">
+                Selected Combination:{" "}
+                {selectedColor && <span className="font-semibold text-blue-600">{selectedColor.name}</span>}
                 {selectedColor && selectedSize && " - "}
-                {selectedSize && <span className="font-semibold">{selectedSize.name}</span>}
+                {selectedSize && <span className="font-semibold text-blue-600">{selectedSize.name}</span>}
               </p>
+              {isOptionsSelected && currentStock > 0 && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ Ready to add to cart
+                </p>
+              )}
             </div>
           )}
 
@@ -652,7 +715,7 @@ export default function ProductView({ product, className, reportHandler }) {
                   onClick={decrement}
                   type="button"
                   className="text-base text-gray-600 hover:text-black transition-colors"
-                  disabled={isOutOfStock || isAddingToCart}
+                  disabled={isOutOfStock || isAddingToCart || !isOptionsSelected}
                 >
                   -
                 </button>
@@ -663,13 +726,13 @@ export default function ProductView({ product, className, reportHandler }) {
                   min="1"
                   max={currentStock}
                   className="w-12 text-center border-none outline-none text-black bg-transparent"
-                  disabled={isOutOfStock || isAddingToCart}
+                  disabled={isOutOfStock || isAddingToCart || !isOptionsSelected}
                 />
                 <button
                   onClick={increment}
                   type="button"
                   className="text-base text-gray-600 hover:text-black transition-colors"
-                  disabled={isOutOfStock || quantity >= currentStock || isAddingToCart}
+                  disabled={isOutOfStock || quantity >= currentStock || isAddingToCart || !isOptionsSelected}
                 >
                   +
                 </button>
@@ -680,22 +743,19 @@ export default function ProductView({ product, className, reportHandler }) {
             <div className="flex flex-1 w-full sm:w-auto gap-3">
               <button
                 type="button"
-                onClick={handleAddToCart}
+                onClick={isAddToCartDisabled ? handleDisabledButtonClick : handleAddToCart}
                 className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded flex items-center justify-center gap-2 ${
-                  isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart
+                  isAddToCartDisabled
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-800 text-white hover:bg-gray-700"
+                    : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer transform hover:scale-105 transition-transform"
                 }`}
-                disabled={isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart}
               >
                 {isAddingToCart ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Adding...
                   </>
-                ) : isOutOfStock ? (
-                  "Out of Stock"
-                ) : !selectedColorId || !selectedSizeId ? (
+                ) : !isOptionsSelected ? (
                   "Select Options"
                 ) : (
                   `Add To Cart`
@@ -704,17 +764,115 @@ export default function ProductView({ product, className, reportHandler }) {
 
               <button
                 type="button"
-                onClick={handleBuyNow}
+                onClick={isAddToCartDisabled ? handleDisabledButtonClick : handleBuyNow}
                 className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded ${
-                  isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart
+                  isAddToCartDisabled
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-black text-white hover:bg-gray-800"
+                    : "bg-black text-white hover:bg-gray-800 cursor-pointer transform hover:scale-105 transition-transform"
                 }`}
-                disabled={isOutOfStock || !selectedColorId || !selectedSizeId || isAddingToCart}
               >
                 Buy Now
               </button>
             </div>
+          </div>
+
+          {/* Product Details */}
+          <div className="product-details-section mb-[20px] p-4 bg-white border border-gray-300 rounded">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setShowProductDetails(!showProductDetails)}
+            >
+              <h3 className="text-lg font-semibold text-black">Product Details</h3>
+              <span className="text-2xl font-bold">
+                {showProductDetails ? "−" : "+"}
+              </span>
+            </div>
+            {showProductDetails && (
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex">
+                  <span className="text-gray-600 w-1/3">Fabric:</span>
+                  <span className="text-black font-medium">
+                    {transformedProduct.specifications.fabric}
+                  </span>
+                </div>
+                <div className="flex">
+                  <span className="text-gray-600 w-1/3">Fit Type:</span>
+                  <span className="text-black font-medium">
+                    {transformedProduct.specifications.fitType}
+                  </span>
+                </div>
+                <div className="flex">
+                  <span className="text-gray-600 w-1/3">Occasion:</span>
+                  <span className="text-black font-medium">
+                    {transformedProduct.specifications.occasion}
+                  </span>
+                </div>
+                <div className="flex">
+                  <span className="text-gray-600 w-1/3">Care:</span>
+                  <span className="text-black font-medium">
+                    {transformedProduct.specifications.careInstructions}
+                  </span>
+                </div>
+                {transformedProduct.specifications.description && (
+                  <div className="mt-2">
+                    <p className="text-black">
+                      {transformedProduct.specifications.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Reviews Section */}
+          <div className="reviews-section mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-black">
+                Customer Reviews
+              </h3>
+              <button
+                onClick={() => setShowReviews(!showReviews)}
+                className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+              >
+                Write Review
+              </button>
+            </div>
+
+            {reviewsLoading ? (
+              <p className="text-gray-500">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-gray-500">No reviews yet. Be the first to review!</p>
+            ) : (
+              <div className="space-y-4">
+                {reviews.slice(0, visibleReviews).map((review) => (
+                  <div
+                    key={review.id}
+                    className="p-4 border border-gray-300 rounded-lg"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold">{review.user?.name || 'Anonymous'}</span>
+                        <span className="text-yellow-500">
+                          {'★'.repeat(review.rating)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-black">{review.comment}</p>
+                  </div>
+                ))}
+                {reviews.length > visibleReviews && (
+                  <button
+                    onClick={() => setVisibleReviews(prev => prev + 2)}
+                    className="text-blue-600 hover:underline text-sm font-medium"
+                  >
+                    Load More Reviews
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
