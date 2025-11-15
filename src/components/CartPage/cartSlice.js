@@ -1,4 +1,3 @@
-// features/cart/cartSlice.js - FIXED VERSION
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { cartApi } from './cartApi';
 
@@ -153,7 +152,18 @@ const cartSlice = createSlice({
     },
     setAuthStatus: (state, action) => {
       state.isAuthenticated = action.payload;
+      
+      // FIXED: Clear cart when auth status changes to false (logout)
+      if (!action.payload) {
+        state.items = [];
+        state.savedItems = [];
+        state.subtotal = 0;
+        state.discount = 0;
+        state.total = 0;
+        state.error = null;
+      }
     },
+    // FIXED: Renamed and enhanced to be called explicitly on logout
     clearCartState: (state) => {
       state.items = [];
       state.savedItems = [];
@@ -161,6 +171,9 @@ const cartSlice = createSlice({
       state.discount = 0;
       state.total = 0;
       state.error = null;
+      state.isAuthenticated = false;
+      state.loading = false;
+      state.lastAction = null;
     }
   },
   extraReducers: (builder) => {
@@ -182,6 +195,8 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
+        // FIXED: Clear cart items on authentication failure
+        state.items = [];
       })
       
       // Add to Cart - FIXED: No longer manually updates state, waits for fetchCartItems

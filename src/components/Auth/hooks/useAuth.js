@@ -30,6 +30,9 @@ import {
   setMessage,
 } from '../authSlice';
 
+// FIXED: Import cart actions
+import { clearCartState, setAuthStatus } from '../../CartPage/cartSlice';
+
 export const useAuth = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -124,6 +127,10 @@ export const useAuth = () => {
           accessToken: response.data.accessToken,
           message: response.message,
         }));
+        
+        // FIXED: Set cart auth status after successful registration
+        dispatch(setAuthStatus(true));
+        
         return { success: true, data: response };
       } else {
         dispatch(setError(response.message || 'Registration failed'));
@@ -150,6 +157,10 @@ export const useAuth = () => {
           accessToken: response.accessToken,
           message: response.message,
         }));
+        
+        // FIXED: Set cart auth status after successful login
+        dispatch(setAuthStatus(true));
+        
         return { success: true, data: response };
       } else {
         dispatch(setError(response.message || 'Login failed'));
@@ -176,6 +187,10 @@ export const useAuth = () => {
           accessToken: response.accessToken,
           message: response.message,
         }));
+        
+        // FIXED: Set cart auth status after successful login
+        dispatch(setAuthStatus(true));
+        
         return { success: true, data: response };
       } else {
         dispatch(setError(response.message || 'Login failed'));
@@ -202,6 +217,10 @@ export const useAuth = () => {
           accessToken: response.accessToken,
           message: response.message,
         }));
+        
+        // FIXED: Set cart auth status after successful login
+        dispatch(setAuthStatus(true));
+        
         return { success: true, data: response };
       } else {
         dispatch(setError(response.message || 'Login failed'));
@@ -282,7 +301,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  // FIXED: Reset Password Handler
   const handleResetPassword = useCallback(async (phone, newPassword, resetToken) => {
     try {
       dispatch(setLoading(true));
@@ -327,6 +345,7 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
+  // FIXED: Enhanced logout to clear cart state
   const handleLogout = useCallback(async (token = null) => {
     try {
       dispatch(setLoading(true));
@@ -343,9 +362,16 @@ export const useAuth = () => {
         }
       }
 
+      // FIXED: Clear auth state
       dispatch(logout());
       
-      console.log("Client-side logout successful");
+      // FIXED: Clear cart state explicitly
+      dispatch(clearCartState());
+      
+      // FIXED: Set cart auth status to false
+      dispatch(setAuthStatus(false));
+      
+      console.log("Client-side logout successful, cart cleared");
       
       navigate('/login', { 
         replace: true,
@@ -360,7 +386,11 @@ export const useAuth = () => {
     } catch (error) {
       console.error("Logout error:", error);
       
+      // Still clear state even on error
       dispatch(logout());
+      dispatch(clearCartState());
+      dispatch(setAuthStatus(false));
+      
       navigate('/login', { replace: true });
       
       return { 

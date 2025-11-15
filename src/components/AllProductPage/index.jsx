@@ -15,6 +15,7 @@ import ProductsFilter from "./ProductsFilter";
 import { useProducts } from "./hooks/useProducts";
 import { useCart } from "../CartPage/useCart";
 import { productApi } from "./productApi";
+import { updateWishlist } from "../../services/wishlistApi";
 
 export default function AllProductPage({ type = 1 }) {
   const { addItemToCart } = useCart();
@@ -852,7 +853,18 @@ const filteredProducts = useMemo(() => {
                               }}
                             />
 
-                            <button className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 z-10">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await updateWishlist(product.id);
+                                  alert('Product added to wishlist!');
+                                } catch (error) {
+                                  console.error('Error updating wishlist:', error);
+                                  alert('Failed to add to wishlist');
+                                }
+                              }}
+                              className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 z-10"
+                            >
                               <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 hover:text-red-500 hover:fill-red-500 transition-colors" />
                             </button>
 
