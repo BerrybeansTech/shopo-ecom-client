@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// components/Checkout/ThankYouPopup.js
+import React from 'react';
 import { Check, Download, Share2, Home, ShoppingBag, MapPin, Shield, Star, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -8,23 +9,6 @@ export default function ThankYouPopup({
   orderDetails,
   onContinueShopping 
 }) {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    if (isOpen) {
-      setProgress(0);
-      const timer = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(timer);
-            return 100;
-          }
-          return prev + 20;
-        });
-      }, 200);
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
@@ -57,7 +41,7 @@ export default function ThankYouPopup({
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Order Number</p>
-                <p className="font-semibold text-black">{orderDetails?.orderId}</p>
+                <p className="font-semibold text-black">{orderDetails?.orderId || orderDetails?.apiResponse?.id}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Total Amount</p>
@@ -75,21 +59,26 @@ export default function ThankYouPopup({
                 {orderDetails?.items?.map((item) => (
                   <div key={item.id} className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
                     <img 
-                      src={item.image} 
-                      alt={item.name}
+                      src={item.product?.thumbnailImage || item.image} 
+                      alt={item.product?.name || item.name}
                       className="w-12 h-12 rounded object-cover border border-gray-200"
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-black text-sm truncate">{item.name}</h4>
-                      <p className="text-gray-600 text-xs">{item.color} • Size: {item.size}</p>
-                      <p className="font-semibold text-black text-sm">₹{item.price}</p>
+                      <h4 className="font-medium text-black text-sm truncate">{item.product?.name || item.name}</h4>
+                      <p className="text-gray-600 text-xs">
+                        {item.productColorVariationId ? `Color: ${item.productColorVariationId}` : ''}
+                        {item.productSizeVariationId ? ` • Size: ${item.productSizeVariationId}` : ''}
+                      </p>
+                      <p className="font-semibold text-black text-sm">
+                        ₹{(item.product?.sellingPrice || item.price) * item.quantity}
+                      </p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center space-x-1 justify-end">
                         <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
                         <span className="font-medium text-black text-xs">Confirmed</span>
                       </div>
-                      <p className="text-gray-600 text-xs mt-1">Qty: {item.qty}</p>
+                      <p className="text-gray-600 text-xs mt-1">Qty: {item.quantity}</p>
                     </div>
                   </div>
                 ))}
