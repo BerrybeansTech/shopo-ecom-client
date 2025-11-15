@@ -1,5 +1,6 @@
 // services/apiService.js
-const BASE_URL = 'http://luxcycs.com:5501';
+// const BASE_URL = 'http://luxcycs.com:5501';
+const BASE_URL = ' http://localhost:3000';
 
 export const apiService = (() => {
   const baseURL = BASE_URL;

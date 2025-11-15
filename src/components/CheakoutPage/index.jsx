@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check } from 'lucide-react';
 import Layout from '../Partials/Layout';
 import ThankYouPopup from './ThankYouPopup';
+import { ordersApi } from './ordersApi';
 
 // Main Checkout Component
 export default function Checkout() {
@@ -91,23 +92,57 @@ export default function Checkout() {
 
   const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Set order details
-    const orderData = {
-      orderId: `SHOPO${Date.now()}`,
-      items: cartItems,
-      deliveryAddress: savedAddresses.find(addr => addr.id === selectedAddress),
-      paymentMethod: paymentMethods.find(m => m.id === selectedPayment)?.name,
-      totalAmount: total,
-      savings: savings + discount
-    };
-    
-    setOrderDetails(orderData);
-    setShowThankYou(true);
-    setIsPlacingOrder(false);
+
+    try {
+      // Format cart data into API-compatible structure
+      const selectedAddressData = savedAddresses.find(addr => addr.id === selectedAddress);
+      const selectedPaymentData = paymentMethods.find(m => m.id === selectedPayment);
+
+      const orderData = {
+        customerId: "customer-uuid-placeholder", // Replace with actual customer ID from auth context
+        shippingAddress: `${selectedAddressData.fullName}, ${selectedAddressData.address}, ${selectedAddressData.city}, ${selectedAddressData.state} - ${selectedAddressData.pincode}`,
+        paymentMethod: selectedPaymentData?.name || selectedPayment,
+        totalItems: cartItems.length,
+        subTotal: subtotal,
+        tax: 0, // Add tax calculation if needed
+        shippingCharge: shipping,
+        totalAmount: total,
+        finalAmount: total,
+        orderItems: cartItems.map(item => ({
+          productId: item.id, // Assuming item.id is the product ID
+          productName: item.name,
+          quantity: item.qty,
+          unitPrice: item.price,
+          totalPrice: item.price * item.qty,
+          // Add color and size IDs if available
+          productColorId: null, // Map from item.color if needed
+          productSizeId: null   // Map from item.size if needed
+        }))
+      };
+
+      // Call the API
+      const response = await ordersApi.createOrder(orderData);
+
+      // Set order details from API response
+      const orderDetailsData = {
+        orderId: response.data?.id || `SHOPO${Date.now()}`,
+        items: cartItems,
+        deliveryAddress: selectedAddressData,
+        paymentMethod: selectedPaymentData?.name,
+        totalAmount: total,
+        savings: savings + discount,
+        apiResponse: response.data
+      };
+
+      setOrderDetails(orderDetailsData);
+      setShowThankYou(true);
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      // Handle error - could show error message to user
+      alert('Failed to place order. Please try again.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   const handleContinueShopping = () => {
