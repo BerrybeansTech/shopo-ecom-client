@@ -462,6 +462,7 @@ export default function ProductView({ product, className, reportHandler }) {
     setZoomStyle({});
   };
 
+  // Scroll handlers for thumbnails
   const scrollUp = () => {
     if (thumbnailRef.current) {
       thumbnailRef.current.scrollBy({ top: -120, behavior: "smooth" });
@@ -479,68 +480,106 @@ export default function ProductView({ product, className, reportHandler }) {
   }
 
   return (
-    <div className={`product-view w-full lg:flex flex-col lg:flex-row justify-between ${className || ""}`}>
+    <div className={`product-view mt-10 w-full lg:flex flex-col lg:flex-row justify-between ${className || ""}`}>
 
       {/* Image Section */}
       <div data-aos="fade-right" className="lg:w-1/2 xl:mr-[70px] lg:mr-[50px] flex flex-row">
         <div className="w-[120px] flex flex-col gap-2 mr-4">
+          {/* Scrollable Thumbnail Container - No Scrollbar */}
           <div
             ref={thumbnailRef}
-            className="w-[120px] h-[480px] overflow-y-hidden"
-            style={{ scrollBehavior: "smooth" }}
+            className="w-[120px] h-[480px] overflow-y-scroll scrollbar-hide"
+            style={{ 
+              scrollBehavior: "smooth",
+              msOverflowStyle: "none",  /* IE and Edge */
+              scrollbarWidth: "none"     /* Firefox */
+            }}
           >
+            {/* Hide scrollbar for Chrome, Safari and Opera */}
+            <style jsx>{`
+              .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
+            
             {transformedProduct.images.map((img, index) => (
               <div
                 key={index}
                 onClick={() => setMainImage(img)}
                 onMouseEnter={() => setMainImage(img)}
-                className="w-[120px] h-[120px] p-[10px] cursor-pointer relative mx-auto"
+                className="w-[120px] h-[120px] p-[10px] cursor-pointer relative mx-auto rounded-lg mb-2 transition-colors duration-200"
               >
                 <img
                   src={img}
                   alt={`Product view ${index + 1}`}
-                  className={`w-full h-full object-contain ${
-                    mainImage !== img ? "opacity-50" : ""
+                  className={`w-full h-full object-contain transition-all duration-200 ${
+                    mainImage !== img ? "opacity-60" : "opacity-100"
                   }`}
                 />
+                {mainImage === img && (
+                  <div className="absolute inset-0 rounded-lg pointer-events-none"></div>
+                )}
               </div>
             ))}
           </div>
 
-          {transformedProduct.images.length > 4 && (
-            <div className="flex justify-center gap-2 mt-2">
-              <button
-                onClick={scrollUp}
-                className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-100 text-gray-800 hover:bg-slate-950 hover:text-white"
-                aria-label="Scroll up"
+          {/* Up and Down Arrow Buttons - Always visible at bottom */}
+          <div className="flex justify-center gap-2 mt-2">
+            <button
+              onClick={scrollUp}
+              className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-100 text-gray-800 hover:bg-slate-950 hover:text-white active:border-2 active:border-blue-700 shadow-sm transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              aria-label="Scroll thumbnails up"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5L18 11L6 11L12 5Z" fill="currentColor" />
-                </svg>
-              </button>
-              <button
-                onClick={scrollDown}
-                className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-100 text-gray-800 hover:bg-slate-950 hover:text-white"
-                aria-label="Scroll down"
+                <path
+                  d="M12 5L18 11L6 11L12 5Z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={scrollDown}
+              className="w-10 h-10 flex items-center justify-center rounded-md bg-gray-100 text-gray-800 hover:bg-slate-950 hover:text-white active:border-2 active:border-blue-700 shadow-sm transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              aria-label="Scroll thumbnails down"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 19L18 13L6 13L12 19Z" fill="currentColor" />
-                </svg>
-              </button>
-            </div>
-          )}
+                <path
+                  d="M12 19L18 13L6 13L12 19Z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1">
           <div
-            className="w-full h-[550px] flex justify-center items-center overflow-hidden relative cursor-zoom-in"
+            className={`w-full h-[550px] flex justify-center items-center overflow-hidden relative ${
+              "cursor-zoom-in"
+            }`}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
             <img
               src={mainImage || transformedProduct.images[0]}
               alt={transformedProduct.name}
-              className={`w-full h-full object-contain transition-transform duration-150 ${
+              className={`w-full h-full object-contain transition-transform duration-150 ease-out ${
                 showZoom ? "scale-150" : "scale-100"
               }`}
               style={zoomStyle}
@@ -583,12 +622,62 @@ export default function ProductView({ product, className, reportHandler }) {
                   <span className="text-sm font-semibold text-qred ml-3 bg-qred-light px-2 py-1 rounded">
                     {calculatedPrice.discount}% off
                   </span>
+                  <span
+                    className="ml-2 cursor-pointer"
+                    onClick={() => setShowPriceDetails(!showPriceDetails)}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="7.5"
+                        fill="#666"
+                        stroke="#FFF"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="8"
+                        y="10"
+                        fontSize="6"
+                        textAnchor="middle"
+                        fill="#FFF"
+                        fontWeight="bold"
+                      >
+                        i
+                      </text>
+                    </svg>
+                  </span>
                 </>
               )}
             </div>
-            <p className="text-sm text-qgray">
-              {quantity} item{quantity > 1 ? 's' : ''} • ₹{transformedProduct.sellingPrice.toLocaleString()} per item
-            </p>
+            
+            {/* Price Details Popup */}
+            {showPriceDetails && (
+              <div className="mt-2 p-3 bg-gray-100 rounded border border-gray-300">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Maximum Retail Price (incl. of all taxes)</span>
+                  <span>₹{calculatedPrice.mrp.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Selling Price</span>
+                  <span>₹{calculatedPrice.sellingPrice.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-300 text-sm mb-1 pt-1">
+                  <span>Special Price</span>
+                  <span>₹{calculatedPrice.sellingPrice.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t border-gray-300 pt-1 mt-1">
+                  <span>Overall you save</span>
+                  <span>₹{(calculatedPrice.mrp - calculatedPrice.sellingPrice).toLocaleString()} ({calculatedPrice.discount}%)</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* User Message Display */}
@@ -699,40 +788,45 @@ export default function ProductView({ product, className, reportHandler }) {
                 {selectedColor && selectedSize && " - "}
                 {selectedSize && <span className="font-semibold text-blue-600">{selectedSize.name}</span>}
               </p>
-              {isOptionsSelected && currentStock > 0 && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Ready to add to cart
-                </p>
-              )}
             </div>
           )}
 
           {/* Quantity and Action Buttons */}
           <div className="quantity-card-wrapper w-full flex flex-col sm:flex-row items-center gap-3 mb-[30px]">
-            <div className="w-[120px] h-[50px] px-[26px] flex items-center border border-gray-300 rounded">
+            <div className="w-[120px] h-[50px] px-[26px] flex items-center border border-gray-300 rounded relative">
               <div className="flex justify-between items-center w-full">
                 <button
                   onClick={decrement}
                   type="button"
-                  className="text-base text-gray-600 hover:text-black transition-colors"
-                  disabled={isOutOfStock || isAddingToCart || !isOptionsSelected}
+                  className={`text-base transition-colors ${
+                    quantity <= 1 || isOutOfStock || isAddingToCart || !isOptionsSelected
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-black"
+                  }`}
+                  disabled={quantity <= 1 || isOutOfStock || isAddingToCart || !isOptionsSelected}
                 >
                   -
                 </button>
+                
                 <input
                   type="number"
                   value={quantity}
                   onChange={handleQuantityChange}
                   min="1"
                   max={currentStock}
-                  className="w-12 text-center border-none outline-none text-black bg-transparent"
+                  className="w-12 text-center border-none outline-none text-black bg-transparent appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   disabled={isOutOfStock || isAddingToCart || !isOptionsSelected}
                 />
+                
                 <button
                   onClick={increment}
                   type="button"
-                  className="text-base text-gray-600 hover:text-black transition-colors"
-                  disabled={isOutOfStock || quantity >= currentStock || isAddingToCart || !isOptionsSelected}
+                  className={`text-base transition-colors ${
+                    quantity >= currentStock || isOutOfStock || isAddingToCart || !isOptionsSelected
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-black"
+                  }`}
+                  disabled={quantity >= currentStock || isOutOfStock || isAddingToCart || !isOptionsSelected}
                 >
                   +
                 </button>
@@ -747,7 +841,7 @@ export default function ProductView({ product, className, reportHandler }) {
                 className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded flex items-center justify-center gap-2 ${
                   isAddToCartDisabled
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer transform hover:scale-105 transition-transform"
+                    : "bg-black text-white hover:bg-gray-700 cursor-pointer transform hover:scale-105 transition-transform"
                 }`}
               >
                 {isAddingToCart ? (

@@ -22,6 +22,7 @@ export default function Footer({ type }) {
                 { name: "Home", path: "/" },
                 { name: "About Us", path: "/about" },
                 { name: "Press", path: "/press" },
+                { name: "Blogs", path: "/blogs" },
                 { name: "Contact Us", path: "/contact" },
                 { name: "Referral", path: "/referral" },
                 { name: "Loyalty Program", path: "/loyalty" },
@@ -148,7 +149,7 @@ export default function Footer({ type }) {
         <div className="border-t border-gray-700 pt-5 mb-5">
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             {[
-              { name: "FAQ", path: "/faqs" },
+              { name: "FAQ", path: "/faq" },
               { name: "Privacy Policy", path: "/privacy-policy" },
               { name: "Terms & Conditions", path: "/terms-condition" },
               { name: "Shipping Policy", path: "/shipping-policy" },
@@ -171,7 +172,7 @@ export default function Footer({ type }) {
             <span className="block lg:inline">
               ©2025
               <a
-                href="#"
+                href="/"
                 rel="noreferrer"
                 className="font-semibold text-white mx-1 hover:underline"
               >

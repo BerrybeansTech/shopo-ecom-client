@@ -180,7 +180,7 @@ export default function CartPage() {
                 </h3>
                 <p className="text-gray-600 mb-6">Add some items to get started</p>
                 <Link
-                  to="/products"
+                  to="/all-products"
                   className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Continue Shopping
@@ -376,7 +376,7 @@ export default function CartPage() {
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                           <Link
-                            to="/products"
+                            to="/all-products"
                             className="flex-1 sm:flex-initial px-5 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-center"
                           >
                             CONTINUE SHOPPING
