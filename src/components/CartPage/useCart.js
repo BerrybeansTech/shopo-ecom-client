@@ -1,4 +1,4 @@
-// src/features/cart/hooks/useCart.js - FIXED VERSION
+// src/features/cart/hooks/useCart.js
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,7 @@ import {
   setAuthStatus,
   clearCartState,
   resetOrderCompleted
-} from './cartSlice';
+} from '../CartPage/cartSlice';
 
 export const useCart = () => {
   const dispatch = useDispatch();
@@ -44,9 +44,9 @@ export const useCart = () => {
     }
   }, [dispatch, cartState.isAuthenticated, cartState.orderCompleted]);
 
-  // Calculate totals whenever items change
+  // Calculate totals whenever items change (handled in reducers, but ensure dispatch if needed)
   useEffect(() => {
-    if (!cartState.orderCompleted) {
+    if (!cartState.orderCompleted && cartState.items.length > 0) {
       dispatch(calculateTotals());
     }
   }, [dispatch, cartState.items, cartState.orderCompleted]);
@@ -64,6 +64,7 @@ export const useCart = () => {
       
       console.log("Add to cart result:", result);
       
+      // Small delay to let fetch complete
       await new Promise(resolve => setTimeout(resolve, 500));
       
       return { success: true, data: result };
@@ -83,6 +84,8 @@ export const useCart = () => {
   }, [dispatch, navigate, cartState.orderCompleted]);
 
   const updateItemQuantity = useCallback(async (itemId, quantity) => {
+    if (quantity < 1) return { success: false, error: 'Quantity must be at least 1' };
+    
     // Update locally first for immediate UI response
     dispatch(updateLocalQuantity({ itemId, quantity }));
     
@@ -93,7 +96,9 @@ export const useCart = () => {
       })).unwrap();
       return { success: true };
     } catch (error) {
-      // Revert local change if API fails
+      // Revert local change if API fails by refetching
+      dispatch(fetchCartItems());
+      
       if (error?.includes?.('Please login')) {
         navigate('/login', { 
           state: { 
@@ -101,8 +106,6 @@ export const useCart = () => {
             message: 'Please login to update cart'
           } 
         });
-      } else {
-        dispatch(fetchCartItems()); // Reload from server
       }
       return { success: false, error: error?.message || error };
     }
@@ -142,7 +145,7 @@ export const useCart = () => {
     }
   }, [dispatch, navigate]);
 
-  // NEW: Clear cart after successful order
+  // Clear cart after successful order
   const clearCartAfterSuccessfulOrder = useCallback(async () => {
     try {
       console.log("Clearing cart after successful order...");
@@ -150,7 +153,7 @@ export const useCart = () => {
       return { success: true, message: 'Cart cleared after order' };
     } catch (error) {
       console.error("Error clearing cart after order:", error);
-      // Even if it fails, we still want to proceed
+      // Even if it fails, we still want to proceed (local clear already handled in thunk)
       return { success: false, error: error?.message || error, message: 'Cart cleared locally' };
     }
   }, [dispatch]);
@@ -168,12 +171,14 @@ export const useCart = () => {
   }, [dispatch]);
 
   const refreshCart = useCallback(() => {
-    if (cartState.isAuthenticated) {
-      dispatch(resetOrderCompleted()); // Reset flag before refresh
+    const isAuth = !!localStorage.getItem('accessToken');
+    if (isAuth) {
+      dispatch(setAuthStatus(true));
+      dispatch(resetOrderCompleted()); // Always reset order completed flag
       console.log("Refreshing cart...");
       dispatch(fetchCartItems());
     }
-  }, [dispatch, cartState.isAuthenticated]);
+  }, [dispatch]);
 
   const dismissError = useCallback(() => {
     dispatch(clearError());
