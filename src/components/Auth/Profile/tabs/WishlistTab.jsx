@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ShoppingCart, X, Minus, Plus, Heart } from "lucide-react";
 import TabNavigation from "./TabNavigation";
 import { getWishlist, updateWishlist, clearWishlist } from "../../../../services/wishlistApi";
@@ -39,6 +39,7 @@ export default function WishlistTab({ className }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Handle URL hash to set active tab on page load
   useEffect(() => {
@@ -144,6 +145,10 @@ export default function WishlistTab({ className }) {
         alert('Failed to clear wishlist. Please try again.');
       }
     }
+  };
+
+  const handleStartShopping = () => {
+    navigate("/all-products");
   };
 
   return (
@@ -279,7 +284,10 @@ export default function WishlistTab({ className }) {
               <p className="text-sm text-black-300 mb-6 max-w-sm mx-auto">
                 Save items you love for later. Click the heart icon on any product to add it here.
               </p>
-              <button className="px-6 py-3 bg-black-900 text-white-50 rounded-lg font-semibold hover:bg-black-700 transition-colors">
+              <button 
+                onClick={handleStartShopping}
+                className="px-6 py-3 bg-black-900 text-white-50 rounded-lg font-semibold hover:bg-black-700 transition-colors"
+              >
                 Start Shopping
               </button>
             </div>
