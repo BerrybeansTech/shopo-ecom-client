@@ -9,11 +9,14 @@ import { Heart, ShoppingCart, Eye } from "lucide-react";
 
 export default function SingleProductPage() {
   const { id } = useParams();
+  const { addItemToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [addToCartLoading, setAddToCartLoading] = useState({});
+  const [cartNotification, setCartNotification] = useState(null);
 
   const PLACEHOLDER_IMAGE = "/images/placeholder-product.jpg"; 
 
@@ -103,26 +106,74 @@ export default function SingleProductPage() {
   }, [product]);
 
 
-  const handleAddToCart = async (product) => {
+  const handleAddToCart = async (e, prod) => {
+    // Prevent the click event from bubbling up to the parent navigation
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Prevent multiple rapid clicks
+    if (addToCartLoading[prod.id]) {
+      return;
+    }
+
+    setAddToCartLoading(prev => ({ ...prev, [prod.id]: true }));
+
     try {
       const cartData = {
         cartId: 1,
-        productId: product.id,
+        productId: prod.id,
         productColorVariationId: 1,
         productSizeVariationId: 1,
         quantity: 1,
       };
 
+      console.log("Adding related product to cart:", cartData);
+      
       const result = await addItemToCart(cartData);
 
       if (result.success) {
-        console.log("Product added to cart successfully");
-        alert("Add to cart")
+        console.log("Product added to cart successfully", result);
+        
+        // Show success notification
+        setCartNotification({
+          type: 'success',
+          message: `${prod.name} added to cart!`,
+          productId: prod.id
+        });
+
+        // Auto-dismiss notification after 3 seconds
+        setTimeout(() => {
+          setCartNotification(null);
+        }, 3000);
       } else {
         console.error("Failed to add product to cart:", result.error);
+        
+        // Show error notification
+        setCartNotification({
+          type: 'error',
+          message: result.error || 'Failed to add item to cart. Please try again.',
+          productId: prod.id
+        });
+
+        setTimeout(() => {
+          setCartNotification(null);
+        }, 3000);
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
+      
+      // Show error notification
+      setCartNotification({
+        type: 'error',
+        message: 'An error occurred. Please try again.',
+        productId: prod.id
+      });
+
+      setTimeout(() => {
+        setCartNotification(null);
+      }, 3000);
+    } finally {
+      setAddToCartLoading(prev => ({ ...prev, [prod.id]: false }));
     }
   };
 
@@ -186,6 +237,48 @@ export default function SingleProductPage() {
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="single-product-wrapper w-full">
+        {/* Cart Notification */}
+        {cartNotification && (
+          <div className={`${
+            cartNotification.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          } fixed top-4 right-4 z-50 p-4 rounded-lg border flex items-center justify-between max-w-sm`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                cartNotification.type === 'success'
+                  ? 'bg-green-100'
+                  : 'bg-red-100'
+              }`}>
+                <span className={`text-sm font-bold ${
+                  cartNotification.type === 'success'
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}>
+                  {cartNotification.type === 'success' ? '✓' : '!'}
+                </span>
+              </div>
+              <p className={`text-sm font-medium ${
+                cartNotification.type === 'success'
+                  ? 'text-green-800'
+                  : 'text-red-800'
+              }`}>
+                {cartNotification.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setCartNotification(null)}
+              className={`${
+                cartNotification.type === 'success'
+                  ? 'text-green-800 hover:text-green-900'
+                  : 'text-red-800 hover:text-red-900'
+              }`}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <div className="product-view-main-wrapper bg-white pt-[30px] w-full">
           <div className="breadcrumb-wrapper w-full">
             <div className="container-x mx-auto">
@@ -269,16 +362,31 @@ export default function SingleProductPage() {
 
                           <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
                             <button
-                                onClick={() =>handleAddToCart(product)}
-                                className="flex-1 bg-white hover:bg-gray-900 text-gray-800 hover:text-white font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                                onClick={(e) => handleAddToCart(e, relatedProduct)}
+                                disabled={addToCartLoading[relatedProduct.id]}
+                                className={`flex-1 font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
+                                  addToCartLoading[relatedProduct.id]
+                                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                                    : 'bg-white hover:bg-gray-900 text-gray-800 hover:text-white'
+                                }`}
                               >
-                                <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                <span className="hidden sm:inline">
-                                  Add to Cart
-                                </span>
-                                <span className="sm:hidden">Add</span>
+                                {addToCartLoading[relatedProduct.id] ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <span className="hidden sm:inline">Adding...</span>
+                                    <span className="sm:hidden">...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span className="hidden sm:inline">
+                                      Add to Cart
+                                    </span>
+                                    <span className="sm:hidden">Add</span>
+                                  </>
+                                )}
                               </button>
-                              <Link to={`/single-product/${product.id}`}>
+                              <Link to={`/single-product/${relatedProduct.id}`}>
                                 <button className="bg-white hover:bg-blue-600 text-gray-800 hover:text-white p-2 sm:p-2.5 rounded-lg shadow-lg transition-all duration-300">
                                   <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </button>
