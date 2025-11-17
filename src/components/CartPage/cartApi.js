@@ -9,17 +9,26 @@ export const cartApi = {
 
   // Add item to cart
   addToCart: async (cartData) => {
-    return await apiService.post('/customer/cart/add-to-cart', cartData);
+    const response = await apiService.post('/customer/cart/add-to-cart', cartData);
+    // Invalidate cart GET cache after mutation
+    apiService.clearCacheForKey('GET-/customer/cart/get-all-items');
+    return response;
   },
 
   // Update cart item quantity
   updateItem: async (itemId, updateData) => {
-    return await apiService.put(`/customer/cart/update-items/${itemId}`, updateData);
+    const response = await apiService.put(`/customer/cart/update-items/${itemId}`, updateData);
+    // Invalidate cart GET cache after mutation
+    apiService.clearCacheForKey('GET-/customer/cart/get-all-items');
+    return response;
   },
 
   // Delete specific cart item
   deleteItem: async (itemId) => {
-    return await apiService.delete(`/customer/cart/delete-items/${itemId}`);
+    const response = await apiService.delete(`/customer/cart/delete-items/${itemId}`);
+    // Invalidate cart GET cache after mutation
+    apiService.clearCacheForKey('GET-/customer/cart/get-all-items');
+    return response;
   },
 
   // Clear entire cart
@@ -35,7 +44,10 @@ export const cartApi = {
         cartId = cartItems.data[0].cartId || 1;
       }
       
-      return await apiService.delete(`/customer/cart/clear-cart/${cartId}`);
+      const response = await apiService.delete(`/customer/cart/clear-cart/${cartId}`);
+      // Invalidate cart GET cache after mutation
+      apiService.clearCacheForKey('GET-/customer/cart/get-all-items');
+      return response;
     } catch (error) {
       console.error('Error clearing cart:', error);
       throw error;
@@ -54,6 +66,8 @@ export const cartApi = {
         );
         
         await Promise.all(deletePromises);
+        // Invalidate cart GET cache after mutation
+        apiService.clearCacheForKey('GET-/customer/cart/get-all-items');
         return { success: true, message: 'Cart cleared successfully' };
       }
       
