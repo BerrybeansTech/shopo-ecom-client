@@ -49,12 +49,18 @@ export default function AllOrders() {
       setFilteredOrders([]);
     }
   }, [activeTab, orders, currentOrders]);
+const handleReviewClick = (order) => {
+  const productId = order.items?.[0]?.productId;
 
-  const handleReviewClick = (orderId) => {
-    navigate("/profile#review", {
-      state: { orderId },
-    });
-  };
+  if (productId) {
+    navigate(`/profile?productId=${productId}#review`);
+  }
+};
+
+
+
+
+
 
   const handleViewDetails = (orderId) => {
     navigate(`/orders/${orderId}`);
@@ -416,15 +422,16 @@ export default function AllOrders() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {canReviewOrder(order) && (
-                    <button
-                      onClick={() => handleReviewClick(order.id)}
-                      className="text-sm text-white-50 bg-black-900 border border-black-900 px-4 py-2 rounded-lg font-medium hover:bg-black-700 hover:border-black-700 transition-all duration-300 flex items-center gap-2"
-                    >
-                      <Star className="w-4 h-4" />
-                      Write Review
-                    </button>
-                  )}
+            {canReviewOrder(order) && (
+  <button
+    onClick={() => handleReviewClick(order)}
+    className="text-sm text-white-50 bg-black-900 border border-black-900 px-4 py-2 rounded-lg font-medium hover:bg-black-700 hover:border-black-700 transition-all duration-300 flex items-center gap-2"
+  >
+    <Star className="w-4 h-4" />
+    Write Review
+  </button>
+)}
+
 
                   {order.status.toLowerCase() === "delivered" && (
                     <button

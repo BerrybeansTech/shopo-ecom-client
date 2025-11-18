@@ -1,15 +1,13 @@
-# TODO: Add Blog Content Display Feature
+# TODO: Add Write Review Functionality
 
-## Overview
-Make the Blog detail page dynamic by fetching and displaying blog content from blogs.json based on the blog ID from the URL. Update BlogCard to link to the parameterized route.
+## Tasks
+- [ ] Update ReviewTab.jsx to handle productId from URL params and fetch product data
+- [ ] Add "Write Review" button in ThankYouPopup.jsx for each product
+- [ ] Add "Write Review" button in OrderTab.jsx for delivered orders
+- [ ] Test navigation flow from ThankYouPopup and OrderTab to ReviewTab
+- [ ] Ensure product data is properly loaded in ReviewTab
 
-## Steps
-- [ ] Update BlogCard component to link to `/blogs/blog/${datas.id}` instead of static `/blogs/blog`
-- [ ] Modify Blog component to:
-  - Import useParams from react-router-dom
-  - Use useParams to get the blog ID from the URL
-  - Fetch the corresponding blog data from blogs.json
-  - Display dynamic title, content (as HTML), banner image, and other details
-  - Handle cases where blog is not found
-- [ ] Test the navigation from Blogs list to individual Blog page
-- [ ] Ensure HTML content is rendered properly using dangerouslySetInnerHTML
+## Notes
+- Users should only write reviews in the profile review section after order completion
+- Navigation should go to profile reviews with product ID
+- Handle product fetching in ReviewTab when productId is provided
