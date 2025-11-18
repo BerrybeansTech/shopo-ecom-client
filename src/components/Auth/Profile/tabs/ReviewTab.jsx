@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
-
-// 5 STARS × 3 TEXTS EACH = 15 RANDOM TEXTS
-const randomTexts = {
-  1: ["Total Waste", "Big Mistake", "Avoid This"],
-  2: ["Not Good", "Below Average", "Meh"],
-  3: ["It's Okay", "Normal Only", "Average"],
-  4: ["Nice One!", "Worth Buying", "Happy!"],
-  5: ["Mind Blowing!", "Superb Quality", "Best Ever!"],
-};
+import { useSearchParams } from "react-router-dom";
+import { apiService } from "../../../../services/apiservice";
 
 const ratingLabels = {
   1: "Very Bad",
@@ -18,74 +11,226 @@ const ratingLabels = {
   5: "Excellent",
 };
 
-export default function ProductReviewPage({ product }) {
-  const [rating, setRating] = useState(0);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [image, setImage] = useState(null);
+export default function ReviewTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [productId, setProductId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // AUTO + RANDOM TITLE ON EVERY STAR CLICK
   useEffect(() => {
-    if (rating > 0) {
-      const texts = randomTexts[rating];
-      const randomIndex = Math.floor(Math.random() * 3);
-      setTitle(texts[randomIndex]);
+    fetchUserReviews();
+    // Check if there's a productId in URL params (from order page)
+    const productIdFromUrl = searchParams.get('productId');
+    if (productIdFromUrl) {
+      setProductId(productIdFromUrl);
+      // Fetch product details
+      fetchProductDetails(productIdFromUrl);
+      // Scroll to review form
+      setTimeout(() => {
+        const reviewForm = document.getElementById('review-form');
+        if (reviewForm) {
+          reviewForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     }
-  }, [rating]);
+  }, [searchParams]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) setImage(URL.createObjectURL(file));
+  const fetchProductDetails = async (productId) => {
+    try {
+      const response = await apiService.get(`/product/get/${productId}`);
+      if (response.success) {
+        setSelectedProduct(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const fetchUserReviews = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.get('/product/review/get-all');
+      if (response.success) {
+        // Transform API response to match component's expected format
+        const transformedReviews = response.data.map(review => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment || "",
+          date: new Date(review.createdAt).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }),
+          productName: review.Product?.name || "Unknown Product",
+          productImage: review.Product?.thumbnailImage
+            ? `${apiService.getBaseURL()}/${review.Product.thumbnailImage}`
+            : "/assets/images/shirt2.webp"
+        }));
+        setReviews(transformedReviews);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
     e.preventDefault();
-    if (!rating || !description.trim()) return alert("Rating & review required!");
+    if (!rating || !comment.trim() || !productId.trim()) {
+      alert("Rating, comment, and product ID are required!");
+      return;
+    }
 
-    const newReview = {
-      id: Date.now(),
-      rating,
-      title: title || "No Title",
-      description: description.trim(),
-      image,
-      date: new Date().toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
-    };
+    try {
+      setSubmitting(true);
+      const reviewData = {
+        productId: parseInt(productId.trim()),
+        rating,
+        comment: comment.trim()
+      };
 
-    setReviews([newReview, ...reviews]);
-    setRating(0);
-    setTitle("");
-    setDescription("");
-    setImage(null);
+      const response = await apiService.post('/product/review/create', reviewData);
+
+      if (response.success) {
+        alert("Review submitted successfully!");
+        // Reset form
+        setRating(0);
+        setComment("");
+        // Only reset productId if it wasn't from URL params
+        if (!searchParams.get('productId')) {
+          setProductId("");
+        }
+        setSelectedProduct(null);
+        // Remove productId from URL after submission
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('productId');
+        setSearchParams(newParams);
+        // Refresh reviews
+        await fetchUserReviews();
+      } else {
+        // Handle specific error messages from backend
+        if (response.message && response.message.includes("You can only review products you have purchased and received")) {
+          alert("You can only review products from orders that have been delivered. Please wait for your order to be delivered before writing a review.");
+        } else {
+          alert(response.message || "Failed to submit review");
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert(error.message || "Failed to submit review. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  // Function to clear the form and URL params
+  const handleClearForm = () => {
+    setRating(0);
+    setComment("");
+    setProductId("");
+    setSelectedProduct(null);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('productId');
+    setSearchParams(newParams);
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="text-lg text-gray-500 mt-4">Loading your reviews...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
-      {/* Product Info */}
-      <div className="flex items-start gap-4 border-b border-gray-200 pb-6 mb-8">
-        <img
-          src={product?.image || "/assets/images/shirt2.webp"}
-          alt={product?.name || "Product"}
-          className="w-20 h-20 border border-gray-300 rounded-lg object-cover"
-        />
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">
-            {product?.name || "ESSENCE Slip On For Men"}
-          </h1>
-          <p className="text-sm text-gray-600">{product?.brand || "ESSENCE"}</p>
-        </div>
+      <div className="flex items-center gap-2 mb-6">
+        <h2 className="text-xl font-bold text-gray-900">My Reviews</h2>
+        {reviews.length > 0 && (
+          <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+            {reviews.length}
+          </span>
+        )}
       </div>
 
-      {/* Review Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 mb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Rate this product</h2>
+      {/* Create Review Form */}
+      <form 
+        id="review-form"
+        onSubmit={handleSubmitReview} 
+        className="bg-white rounded-lg border border-gray-200 p-6 mb-10 shadow-sm"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Write a Review</h3>
+          {searchParams.get('productId') && (
+            <button
+              type="button"
+              onClick={handleClearForm}
+              className="text-sm text-gray-600 hover:text-gray-900 underline"
+            >
+              Clear Form
+            </button>
+          )}
+        </div>
 
-        {/* Star Rating with Label */}
+        {/* Selected Product Display */}
+        {selectedProduct && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <img
+                src={selectedProduct.thumbnailImage 
+                  ? `${apiService.getBaseURL()}/${selectedProduct.thumbnailImage}`
+                  : "/assets/images/shirt2.webp"}
+                alt={selectedProduct.name}
+                className="w-16 h-16 border border-gray-300 rounded-lg object-cover"
+              />
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900">{selectedProduct.name}</h4>
+                <p className="text-sm text-gray-600">Product ID: {selectedProduct.id}</p>
+                <p className="text-xs text-blue-600 mt-1">Ready to review this product</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Product ID - Hidden from UI */}
+        <div className="hidden">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Product ID <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            required
+            placeholder="Enter product ID"
+            readOnly={!!searchParams.get('productId')}
+            className={`w-full border border-gray-300 rounded-lg px-4 py-3 text-sm outline-none ${
+              searchParams.get('productId')
+                ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+            }`}
+          />
+          {searchParams.get('productId') && (
+            <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+              <Star className="w-3 h-3" />
+              Product automatically selected from your order
+            </p>
+          )}
+        </div>
+
+        {/* Star Rating */}
         <div className="flex flex-col gap-4 mb-6">
+          <label className="block text-sm font-medium text-gray-700">
+            Your Rating <span className="text-red-500">*</span>
+          </label>
           <div className="flex items-center gap-4">
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -94,6 +239,7 @@ export default function ProductReviewPage({ product }) {
                   type="button"
                   onClick={() => setRating(star)}
                   className="transition-transform hover:scale-110 focus:outline-none"
+                  aria-label={`Rate ${star} stars`}
                 >
                   <Star
                     className={`w-8 h-8 ${
@@ -105,7 +251,7 @@ export default function ProductReviewPage({ product }) {
                 </button>
               ))}
             </div>
-            
+
             {/* Dynamic Label */}
             {rating > 0 && (
               <div className="animate-fadeIn">
@@ -117,148 +263,97 @@ export default function ProductReviewPage({ product }) {
           </div>
         </div>
 
-        {/* Description */}
+        {/* Comment */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Review this product <span className="text-red-500">*</span>
+            Review Comment <span className="text-red-500">*</span>
           </label>
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
             rows={4}
             required
             placeholder="Share your experience with this product..."
             className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
           />
-        </div>
-
-        {/* Title - Auto + Random */}
-        <div className="mb-5">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Title (optional)
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Click on stars to generate a random title"
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          />
-        </div>
-
-        {/* Image Upload */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Add Photo</label>
-          <div className="flex items-center gap-4">
-            <label
-              htmlFor="imageUpload"
-              className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              {image ? (
-                <img 
-                  src={image} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover rounded-lg" 
-                />
-              ) : (
-                <>
-                  <span className="text-2xl text-gray-400">+</span>
-                  <span className="text-xs text-gray-500 mt-1">Add photo</span>
-                </>
-              )}
-            </label>
-            <input
-              type="file"
-              id="imageUpload"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-            {image && (
-              <button 
-                type="button"
-                onClick={() => setImage(null)} 
-                className="text-sm text-red-600 hover:text-red-700 hover:underline transition-colors"
-              >
-                Remove
-              </button>
-            )}
-          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            {comment.length} / 500 characters
+          </p>
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
+          {searchParams.get('productId') && (
+            <button
+              type="button"
+              onClick={handleClearForm}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
-            className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-colors shadow-sm"
+            disabled={submitting || !rating || !comment.trim() || !productId.trim()}
+            className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-colors shadow-sm"
           >
-            Submit Review
+            {submitting ? "Submitting..." : "Submit Review"}
           </button>
         </div>
       </form>
 
       {/* Reviews List */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-xl font-bold text-gray-900">
-            Customer Reviews
-          </h2>
-          {reviews.length > 0 && (
-            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
-              {reviews.length}
-            </span>
-          )}
+      {reviews.length === 0 ? (
+        <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+          <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-lg text-gray-500 mb-2">No reviews yet.</p>
+          <p className="text-sm text-gray-400">You haven't reviewed any products yet.</p>
         </div>
-
-        {reviews.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
-            <p className="text-lg text-gray-500 mb-2">No reviews yet.</p>
-            <p className="text-sm text-gray-400">Be the first to share your experience! ⭐</p>
-          </div>
-        ) : (
-          reviews.map((rev) => (
+      ) : (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Previous Reviews</h3>
+          {reviews.map((review) => (
             <div
-              key={rev.id}
+              key={review.id}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow"
             >
-              {/* Review Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-5 h-5 ${
-                          i < rev.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
-                    {ratingLabels[rev.rating]}
-                  </span>
+              {/* Product Info */}
+              <div className="flex items-start gap-4 mb-4">
+                <img
+                  src={review.productImage}
+                  alt={review.productName}
+                  className="w-16 h-16 border border-gray-300 rounded-lg object-cover flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-1">{review.productName}</h3>
+                  <p className="text-sm text-gray-500">{review.date}</p>
                 </div>
-                <span className="text-xs text-gray-500">{rev.date}</span>
               </div>
 
               {/* Review Content */}
-              {rev.title && rev.title !== "No Title" && (
-                <h3 className="font-semibold text-gray-900 mb-2">{rev.title}</h3>
-              )}
-              <p className="text-gray-700 text-sm leading-relaxed mb-4">{rev.description}</p>
-              
-              {/* Review Image */}
-              {rev.image && (
-                <img
-                  src={rev.image}
-                  alt="Customer review"
-                  className="w-28 h-28 object-cover rounded-lg border border-gray-200"
-                />
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${
+                        i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                  {ratingLabels[review.rating]}
+                </span>
+              </div>
+
+              {review.comment && (
+                <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
               )}
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       <style jsx="true">{`
         @keyframes fadeIn {

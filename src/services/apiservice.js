@@ -1,13 +1,6 @@
 // services/apiservice.js
-
-// const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501';
-
-// Export BASE_URL for use in components
-// export { BASE_URL };
-
 const BASE_URL = 'http://luxcycs.com:5501';
 // const BASE_URL = 'http://localhost:3000';                                                                                                                                                                                       
-
 
 // Request deduplication cache
 const requestCache = new Map();
@@ -64,10 +57,14 @@ export const apiService = (() => {
     const url = `${baseURL}${endpoint}`;
     const token = getToken();
 
+    // Check if body is FormData (for file uploads)
+    const isFormData = options.body instanceof FormData;
+
     const config = {
       method: options.method || 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        // Don't set Content-Type for FormData, let browser set it with boundary
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
@@ -75,7 +72,8 @@ export const apiService = (() => {
     };
 
     if (options.body && ['POST', 'PUT', 'PATCH'].includes(config.method.toUpperCase())) {
-      config.body = JSON.stringify(options.body);
+      // Don't JSON.stringify FormData
+      config.body = isFormData ? options.body : JSON.stringify(options.body);
     }
 
     try {
