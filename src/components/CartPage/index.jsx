@@ -1,15 +1,16 @@
 // components/Cart/CartPage.js
-
 import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useDispatch } from 'react-redux';
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/Layout";
 import { useCart } from "../CartPage/useCart";
 import { resetOrderCompleted } from "../CartPage/cartSlice";
+
 export default function CartPage() {
-  const location = useLocation();
   const dispatch = useDispatch();
+  const placeholderSrc = "data:image/svg+xml;base64," + btoa('<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg"><rect width="128" height="128" fill="#f3f4f6"/><text x="64" y="64" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12" fill="#9ca3af">No Image</text></svg>');
+  
   const {
     items,
     savedItems,
@@ -24,13 +25,14 @@ export default function CartPage() {
     moveItemToCart,
     removeFromSavedItems,
     formatINR,
-    refreshCart,
     dismissError,
     isAuthenticated,
-    handleLoginRedirect
+    handleLoginRedirect,
+    isItemUpdating,
+    isItemDeleting,
+    getItemPrice
   } = useCart();
 
-  // Reset order completed flag when entering cart page
   useEffect(() => {
     dispatch(resetOrderCompleted());
   }, [dispatch]);
@@ -56,17 +58,9 @@ export default function CartPage() {
     await updateItemQuantity(id, newQuantity);
   };
 
-  // Use Redux-calculated values; no local recalculation needed
-  const displaySubtotal = subtotal;
-  const displayDiscount = discount;
-  const displayTotal = total;
   const platformFee = 7;
-  const calculatedOriginalTotal = items.reduce(
-    (t, i) => t + ((i.product?.mrp || i.originalPriceValue || 0) * i.quantity),
-    0
-  );
 
-  if (loading) {
+  if (loading && items.length === 0) {
     return (
       <Layout childrenClasses="pt-0 pb-0">
         <div className="cart-page-wrapper w-full bg-white pb-[30px]">
@@ -170,43 +164,47 @@ export default function CartPage() {
               </div>
             ) : (
               <div className="flex flex-col lg:flex-row gap-8">
-                {/* Left: Cart Items + Saved Items */}
+                {/* Cart Items */}
                 <div className="lg:flex-1">
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">
                     Shopping Cart ({items.length})
                   </h1>
 
-                  {/* Cart Items */}
                   <div className="space-y-6">
                     {items.map((item) => {
                       const product = item.product || {};
                       const productName = product.name || "Product";
-                      const thumbnail = product.thumbnailImage || "/assets/images/placeholder.jpg"; // Use placeholder
-                      const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
-                      const mrp = product.mrp || item.originalPriceValue || sellingPrice;
-                      const discountPercentage = mrp > sellingPrice 
-                        ? Math.round(((mrp - sellingPrice) / mrp) * 100)
-                        : 0;
+                      const thumbnail = product.thumbnailImage || placeholderSrc;
+                      const sellingPrice = getItemPrice(item);
+                      const quantity = item.quantity || 1;
+                      const itemTotal = sellingPrice * quantity;
+
+                      const isUpdating = isItemUpdating(item.id);
+                      const isDeleting = isItemDeleting(item.id);
 
                       return (
                         <div
                           key={item.id}
-                          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+                          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative"
                         >
+                          {(isUpdating || isDeleting) && (
+                            <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-lg z-10">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                            </div>
+                          )}
+
                           <div className="flex flex-col md:flex-row gap-6">
-                            {/* Product Image */}
                             <div className="flex-shrink-0">
                               <div className="w-32 h-32 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                                 <img
                                   src={thumbnail}
                                   alt={productName}
                                   className="w-full h-full object-cover"
-                                  onError={(e) => { e.target.src = "/assets/images/placeholder.jpg"; }}
+                                  onError={(e) => { e.target.src = placeholderSrc; }}
                                 />
                               </div>
                             </div>
 
-                            {/* Product Details */}
                             <div className="flex-1 flex flex-col justify-between">
                               <div>
                                 <h2 className="text-lg font-semibold text-gray-900 mb-1">
@@ -219,68 +217,55 @@ export default function CartPage() {
                                   </span>
                                 </p>
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                                  <span>
-                                    Size: <strong>{product.size || 'S'}</strong>
-                                  </span>
+                                  <span>Size: <strong>{product.size || 'S'}</strong></span>
+                                  {/* <span className="text-lg font-semibold text-gray-900">
+                                    Price: {formatINR(sellingPrice)}
+                                  </span> */}
                                 </div>
 
-                                {/* Price */}
                                 <div className="flex items-center gap-2 mb-4">
                                   <span className="text-2xl font-bold text-gray-900">
-                                    {formatINR(sellingPrice * item.quantity)}
+                                    {formatINR(itemTotal)}
                                   </span>
-                                  {mrp > sellingPrice && (
-                                    <span className="text-lg text-gray-500 line-through">
-                                      {formatINR(mrp * item.quantity)}
-                                    </span>
-                                  )}
-                                  {discountPercentage > 0 && (
-                                    <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
-                                      {discountPercentage}% Off
-                                    </span>
-                                  )}
                                 </div>
                               </div>
 
-                              {/* Bottom Actions */}
                               <div className="flex items-center justify-between md:justify-start gap-4 mt-auto">
-                                {/* Quantity Selector */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-gray-600">Qty:</span>
                                   <div className="flex items-center border border-gray-300 rounded-lg">
                                     <button
-                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50"
-                                      onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                      disabled={loading}
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1))}
+                                      disabled={isUpdating || isDeleting}
                                     >
-                                      −
+                                      {isUpdating ? "..." : "−"}
                                     </button>
                                     <span className="w-10 text-center font-medium text-gray-900 px-2">
-                                      {item.quantity}
+                                      {quantity}
                                     </span>
                                     <button
-                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50"
-                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                      disabled={loading}
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => updateQuantity(item.id, quantity + 1)}
+                                      disabled={isUpdating || isDeleting}
                                     >
-                                      +
+                                      {isUpdating ? "..." : "+"}
                                     </button>
                                   </div>
                                 </div>
 
-                                {/* Action Buttons */}
                                 <div className="flex gap-6 text-sm">
                                   <button
                                     onClick={() => handleSaveForLater(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50"
-                                    disabled={loading}
+                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={isUpdating || isDeleting}
                                   >
                                     SAVE FOR LATER
                                   </button>
                                   <button
                                     onClick={() => handleRemove(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50"
-                                    disabled={loading}
+                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={isUpdating || isDeleting}
                                   >
                                     REMOVE
                                   </button>
@@ -303,9 +288,8 @@ export default function CartPage() {
                         {savedItems.map((item) => {
                           const product = item.product || {};
                           const productName = product.name || "Product";
-                          const thumbnail = product.thumbnailImage || "/assets/images/placeholder.jpg";
-                          const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
-                          const mrp = product.mrp || item.originalPriceValue || sellingPrice;
+                          const thumbnail = product.thumbnailImage || placeholderSrc;
+                          const sellingPrice = getItemPrice(item);
 
                           return (
                             <div
@@ -318,7 +302,7 @@ export default function CartPage() {
                                     src={thumbnail}
                                     alt={productName}
                                     className="w-full h-full object-cover"
-                                    onError={(e) => { e.target.src = "/assets/images/placeholder.jpg"; }}
+                                    onError={(e) => { e.target.src = placeholderSrc; }}
                                   />
                                 </div>
                                 <div className="flex-1">
@@ -332,11 +316,6 @@ export default function CartPage() {
                                     <span className="text-lg font-bold text-gray-900">
                                       {formatINR(sellingPrice)}
                                     </span>
-                                    {mrp > sellingPrice && (
-                                      <span className="text-sm text-gray-500 line-through">
-                                        {formatINR(mrp)}
-                                      </span>
-                                    )}
                                   </div>
                                   <div className="flex gap-6 text-sm">
                                     <button
@@ -368,7 +347,7 @@ export default function CartPage() {
                     <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="text-lg font-semibold text-gray-900">
-                          Total: {formatINR(displayTotal)}
+                          Total: {formatINR(total)}
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                           <Link
@@ -389,7 +368,7 @@ export default function CartPage() {
                   )}
                 </div>
 
-                {/* Right: Price Details */}
+                {/* Price Details */}
                 <div className="lg:w-[370px]">
                   <div className="border border-gray-200 px-[30px] mt-14 py-[26px] rounded-lg">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -401,13 +380,13 @@ export default function CartPage() {
                           Price ({items.length} items)
                         </span>
                         <span className="font-medium text-gray-900">
-                          {formatINR(calculatedOriginalTotal)}
+                          {formatINR(subtotal + discount)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Discount</span>
-                        <span className="font-medium text-gray-800">
-                          -{formatINR(displayDiscount)}
+                        <span className="font-medium text-green-600">
+                          -{formatINR(discount)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -419,18 +398,18 @@ export default function CartPage() {
                       <div className="h-px bg-gray-300 my-3"></div>
                       <div className="flex justify-between text-base font-medium text-gray-900">
                         <span>Total Amount</span>
-                        <span>{formatINR(displayTotal)}</span>
+                        <span>{formatINR(total)}</span>
                       </div>
                     </div>
-                    <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-4">
-                      <p className="text-sm text-center text-gray-700">
-                        <strong>You will save {formatINR(displayDiscount)}</strong> on this
-                        order
-                      </p>
-                    </div>
+                    {discount > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded p-3 mt-4">
+                        <p className="text-sm text-center text-green-700">
+                          <strong>You will save {formatINR(discount)}</strong> on this order
+                        </p>
+                      </div>
+                    )}
                     <p className="text-xs text-gray-500 text-center mt-4">
-                      Safe and Secure Payments. Easy returns. 100% Authentic
-                      products.
+                      Safe and Secure Payments. Easy returns. 100% Authentic products.
                     </p>
                   </div>
                 </div>

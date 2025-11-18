@@ -12,24 +12,24 @@ import {
   moveToCart,
   removeFromSaved,
   updateLocalQuantity,
-  calculateTotals,
   clearError,
   setAuthStatus,
-
-//   clearCartState
-// } from './cartSlice';
-
-  clearCartState,
-  resetOrderCompleted
-} from '../CartPage/cartSlice';
-
+  resetOrderCompleted,
+  setUpdatingItem,
+  setDeletingItem
+} from './cartSlice';
 
 export const useCart = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const cartState = useSelector(state => state.cart);
 
-  // Check authentication status on mount
+  // Get item price from multiple possible fields
+  const getItemPrice = useCallback((item) => {
+    return item.price || item.product?.sellingPrice || 0;
+  }, []);
+
+  // Check authentication and load cart
   useEffect(() => {
     const checkAuth = () => {
       if (typeof window !== 'undefined') {
@@ -41,42 +41,20 @@ export const useCart = () => {
     checkAuth();
   }, [dispatch]);
 
-  // Load cart items on mount if authenticated
   useEffect(() => {
     if (cartState.isAuthenticated) {
       dispatch(fetchCartItems());
     }
   }, [dispatch, cartState.isAuthenticated]);
 
-  // Calculate totals whenever items change (handled in reducers, but ensure dispatch if needed)
-  useEffect(() => {
-
-//     dispatch(calculateTotals());
-//   }, [dispatch, cartState.items]);
-
-    if (!cartState.orderCompleted && cartState.items.length > 0) {
-      dispatch(calculateTotals());
-    }
-  }, [dispatch, cartState.items, cartState.orderCompleted]);
-
-
+  // Cart actions
   const addItemToCart = useCallback(async (cartData) => {
     try {
-      console.log("Adding item to cart:", cartData);
-      
       const result = await dispatch(addToCart(cartData)).unwrap();
-      
-      console.log("Add to cart result:", result);
-      
-      // Small delay to let fetch complete
       await new Promise(resolve => setTimeout(resolve, 500));
-      
       return { success: true, data: result };
     } catch (error) {
-      console.error("Add to cart error:", error);
-      
       if (error.includes('Please login')) {
-        // Redirect to login if not authenticated
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -91,7 +69,7 @@ export const useCart = () => {
   const updateItemQuantity = useCallback(async (itemId, quantity) => {
     if (quantity < 1) return { success: false, error: 'Quantity must be at least 1' };
     
-    // Update locally first for immediate UI response
+    dispatch(setUpdatingItem({ itemId, updating: true }));
     dispatch(updateLocalQuantity({ itemId, quantity }));
     
     try {
@@ -99,17 +77,14 @@ export const useCart = () => {
         itemId,
         updateData: { quantity }
       })).unwrap();
+      
+      dispatch(setUpdatingItem({ itemId, updating: false }));
       return { success: true };
     } catch (error) {
-
-      // Revert local change if API fails
-//       if (error.includes('Please login')) {
-
-      // Revert local change if API fails by refetching
+      dispatch(setUpdatingItem({ itemId, updating: false }));
       dispatch(fetchCartItems());
       
       if (error?.includes?.('Please login')) {
-
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -122,10 +97,15 @@ export const useCart = () => {
   }, [dispatch, navigate]);
 
   const removeItem = useCallback(async (itemId) => {
+    dispatch(setDeletingItem({ itemId, deleting: true }));
+    
     try {
       await dispatch(deleteCartItem(itemId)).unwrap();
+      dispatch(setDeletingItem({ itemId, deleting: false }));
       return { success: true };
     } catch (error) {
+      dispatch(setDeletingItem({ itemId, deleting: false }));
+      
       if (error.includes('Please login')) {
         navigate('/login', { 
           state: { 
@@ -138,9 +118,9 @@ export const useCart = () => {
     }
   }, [dispatch, navigate]);
 
-  const clearAllItems = useCallback(async (cartId) => {
+  const clearAllItems = useCallback(async () => {
     try {
-      await dispatch(clearCart(cartId)).unwrap();
+      await dispatch(clearCart()).unwrap();
       return { success: true };
     } catch (error) {
       if (error.includes('Please login')) {
@@ -155,24 +135,15 @@ export const useCart = () => {
     }
   }, [dispatch, navigate]);
 
-  // Clear cart after successful order
   const clearCartAfterSuccessfulOrder = useCallback(async () => {
     try {
-      // Get the first cart item to extract cartId, or use default cartId
-      const cartId = cartState.items.length > 0 ? cartState.items[0].cartId : 1;
-      const result = await clearAllItems(cartId);
-      return result;
+      await dispatch(clearCart()).unwrap();
+      return { success: true };
     } catch (error) {
-
-//       console.error('Error clearing cart after successful order:', error);
-//       return { success: false, error };
-
-      console.error("Error clearing cart after order:", error);
-      // Even if it fails, we still want to proceed (local clear already handled in thunk)
-      return { success: false, error: error?.message || error, message: 'Cart cleared locally' };
-
+      console.error('Failed to clear cart after order:', error);
+      return { success: false, message: error };
     }
-  }, [clearAllItems, cartState.items]);
+  }, [dispatch]);
 
   const saveForLater = useCallback((itemId) => {
     dispatch(moveToSaved(itemId));
@@ -187,15 +158,10 @@ export const useCart = () => {
   }, [dispatch]);
 
   const refreshCart = useCallback(() => {
-
-//     if (cartState.isAuthenticated) {
-
     const isAuth = !!localStorage.getItem('accessToken');
     if (isAuth) {
       dispatch(setAuthStatus(true));
-      dispatch(resetOrderCompleted()); // Always reset order completed flag
-
-      console.log("Refreshing cart...");
+      dispatch(resetOrderCompleted());
       dispatch(fetchCartItems());
     }
   }, [dispatch]);
@@ -213,7 +179,14 @@ export const useCart = () => {
     });
   }, [navigate]);
 
-  // Helper function to format currency
+  const isItemUpdating = useCallback((itemId) => {
+    return !!cartState.updatingItems[itemId];
+  }, [cartState.updatingItems]);
+
+  const isItemDeleting = useCallback((itemId) => {
+    return !!cartState.deletingItems[itemId];
+  }, [cartState.deletingItems]);
+
   const formatINR = useCallback((amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -223,6 +196,14 @@ export const useCart = () => {
     }).format(amount);
   }, []);
 
+  // Calculate computed values based on cart state
+  const itemCount = cartState.items.reduce((total, item) => total + (item.quantity || 0), 0);
+  const uniqueItemCount = cartState.items.length;
+  const isEmpty = cartState.items.length === 0;
+
+  // Ensure total is 0 when cart is empty
+  const displayTotal = isEmpty ? 0 : cartState.total;
+
   return {
     // State
     items: cartState.items,
@@ -231,8 +212,13 @@ export const useCart = () => {
     error: cartState.error,
     subtotal: cartState.subtotal,
     discount: cartState.discount,
-    total: cartState.total,
+    total: displayTotal, // Use displayTotal instead of cartState.total
     isAuthenticated: cartState.isAuthenticated,
+    addingToCart: cartState.addingToCart,
+    
+    // Individual loading states
+    isItemUpdating,
+    isItemDeleting,
     
     // Actions
     addItemToCart,
@@ -247,10 +233,11 @@ export const useCart = () => {
     dismissError,
     handleLoginRedirect,
     formatINR,
+    getItemPrice,
     
     // Computed values
-    itemCount: cartState.items.reduce((total, item) => total + item.quantity, 0),
-    uniqueItemCount: cartState.items.length,
-    isEmpty: cartState.items.length === 0
+    itemCount,
+    uniqueItemCount,
+    isEmpty
   };
 };
