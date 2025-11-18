@@ -1,12 +1,10 @@
 // src/features/cart/cartSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { cartApi } from './cartApi';
+import { storage } from '../../utils/storage';
 
 const isAuthenticated = () => {
-  if (typeof window !== 'undefined') {
-    return !!localStorage.getItem('accessToken');
-  }
-  return false;
+  return storage.isAuthenticated();
 };
 
 // Async thunks

@@ -1,10 +1,11 @@
 // services/wishlistApi.js
 import { apiService } from './apiservice';
+import { storage } from '../utils/storage';
 
 // Get user's wishlist
 export const getWishlist = async () => {
   try {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = storage.getUser();
     if (!user || !user.id) {
       throw new Error('User not authenticated');
     }
@@ -20,7 +21,7 @@ export const getWishlist = async () => {
 // Update wishlist (add or remove item)
 export const updateWishlist = async (productId) => {
   try {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = storage.getUser();
     if (!user || !user.id) {
       throw new Error('User not authenticated');
     }
@@ -39,7 +40,7 @@ export const updateWishlist = async (productId) => {
 // Clear all items from wishlist
 export const clearWishlist = async () => {
   try {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = storage.getUser();
     if (!user || !user.id) {
       throw new Error('User not authenticated');
     }

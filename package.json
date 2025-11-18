@@ -12,6 +12,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@reduxjs/toolkit": "^2.10.1",
+    "@rollup/rollup-linux-x64-gnu": "^4.53.2",
     "aos": "^2.3.4",
     "lucide-react": "^0.545.0",
     "quill-image-resize-module": "^3.0.0",
