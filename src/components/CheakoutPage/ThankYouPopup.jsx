@@ -1,14 +1,16 @@
 // components/Checkout/ThankYouPopup.js
 import React from 'react';
 import { Check, Download, Share2, Home, ShoppingBag, MapPin, Shield, Star, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-export default function ThankYouPopup({ 
-  isOpen, 
-  onClose, 
+export default function ThankYouPopup({
+  isOpen,
+  onClose,
   orderDetails,
-  onContinueShopping 
+  onContinueShopping
 }) {
+  const navigate = useNavigate();
+
   if (!isOpen) return null;
 
   return (
@@ -140,7 +142,7 @@ export default function ThankYouPopup({
                   <span>Home</span>
                 </Link>
                 <button
-                  onClick={onContinueShopping}
+                  onClick={() => navigate('/all-products')}
                   className="flex items-center space-x-2 px-3 py-2 bg-black text-white rounded hover:bg-gray-800 transition-all font-semibold text-xs"
                 >
                   <ShoppingBag className="w-3 h-3" />

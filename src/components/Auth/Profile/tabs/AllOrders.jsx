@@ -300,7 +300,7 @@ export default function AllOrders() {
               : `You don't have any ${activeTab.toLowerCase()} orders.`}
           </p>
           <button
-            onClick={() => navigate('/products')}
+            onClick={() => navigate('/all-products')}
             className="mt-4 bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-colors"
           >
             Start Shopping

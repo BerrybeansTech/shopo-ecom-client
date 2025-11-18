@@ -1,11 +1,15 @@
 // components/Cart/CartPage.js
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useDispatch } from 'react-redux';
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/Layout";
 import { useCart } from "../CartPage/useCart";
-
+import { resetOrderCompleted } from "../CartPage/cartSlice";
 export default function CartPage() {
+  const location = useLocation();
+  const dispatch = useDispatch();
   const {
     items,
     savedItems,
@@ -26,22 +30,10 @@ export default function CartPage() {
     handleLoginRedirect
   } = useCart();
 
-  const [localCartItems, setLocalCartItems] = useState([]);
-  const [localSavedItems, setLocalSavedItems] = useState([]);
-
+  // Reset order completed flag when entering cart page
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshCart();
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    setLocalCartItems(items);
-  }, [items]);
-
-  useEffect(() => {
-    setLocalSavedItems(savedItems);
-  }, [savedItems]);
+    dispatch(resetOrderCompleted());
+  }, [dispatch]);
 
   const handleRemove = async (id) => {
     await removeItem(id);
@@ -64,25 +56,15 @@ export default function CartPage() {
     await updateItemQuantity(id, newQuantity);
   };
 
-  // Calculate totals based on API data
-  const calculatedSubtotal = localCartItems.reduce(
-    (t, i) => t + (i.product?.sellingPrice || i.discountedPriceValue || 0) * i.quantity,
-    0
-  );
-
-  const calculatedOriginalTotal = localCartItems.reduce(
-    (t, i) => t + (i.product?.mrp || i.originalPriceValue || 0) * i.quantity,
-    0
-  );
-
-  const calculatedDiscount = calculatedOriginalTotal - calculatedSubtotal;
+  // Use Redux-calculated values; no local recalculation needed
+  const displaySubtotal = subtotal;
+  const displayDiscount = discount;
+  const displayTotal = total;
   const platformFee = 7;
-  const calculatedTotalAmount = calculatedSubtotal + platformFee;
-
-  // Use API data if available, otherwise use calculated values
-  const displaySubtotal = subtotal || calculatedSubtotal;
-  const displayDiscount = discount || calculatedDiscount;
-  const displayTotal = total || calculatedTotalAmount;
+  const calculatedOriginalTotal = items.reduce(
+    (t, i) => t + ((i.product?.mrp || i.originalPriceValue || 0) * i.quantity),
+    0
+  );
 
   if (loading) {
     return (
@@ -172,9 +154,9 @@ export default function CartPage() {
               </div>
             )}
 
-            {localCartItems.length === 0 ? (
+            {items.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                <div className="text-6xl mb-4 text-gray-800">Empty Cart</div>
+                <div className="text-6xl mb-4 text-gray-800">🛒</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Your cart is empty
                 </h3>
@@ -191,15 +173,15 @@ export default function CartPage() {
                 {/* Left: Cart Items + Saved Items */}
                 <div className="lg:flex-1">
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                    Shopping Cart ({localCartItems.length})
+                    Shopping Cart ({items.length})
                   </h1>
 
                   {/* Cart Items */}
                   <div className="space-y-6">
-                    {localCartItems.map((item) => {
+                    {items.map((item) => {
                       const product = item.product || {};
                       const productName = product.name || "Product";
-                      const thumbnail = product.thumbnailImage || "Product thumbnail";
+                      const thumbnail = product.thumbnailImage || "/assets/images/placeholder.jpg"; // Use placeholder
                       const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
                       const mrp = product.mrp || item.originalPriceValue || sellingPrice;
                       const discountPercentage = mrp > sellingPrice 
@@ -219,6 +201,7 @@ export default function CartPage() {
                                   src={thumbnail}
                                   alt={productName}
                                   className="w-full h-full object-cover"
+                                  onError={(e) => { e.target.src = "/assets/images/placeholder.jpg"; }}
                                 />
                               </div>
                             </div>
@@ -232,12 +215,12 @@ export default function CartPage() {
                                 <p className="text-sm text-gray-600 mb-2">
                                   Delivery by{" "}
                                   <span className="font-medium text-gray-800">
-                                    Mon Oct 27
+                                    {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                   </span>
                                 </p>
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                                   <span>
-                                    Size: <strong>S</strong>
+                                    Size: <strong>{product.size || 'S'}</strong>
                                   </span>
                                 </div>
 
@@ -246,12 +229,16 @@ export default function CartPage() {
                                   <span className="text-2xl font-bold text-gray-900">
                                     {formatINR(sellingPrice * item.quantity)}
                                   </span>
-                                  <span className="text-lg text-gray-500 line-through">
-                                    {formatINR(mrp * item.quantity)}
-                                  </span>
-                                  <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
-                                    {discountPercentage}% Off
-                                  </span>
+                                  {mrp > sellingPrice && (
+                                    <span className="text-lg text-gray-500 line-through">
+                                      {formatINR(mrp * item.quantity)}
+                                    </span>
+                                  )}
+                                  {discountPercentage > 0 && (
+                                    <span className="text-xs font-semibold px-2 py-1 rounded border border-gray-400 text-gray-700">
+                                      {discountPercentage}% Off
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -262,17 +249,19 @@ export default function CartPage() {
                                   <span className="text-sm text-gray-600">Qty:</span>
                                   <div className="flex items-center border border-gray-300 rounded-lg">
                                     <button
-                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
-                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50"
+                                      onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                      disabled={loading}
                                     >
                                       −
                                     </button>
-                                    <span className="w-10 text-center font-medium text-gray-900">
+                                    <span className="w-10 text-center font-medium text-gray-900 px-2">
                                       {item.quantity}
                                     </span>
                                     <button
-                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition"
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 text-gray-700 transition disabled:opacity-50"
                                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                      disabled={loading}
                                     >
                                       +
                                     </button>
@@ -283,13 +272,15 @@ export default function CartPage() {
                                 <div className="flex gap-6 text-sm">
                                   <button
                                     onClick={() => handleSaveForLater(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium transition-colors"
+                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50"
+                                    disabled={loading}
                                   >
                                     SAVE FOR LATER
                                   </button>
                                   <button
                                     onClick={() => handleRemove(item.id)}
-                                    className="text-gray-700 hover:text-black font-medium transition-colors"
+                                    className="text-gray-700 hover:text-black font-medium transition-colors disabled:opacity-50"
+                                    disabled={loading}
                                   >
                                     REMOVE
                                   </button>
@@ -303,16 +294,16 @@ export default function CartPage() {
                   </div>
 
                   {/* Saved for Later */}
-                  {localSavedItems.length > 0 && (
+                  {savedItems.length > 0 && (
                     <div className="mt-10">
                       <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        Saved For Later ({localSavedItems.length})
+                        Saved For Later ({savedItems.length})
                       </h2>
                       <div className="space-y-4">
-                        {localSavedItems.map((item) => {
+                        {savedItems.map((item) => {
                           const product = item.product || {};
                           const productName = product.name || "Product";
-                          const thumbnail = product.thumbnailImage || "/assets/images/shirt1.webp";
+                          const thumbnail = product.thumbnailImage || "/assets/images/placeholder.jpg";
                           const sellingPrice = product.sellingPrice || item.discountedPriceValue || 0;
                           const mrp = product.mrp || item.originalPriceValue || sellingPrice;
 
@@ -327,6 +318,7 @@ export default function CartPage() {
                                     src={thumbnail}
                                     alt={productName}
                                     className="w-full h-full object-cover"
+                                    onError={(e) => { e.target.src = "/assets/images/placeholder.jpg"; }}
                                   />
                                 </div>
                                 <div className="flex-1">
@@ -334,26 +326,30 @@ export default function CartPage() {
                                     {productName}
                                   </h3>
                                   <p className="text-sm text-gray-600 mb-2">
-                                    Size: S • Seller: RedBrocket
+                                    Size: {product.size || 'S'} • Seller: {product.seller || 'RedBrocket'}
                                   </p>
                                   <div className="flex items-center gap-2 mb-3">
                                     <span className="text-lg font-bold text-gray-900">
                                       {formatINR(sellingPrice)}
                                     </span>
-                                    <span className="text-sm text-gray-500 line-through">
-                                      {formatINR(mrp)}
-                                    </span>
+                                    {mrp > sellingPrice && (
+                                      <span className="text-sm text-gray-500 line-through">
+                                        {formatINR(mrp)}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex gap-6 text-sm">
                                     <button
                                       onClick={() => handleMoveToCart(item.id)}
-                                      className="text-gray-700 hover:text-black font-medium"
+                                      className="text-gray-700 hover:text-black font-medium disabled:opacity-50"
+                                      disabled={loading}
                                     >
                                       MOVE TO CART
                                     </button>
                                     <button
                                       onClick={() => handleRemoveFromSaved(item.id)}
-                                      className="text-gray-700 hover:text-black font-medium"
+                                      className="text-gray-700 hover:text-black font-medium disabled:opacity-50"
+                                      disabled={loading}
                                     >
                                       REMOVE
                                     </button>
@@ -368,7 +364,7 @@ export default function CartPage() {
                   )}
 
                   {/* Bottom CTA */}
-                  {localCartItems.length > 0 && (
+                  {items.length > 0 && (
                     <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="text-lg font-semibold text-gray-900">
@@ -376,7 +372,7 @@ export default function CartPage() {
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                           <Link
-                            to="/products"
+                            to="/all-products"
                             className="flex-1 sm:flex-initial px-5 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-center"
                           >
                             CONTINUE SHOPPING
@@ -385,7 +381,7 @@ export default function CartPage() {
                             to="/checkout"
                             className="flex-1 sm:flex-initial px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-center"
                           >
-                            PROCEED TO CHECKOUT ({localCartItems.length})
+                            PROCEED TO CHECKOUT ({items.length})
                           </Link>
                         </div>
                       </div>
@@ -402,7 +398,7 @@ export default function CartPage() {
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Price ({localCartItems.length} items)
+                          Price ({items.length} items)
                         </span>
                         <span className="font-medium text-gray-900">
                           {formatINR(calculatedOriginalTotal)}

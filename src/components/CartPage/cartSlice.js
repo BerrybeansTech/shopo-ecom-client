@@ -147,6 +147,8 @@ const cartSlice = createSlice({
       if (item) {
         state.items = state.items.filter(item => item.id !== itemId);
         state.savedItems.push({ ...item, savedAt: new Date().toISOString() });
+        // Recalculate totals after moving
+        cartSlice.caseReducers.calculateTotals(state);
       }
     },
     moveToCart: (state, action) => {
@@ -156,6 +158,8 @@ const cartSlice = createSlice({
         state.savedItems = state.savedItems.filter(item => item.id !== itemId);
         const { savedAt, ...cartItem } = item;
         state.items.push(cartItem);
+        // Recalculate totals after moving
+        cartSlice.caseReducers.calculateTotals(state);
       }
     },
     removeFromSaved: (state, action) => {
@@ -243,6 +247,7 @@ const cartSlice = createSlice({
         state.loading = false;
         state.lastAction = 'add';
         state.isAuthenticated = true;
+        // Totals will be recalculated after fetchCartItems completes
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.loading = false;
