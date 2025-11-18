@@ -52,3 +52,13 @@ export const clearWishlist = async () => {
   }
 };
 
+// Check if product is in wishlist
+export const isProductInWishlist = async (productId) => {
+  try {
+    const wishlist = await getWishlist();
+    return wishlist.wishList?.includes(productId) || false;
+  } catch (error) {
+    console.error('Error checking wishlist:', error);
+    return false;
+  }
+};
