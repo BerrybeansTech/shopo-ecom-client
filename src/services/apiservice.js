@@ -51,10 +51,14 @@ export const apiService = (() => {
     const url = `${baseURL}${endpoint}`;
     const token = getToken();
 
+    // Check if body is FormData (for file uploads)
+    const isFormData = options.body instanceof FormData;
+
     const config = {
       method: options.method || 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        // Don't set Content-Type for FormData, let browser set it with boundary
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
@@ -62,7 +66,8 @@ export const apiService = (() => {
     };
 
     if (options.body && ['POST', 'PUT', 'PATCH'].includes(config.method.toUpperCase())) {
-      config.body = JSON.stringify(options.body);
+      // Don't JSON.stringify FormData
+      config.body = isFormData ? options.body : JSON.stringify(options.body);
     }
 
     try {

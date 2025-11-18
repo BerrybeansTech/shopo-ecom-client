@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import BreadcrumbCom from "../BreadcrumbCom";
 import Layout from "../Partials/Layout";
 import ProductView from "./ProductView";
@@ -9,6 +9,8 @@ import { Heart, ShoppingCart, Eye } from "lucide-react";
 
 export default function SingleProductPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const writeReview = searchParams.get('writeReview') === 'true';
   const { addItemToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -296,7 +298,7 @@ export default function SingleProductPage() {
           </div>
           <div className="w-full bg-white pb-[60px]">
             <div className="container-x mx-auto">
-              <ProductView product={product} />
+              <ProductView product={product} writeReview={writeReview} />
             </div>
           </div>
         </div>

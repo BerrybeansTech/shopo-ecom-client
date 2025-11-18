@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 
-export default function ProductView({ product, className, reportHandler }) {
+export default function ProductView({ product, className, reportHandler, writeReview }) {
+  const navigate = useNavigate();
   const { addItemToCart, refreshCart } = useCart();
 
   // Add state for add to cart feedback
@@ -279,11 +281,12 @@ export default function ProductView({ product, className, reportHandler }) {
   useEffect(() => {
     const fetchReviews = async () => {
       if (!product?.id) return;
-      
+
       setReviewsLoading(true);
       try {
         const response = await reviewApi.getByProduct(product.id);
-        const reviewsData = response.data || response || [];
+        // API returns { success: true, data: { reviews: [...] } }
+        const reviewsData = response.data?.reviews || [];
         setReviews(Array.isArray(reviewsData) ? reviewsData : []);
       } catch (error) {
         console.error("Error fetching reviews:", error);
@@ -924,12 +927,15 @@ export default function ProductView({ product, className, reportHandler }) {
               <h3 className="text-xl font-semibold text-black">
                 Customer Reviews
               </h3>
-              <button
-                onClick={() => setShowReviews(!showReviews)}
-                className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
-              >
-                Write Review
-              </button>
+        <button
+  onClick={() =>
+    navigate(`/profile?tab=reviews&productId=${transformedProduct.id}#review`)
+  }
+  className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+>
+  Write Review
+</button>
+
             </div>
 
             {reviewsLoading ? (

@@ -51,7 +51,9 @@ export const useOrders = () => {
           quantity: item.quantity,
           color: 'Default',
           size: 'Standard',
-          thumbnail
+          thumbnail,
+          productId: item.productId,
+          orderItemId: item.id
         };
       }) || [],
       shippingAddress: apiOrder.shippingAddress || 'Address not available',

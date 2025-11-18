@@ -81,6 +81,13 @@ export default function ThankYouPopup({
                         <span className="font-medium text-black text-xs">Confirmed</span>
                       </div>
                       <p className="text-gray-600 text-xs mt-1">Qty: {item.quantity}</p>
+                      <button
+                        onClick={() => navigate('/profile?tab=reviews&productId=' + item.productId)}
+                        className="mt-2 flex items-center space-x-1 px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 transition-all"
+                      >
+                        <Star className="w-3 h-3" />
+                        <span>Write Review</span>
+                      </button>
                     </div>
                   </div>
                 ))}
