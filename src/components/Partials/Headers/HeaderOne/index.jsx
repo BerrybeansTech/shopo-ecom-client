@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useProducts } from "../../../AllProductPage/hooks/useProducts";
 import { useAuth } from "../../../Auth/hooks/useAuth";
+import { useCart } from "../../../CartPage/useCart";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -48,12 +49,15 @@ const Navbar = () => {
   } = useProducts();
 
   // Use the auth hook to get user authentication state
-  const { 
-    user, 
-    isAuthenticated, 
-    logout, 
-    loading: authLoading 
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    loading: authLoading
   } = useAuth();
+
+  // Use the cart hook to get cart data
+  const { itemCount, total, formatINR, isEmpty } = useCart();
 
   // Fetch ONLY categories data on component mount if not already loaded
   useEffect(() => {
@@ -374,16 +378,18 @@ const Navbar = () => {
               >
                 <div className="relative">
                   <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-black text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg">
-                    0
-                  </span>
+                  {itemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-black text-white text-[10px] rounded-full flex items-center justify-center font-bold shadow-lg">
+                      {itemCount}
+                    </span>
+                  )}
                 </div>
                 <div className="hidden lg:block text-left">
                   <div className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">
                     Cart
                   </div>
                   <div className="text-sm font-bold text-black">
-                    ₹0.00
+                    {isEmpty ? formatINR(0) : formatINR(total)}
                   </div>
                 </div>
               </Link>
