@@ -24,7 +24,8 @@ export default function ProductCardStyleOne({ datas, type }) {
     
     // Handle different image data structures
     if (typeof datas.image === 'string') {
-      return `${import.meta.env.VITE_PUBLIC_URL || 'http://luxcycs.com:5501'}/assets/images/${datas.image}`;
+      const publicUrl = import.meta.env.VITE_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501';
+      return `${publicUrl}/assets/images/${datas.image}`;
     }
     
     // If image is an object with url property
