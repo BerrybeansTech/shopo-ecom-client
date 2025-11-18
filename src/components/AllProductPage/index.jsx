@@ -961,23 +961,23 @@ const filteredProducts = useMemo(() => {
                               />
 
 
-//                             <button className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 z-10">
-//                               <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 hover:text-red-500 hover:fill-red-500 transition-colors" />
-//                             </button>
+                             {/* <button className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 z-10">
+                               <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 hover:text-red-500 hover:fill-red-500 transition-colors" />
+                             </button>
 
-//                             {product.discount > 0 && (
-//                               <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg">
-//                                 {product.discount}% OFF
-//                               </div>
-//                             )}
+                             {product.discount > 0 && (
+                               <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg">
+                                 {product.discount}% OFF
+                               </div>
+                             )}
 
-//                             {product.product_type && product.discount === 0 && (
-//                               <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
-//                                 <span
-//                                   className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
-//                                     product.product_type === "popular"
-//                                       ? "bg-orange-500"
-//                                       : "bg-red-600"
+                             {product.product_type && product.discount === 0 && (
+                               <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+                                 <span
+                                   className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
+                                     product.product_type === "popular"
+                                       ? "bg-orange-500"
+                                       : "bg-red-600" */}
 
                               {product.discount > 0 && (
                                 <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg">
