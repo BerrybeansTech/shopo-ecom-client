@@ -1,6 +1,8 @@
 // services/apiservice.js
-// const BASE_URL = 'http://luxcycs.com:5501';
-const BASE_URL = 'http://localhost:3000';                                                                                                                                                                                       
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501';
+
+// Export BASE_URL for use in components
+export { BASE_URL };
 
 // Request deduplication cache
 const requestCache = new Map();

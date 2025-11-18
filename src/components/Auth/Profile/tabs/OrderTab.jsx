@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Truck, 
-  Download, 
   Eye, 
   ShoppingCart,
   Calendar,
@@ -77,48 +76,6 @@ export default function OrderTab() {
       alert(result.error || 'Failed to cancel order');
     }
     setCancellingOrder(null);
-  };
-
-  const downloadInvoice = async (order) => {
-    try {
-      const invoiceContent = `
-        SHOPO STORE - CURRENT ORDER
-        ===========================
-        
-        Order #${order.id}
-        Date: ${order.date}
-        Status: ${order.status}
-        Estimated Delivery: ${order.tracking?.estimatedDate || order.estimatedDelivery}
-        
-        Shipping Address:
-        ${order.shippingAddress}
-        
-        ITEMS:
-        ${order.items.map((item, index) => 
-          `${index + 1}. ${item.name}
-           Quantity: ${item.quantity}
-           Color: ${item.color}
-           Size: ${item.size}
-           Price: ${item.price}
-          `
-        ).join('\n')}
-        
-        Total: ${order.amount}
-        Payment Method: ${order.paymentMode}
-        
-        Track your order for real-time updates!
-      `;
-      
-      const blob = new Blob([invoiceContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `shopo-current-order-${order.id}.txt`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      alert('Failed to download invoice. Please try again.');
-    }
   };
 
   const getStatusColor = (status) => {
@@ -345,14 +302,6 @@ export default function OrderTab() {
                     By Alex John | {order.date}
                   </p>
                 </div>
-
-                <button
-                  className="px-4 py-2 border border-white-500 bg-white-50 text-black-900 rounded-lg hover:bg-white-400 flex items-center justify-center space-x-2 text-sm transition-all duration-200 w-full sm:w-auto mt-2 sm:mt-0"
-                  onClick={() => downloadInvoice(order)}
-                >
-                  <Download className="text-lg" />
-                  <span>Download invoice</span>
-                </button>
               </div>
 
               <div className="border-t border-white-500 my-4"></div>

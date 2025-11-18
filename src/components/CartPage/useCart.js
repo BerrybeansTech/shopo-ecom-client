@@ -1,4 +1,4 @@
-// src/features/cart/hooks/useCart.js - FIXED VERSION
+// features/cart/hooks/useCart.js - FIXED VERSION
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,6 @@ import {
   updateCartItem,
   deleteCartItem,
   clearCart,
-  clearCartAfterOrder,
   moveToSaved,
   moveToCart,
   removeFromSaved,
@@ -16,8 +15,7 @@ import {
   calculateTotals,
   clearError,
   setAuthStatus,
-  clearCartState,
-  resetOrderCompleted
+  clearCartState
 } from './cartSlice';
 
 export const useCart = () => {
@@ -39,38 +37,34 @@ export const useCart = () => {
 
   // Load cart items on mount if authenticated
   useEffect(() => {
-    if (cartState.isAuthenticated && !cartState.orderCompleted) {
+    if (cartState.isAuthenticated) {
       dispatch(fetchCartItems());
     }
-  }, [dispatch, cartState.isAuthenticated, cartState.orderCompleted]);
+  }, [dispatch, cartState.isAuthenticated]);
 
   // Calculate totals whenever items change
   useEffect(() => {
-    if (!cartState.orderCompleted) {
-      dispatch(calculateTotals());
-    }
-  }, [dispatch, cartState.items, cartState.orderCompleted]);
+    dispatch(calculateTotals());
+  }, [dispatch, cartState.items]);
 
   const addItemToCart = useCallback(async (cartData) => {
     try {
-      // Reset order completed flag when adding new items
-      if (cartState.orderCompleted) {
-        dispatch(resetOrderCompleted());
-      }
-
       console.log("Adding item to cart:", cartData);
       
       const result = await dispatch(addToCart(cartData)).unwrap();
       
       console.log("Add to cart result:", result);
       
+      // The cart will be automatically refreshed by the addToCart thunk
+      // Wait a bit for the refresh to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       
       return { success: true, data: result };
     } catch (error) {
       console.error("Add to cart error:", error);
       
-      if (error?.includes?.('Please login')) {
+      if (error.includes('Please login')) {
+        // Redirect to login if not authenticated
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -78,9 +72,9 @@ export const useCart = () => {
           } 
         });
       }
-      return { success: false, error: error?.message || error };
+      return { success: false, error };
     }
-  }, [dispatch, navigate, cartState.orderCompleted]);
+  }, [dispatch, navigate]);
 
   const updateItemQuantity = useCallback(async (itemId, quantity) => {
     // Update locally first for immediate UI response
@@ -94,7 +88,7 @@ export const useCart = () => {
       return { success: true };
     } catch (error) {
       // Revert local change if API fails
-      if (error?.includes?.('Please login')) {
+      if (error.includes('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -104,7 +98,7 @@ export const useCart = () => {
       } else {
         dispatch(fetchCartItems()); // Reload from server
       }
-      return { success: false, error: error?.message || error };
+      return { success: false, error };
     }
   }, [dispatch, navigate]);
 
@@ -113,7 +107,7 @@ export const useCart = () => {
       await dispatch(deleteCartItem(itemId)).unwrap();
       return { success: true };
     } catch (error) {
-      if (error?.includes?.('Please login')) {
+      if (error.includes('Please login')) {
         navigate('/login', { 
           state: { 
             returnUrl: window.location.pathname,
@@ -121,39 +115,38 @@ export const useCart = () => {
           } 
         });
       }
-      return { success: false, error: error?.message || error };
+      return { success: false, error };
     }
   }, [dispatch, navigate]);
 
-  const clearAllItems = useCallback(async () => {
+  const clearAllItems = useCallback(async (cartId) => {
     try {
-      await dispatch(clearCart()).unwrap();
+      await dispatch(clearCart(cartId)).unwrap();
       return { success: true };
     } catch (error) {
-      if (error?.includes?.('Please login')) {
-        navigate('/login', { 
-          state: { 
+      if (error.includes('Please login')) {
+        navigate('/login', {
+          state: {
             returnUrl: window.location.pathname,
             message: 'Please login to clear cart'
-          } 
+          }
         });
       }
-      return { success: false, error: error?.message || error };
+      return { success: false, error };
     }
   }, [dispatch, navigate]);
 
-  // NEW: Clear cart after successful order
   const clearCartAfterSuccessfulOrder = useCallback(async () => {
     try {
-      console.log("Clearing cart after successful order...");
-      await dispatch(clearCartAfterOrder()).unwrap();
-      return { success: true, message: 'Cart cleared after order' };
+      // Get the first cart item to extract cartId, or use default cartId
+      const cartId = cartState.items.length > 0 ? cartState.items[0].cartId : 1;
+      const result = await clearAllItems(cartId);
+      return result;
     } catch (error) {
-      console.error("Error clearing cart after order:", error);
-      // Even if it fails, we still want to proceed
-      return { success: false, error: error?.message || error, message: 'Cart cleared locally' };
+      console.error('Error clearing cart after successful order:', error);
+      return { success: false, error };
     }
-  }, [dispatch]);
+  }, [clearAllItems, cartState.items]);
 
   const saveForLater = useCallback((itemId) => {
     dispatch(moveToSaved(itemId));
@@ -169,7 +162,6 @@ export const useCart = () => {
 
   const refreshCart = useCallback(() => {
     if (cartState.isAuthenticated) {
-      dispatch(resetOrderCompleted()); // Reset flag before refresh
       console.log("Refreshing cart...");
       dispatch(fetchCartItems());
     }
@@ -208,7 +200,6 @@ export const useCart = () => {
     discount: cartState.discount,
     total: cartState.total,
     isAuthenticated: cartState.isAuthenticated,
-    orderCompleted: cartState.orderCompleted,
     
     // Actions
     addItemToCart,
@@ -227,6 +218,6 @@ export const useCart = () => {
     // Computed values
     itemCount: cartState.items.reduce((total, item) => total + item.quantity, 0),
     uniqueItemCount: cartState.items.length,
-    isEmpty: cartState.items.length === 0 && !cartState.loading
+    isEmpty: cartState.items.length === 0
   };
 };
