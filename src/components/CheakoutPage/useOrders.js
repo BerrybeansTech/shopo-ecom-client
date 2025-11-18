@@ -28,14 +28,32 @@ export const useOrders = () => {
       amount: `₹${apiOrder.finalAmount || apiOrder.totalAmount || 0}`,
       paymentMode: apiOrder.paymentMethod || 'Unknown',
       customerName: apiOrder.Customer?.name || 'Customer',
-      items: apiOrder.OrderItems?.map(item => ({
-        name: item.Product?.name || 'Product',
-        price: `₹${item.unitPrice || item.totalPrice || 0}`,
-        quantity: item.quantity,
-        color: 'Default',
-        size: 'Standard',
-        thumbnail: item.Product?.thumbnailImage || 'default.jpg'
-      })) || [],
+      // Build fully-qualified thumbnail URLs so images load from the remote host
+      items: apiOrder.OrderItems?.map(item => {
+        const rawThumb = item.Product?.thumbnailImage || '';
+        const IMAGE_HOST = 'http://luxcycs.com:5501';
+
+        let thumbnail = '';
+        if (!rawThumb) {
+          // fallback default hosted image (keep host so image resolves)
+          thumbnail = `${IMAGE_HOST}/rabbit-and-finch-uploads/default.jpg`;
+        } else if (/^https?:\/\//i.test(rawThumb)) {
+          // already absolute URL
+          thumbnail = rawThumb;
+        } else {
+          // relative path - ensure we don't produce double slashes
+          thumbnail = `${IMAGE_HOST}/${rawThumb.replace(/^\/+/, '')}`;
+        }
+
+        return {
+          name: item.Product?.name || 'Product',
+          price: `₹${item.unitPrice || item.totalPrice || 0}`,
+          quantity: item.quantity,
+          color: 'Default',
+          size: 'Standard',
+          thumbnail
+        };
+      }) || [],
       shippingAddress: apiOrder.shippingAddress || 'Address not available',
       deliveryDate: deliveryDate.toLocaleDateString('en-US', {
         weekday: 'short',
