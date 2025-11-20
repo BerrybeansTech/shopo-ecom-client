@@ -1,4 +1,4 @@
-export default function ProductsAds({
+export default function ProductsAd({
   className,
   ads = ["", ""],
   sectionHeight,
