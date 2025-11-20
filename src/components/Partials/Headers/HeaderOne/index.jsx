@@ -123,14 +123,14 @@ const Navbar = () => {
       'Accessories': Watch,
       'Footwear': Footprints,
       'Fashion': Shirt,
-      'Electronics': ShoppingBasket,
+      'kids': ShoppingBasket,
       'Home': Home,
       'Furniture': Home,
       'Mobile': ShoppingBasket,
       'Beauty': Glasses,
       'Sports': Dumbbell,
       'Watches': Watch,
-      'Bags': ShoppingBag,
+      'women': ShoppingBag,
     };
     
     for (const [key, icon] of Object.entries(iconMap)) {

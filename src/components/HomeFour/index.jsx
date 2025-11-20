@@ -1,6 +1,6 @@
 import React from "react";
 import LayoutHomeFour from "../Partials/LayoutHomeFour";
-import BrandSection from "../Home/BrandSection";
+import CategorySection from "../Home/CategorySection";
 import ProductsAds from "../Home/ProductsAds";
 import Banner from "./Banner";
 import SectionStyleOneHmFour from "../Helpers/SectionStyleOneHmFour";
@@ -20,7 +20,7 @@ function Index() {
         seeMoreUrl="/all-products"
         className="new-products mb-[60px]"
       />
-      <BrandSection className="mb-[60px]" />
+      <CategorySection className="mb-[60px]" />
       <CampaignCountDown lastDate="2025-10-04 4:00:00" className="mb-[60px]" />
       <SectionStyleOneHmFour
         products={products.slice(20, 24)}
