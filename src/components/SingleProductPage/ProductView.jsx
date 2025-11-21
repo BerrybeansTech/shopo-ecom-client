@@ -151,9 +151,10 @@ export default function ProductView({ product, className, reportHandler, writeRe
   const [showReviews, setShowReviews] = useState(false);
   const [zoomStyle, setZoomStyle] = useState({});
   const [showZoom, setShowZoom] = useState(false);
-  const [visibleReviews, setVisibleReviews] = useState(2);
+  const [visibleReviews, setVisibleReviews] = useState(3);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [ratingDistribution, setRatingDistribution] = useState({5: 0, 4: 0, 3: 0, 2: 0, 1: 0});
 
   const thumbnailRef = useRef(null);
 
@@ -277,6 +278,24 @@ export default function ProductView({ product, className, reportHandler, writeRe
     }
   }, [userMessage]);
 
+  // Calculate rating distribution
+  const calculateRatingDistribution = (reviews) => {
+    const distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    reviews.forEach(review => {
+      if (review.rating >= 1 && review.rating <= 5) {
+        distribution[review.rating]++;
+      }
+    });
+    return distribution;
+  };
+
+  
+  const calculateOverallRating = (reviews) => {
+    if (reviews.length === 0) return 0;
+    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+    return total / reviews.length;
+  };
+
   // Fetch reviews with better error handling
   useEffect(() => {
     const fetchReviews = async () => {
@@ -288,6 +307,11 @@ export default function ProductView({ product, className, reportHandler, writeRe
         // API returns { success: true, data: { reviews: [...] } }
         const reviewsData = response.data?.reviews || [];
         setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+        
+        // Calculate rating distribution
+        if (reviewsData.length > 0) {
+          setRatingDistribution(calculateRatingDistribution(reviewsData));
+        }
       } catch (error) {
         console.error("Error fetching reviews:", error);
         setReviews([]);
@@ -298,6 +322,43 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
     fetchReviews();
   }, [product?.id]);
+
+  // Get initials for avatar
+  const getInitials = (name) => {
+    return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+  };
+
+  // Get avatar color based on name
+  const getAvatarColor = (name) => {
+    const colors = [
+      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 
+      'bg-red-500', 'bg-yellow-500', 'bg-pink-500', 
+      'bg-indigo-500', 'bg-teal-500'
+    ];
+    const index = name ? name.charCodeAt(0) % colors.length : 0;
+    return colors[index];
+  };
+
+  // Get rating label
+  const getRatingLabel = (rating) => {
+    const labels = {
+      5: "Excellent",
+      4: "Good", 
+      3: "Average",
+      2: "Poor",
+      1: "Very Poor"
+    };
+    return labels[rating] || "No Rating";
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   // Handlers
   const handleColorChange = (colorId) => {
@@ -478,11 +539,27 @@ export default function ProductView({ product, className, reportHandler, writeRe
     }
   };
 
+  // Load more reviews
+  const handleLoadMoreReviews = () => {
+    setVisibleReviews(prev => prev + 3);
+  };
+
+  if (!transformedProduct) {
+    return <div className="text-center py-10">Loading product...</div>;
+  }
+
+
+  // Calculate overall rating
+  const overallRating = useMemo(() => {
+    return reviews.length > 0 ? calculateOverallRating(reviews) : transformedProduct.rating;
+  }, [reviews, transformedProduct.rating]);
+
   if (!transformedProduct) {
     return <div className="text-center py-10">Loading product...</div>;
   }
 
   return (
+    <>
     <div className={`product-view mt-10 w-full lg:flex flex-col lg:flex-row justify-between ${className || ""}`}>
 
       {/* Image Section */}
@@ -921,61 +998,174 @@ export default function ProductView({ product, className, reportHandler, writeRe
             )}
           </div>
 
-          {/* Reviews Section */}
-          <div className="reviews-section mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-black">
-                Customer Reviews
-              </h3>
-        <button
-  onClick={() =>
-    navigate(`/profile?tab=reviews&productId=${transformedProduct.id}#review`)
-  }
-  className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
->
-  Write Review
-</button>
-
-            </div>
-
-            {reviewsLoading ? (
-              <p className="text-gray-500">Loading reviews...</p>
-            ) : reviews.length === 0 ? (
-              <p className="text-gray-500">No reviews yet. Be the first to review!</p>
-            ) : (
-              <div className="space-y-4">
-                {reviews.slice(0, visibleReviews).map((review) => (
-                  <div
-                    key={review.id}
-                    className="p-4 border border-gray-300 rounded-lg"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold">{review.user?.name || 'Anonymous'}</span>
-                        <span className="text-yellow-500">
-                          {'★'.repeat(review.rating)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-black">{review.comment}</p>
-                  </div>
-                ))}
-                {reviews.length > visibleReviews && (
-                  <button
-                    onClick={() => setVisibleReviews(prev => prev + 2)}
-                    className="text-blue-600 hover:underline text-sm font-medium"
-                  >
-                    Load More Reviews
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
+          {/* Ratings & Reviews Section */}
+      <div data-aos="fade-up" className="ratings-reviews-section w-full mt-12">
+        <div className="border-t border-gray-200 pt-8">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
+            {/* Left Side - Rating Summary */}
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                Ratings & Reviews
+              </h3>
+              <div className="rating-summary p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+                  {/* Overall Rating */}
+                  <div className="text-center sm:text-left">
+                    <div className="text-5xl font-bold text-gray-900 mb-2">
+                      {overallRating.toFixed(1)}
+                    </div>
+                    <div className="text-yellow-400 text-2xl mb-3 flex gap-1">
+                      {'★'.repeat(Math.floor(overallRating))}
+                      {overallRating % 1 >= 0.5 ? '★' : '☆'}
+                      {'☆'.repeat(5 - Math.ceil(overallRating))}
+                    </div>
+                    <div className="text-sm text-gray-600 font-medium">
+                      Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                    </div>
+                  </div>
+
+                  {/* Rating Distribution */}
+                  <div className="flex-1 min-w-[280px]">
+                    <div className="space-y-3">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const percentage = reviews.length > 0 
+                          ? (ratingDistribution[star] / reviews.length) * 100 
+                          : 0;
+                        return (
+                          <div key={star} className="flex items-center space-x-4">
+                            <span className="text-sm font-medium text-gray-700 w-4 text-right">{star}</span>
+                            <span className="text-yellow-400 text-lg">★</span>
+                            <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-[200px]">
+                              <div
+                                className="bg-yellow-400 h-3 rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${percentage}%`,
+                                }}
+                              ></div>
+                            </div>
+                            <span className="text-sm text-gray-600 w-12 font-medium">
+                              {Math.round(percentage)}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Show All Reviews Button */}
+            <div className="lg:w-auto flex justify-center">
+              {reviews.length > 0 && !showReviews && (
+                <button
+                  onClick={() => setShowReviews(true)}
+                  className="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-all duration-200 transform hover:scale-105 shadow-md"
+                >
+                  Show All Reviews ({reviews.length})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Reviews List - Only show when expanded */}
+          {showReviews && (
+            <div className="reviews-list space-y-6 mt-8">
+              {reviews.slice(0, visibleReviews).map((review) => (
+                <div
+                  key={review.id}
+                  className="review-item p-6 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div
+                        className={`w-12 h-12 ${getAvatarColor(review.Customer?.name)} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}
+                      >
+                        <span className="text-white font-semibold text-sm">
+                          {getInitials(review.Customer?.name)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h5 className="font-semibold text-gray-900 text-lg">
+                            {review.Customer?.name || 'Anonymous'}
+                          </h5>
+                          <div className="flex items-center space-x-1 bg-green-50 px-3 py-1 rounded-full">
+                            <span className="text-green-700 text-sm font-bold">{review.rating}.0</span>
+                            <span className="text-yellow-400">★</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3 font-medium">
+                          {getRatingLabel(review.rating)}
+                        </p>
+                        <p className="text-gray-700 leading-relaxed">
+                          {review.comment}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-gray-500 whitespace-nowrap pl-4">
+                      {formatDate(review.createdAt)}
+                    </span>
+                  </div>
+                  
+                  {/* Review Images */}
+                  {review.images && review.images.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {review.images.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={`http://luxcycs.com/rabbit-and-finch-uploads/${image}`}
+                            alt={`Review image ${index + 1}`}
+                            className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
+                            onClick={() => window.open(`http://luxcycs.com/rabbit-and-finch-uploads/${image}`, '_blank')}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg cursor-pointer"></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Load More Button */}
+              {visibleReviews < reviews.length && (
+                <div className="text-center mt-8">
+                  <button
+                    onClick={handleLoadMoreReviews}
+                    className="px-8 py-3 border-2 border-gray-900 text-gray-900 font-semibold rounded-lg hover:bg-gray-900 hover:text-white transition-all duration-200 transform hover:scale-105"
+                  >
+                    Load More Reviews ({reviews.length - visibleReviews} remaining)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {reviews.length === 0 && !reviewsLoading && (
+            <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50">
+              <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <span className="text-3xl text-gray-400">☆</span>
+              </div>
+              <p className="text-gray-500 text-xl font-semibold mb-4">No reviews yet</p>
+              <p className="text-gray-400 text-base mb-8 max-w-md mx-auto">
+                Be the first to share your experience with this product and help other customers make their decision.
+              </p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {reviewsLoading && (
+            <div className="text-center py-16">
+              <div className="w-12 h-12 border-4 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-500 text-lg font-medium">Loading reviews...</p>
+            </div>
+          )}
+        </div>
+      </div>
+          </>
   );
 }

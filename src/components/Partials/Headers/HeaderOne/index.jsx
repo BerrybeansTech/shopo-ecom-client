@@ -25,6 +25,7 @@ import {
 import { useProducts } from "../../../AllProductPage/hooks/useProducts";
 import { useAuth } from "../../../Auth/hooks/useAuth";
 import { useCart } from "../../../CartPage/useCart";
+import { productApi } from "../../../AllProductPage/productApi"; // Import your product API
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -35,6 +36,7 @@ const Navbar = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const searchRef = useRef(null);
   const accountRef = useRef(null);
 
@@ -62,7 +64,7 @@ const Navbar = () => {
   // Fetch ONLY categories data on component mount if not already loaded
   useEffect(() => {
     const initializeCategories = async () => {
-      if ((!categories || categories.length === 0) && !loading && !hasCategories) {
+      if ((!categories || categories.length === 0) && !loading) {
         console.log('Navbar: Fetching categories data only');
         try {
           await fetchCategoriesOnly();
@@ -73,7 +75,7 @@ const Navbar = () => {
     };
 
     initializeCategories();
-  }, [categories, loading, hasCategories, fetchCategoriesOnly]);
+  }, [categories, loading, fetchCategoriesOnly]);
 
   // Click outside handler for search and account dropdown
   useEffect(() => {
@@ -100,7 +102,7 @@ const Navbar = () => {
 
     return categories.map(category => ({
       id: category.id,
-      name: category.name,
+      name: category.name.replace(/\.+$/, '').trim(), // Clean name
       subcategories: category.ProductSubCategories?.map(subCategory => ({
         id: subCategory.id,
         name: subCategory.name,
@@ -112,7 +114,9 @@ const Navbar = () => {
     }));
   }, [categories]);
 
-  const flattenedCategories = useMemo(() => getFlattenedCategories(), [getFlattenedCategories]);
+  const flattenedCategories = useMemo(() => {
+    return getFlattenedCategories ? getFlattenedCategories() : [];
+  }, [getFlattenedCategories]);
 
   const getCategoryIcon = (categoryName) => {
     const iconMap = {
@@ -142,67 +146,77 @@ const Navbar = () => {
     return ShoppingCart;
   };
 
-  // Search only through categories
-  const handleSearch = (query) => {
+  // Search products via API
+  const handleSearch = async (query) => {
     setSearchQuery(query);
+    
     if (query.trim() === "") {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
     
-    const lowerQuery = query.toLowerCase();
-    
-    // Search only through flattened categories
-    const categoryResults = flattenedCategories.filter(item =>
-      item.name.toLowerCase().includes(lowerQuery)
-    ).slice(0, 8);
-    
-    setSearchResults(categoryResults);
-    setShowSearchResults(true);
-  };
-
-  // Generate proper category URLs
-  const getCategoryUrl = (categoryItem) => {
-    if (!categoryItem) return '/';
-    
-    switch (categoryItem.type) {
-      case 'category':
-        return `/category/${categoryItem.id}`;
-      case 'subcategory':
-        return `/category/${categoryItem.parentId}/${categoryItem.id}`;
-      case 'childcategory':
-        const subCategory = flattenedCategories.find(item => 
-          item.id === categoryItem.parentId && item.type === 'subcategory'
-        );
-        if (subCategory) {
-          return `/category/${subCategory.parentId}/${subCategory.id}/${categoryItem.id}`;
-        }
-        return `/category/${categoryItem.id}`;
-      default:
-        return '/';
+    try {
+      setSearchLoading(true);
+      
+      // Call the product API with search query
+      const response = await productApi.getAll({ 
+        name: query,
+        limit: 8 // Limit results for search dropdown
+      });
+      
+      const products = response.data || response;
+      setSearchResults(products);
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
-  // Get category display name with hierarchy
-  const getCategoryDisplayName = (categoryItem) => {
-    if (!categoryItem) return '';
+  // Generate proper product URLs
+  const getProductUrl = (product) => {
+    if (!product) return '/';
     
-    switch (categoryItem.type) {
-      case 'category':
-        return `Category: ${categoryItem.name}`;
-      case 'subcategory':
-        const parentCategory = getCategoryById(categoryItem.parentId);
-        return `Subcategory: ${parentCategory?.name || ''} › ${categoryItem.name}`;
-      case 'childcategory':
-        const parentSub = flattenedCategories.find(item => 
-          item.id === categoryItem.parentId && item.type === 'subcategory'
-        );
-        const grandParentCategory = parentSub ? getCategoryById(parentSub.parentId) : null;
-        return `Child: ${grandParentCategory?.name || ''} › ${parentSub?.name || ''} › ${categoryItem.name}`;
-      default:
-        return categoryItem.name;
+    return `/product/${product.name.toLowerCase().replace(/\s+/g, '-')}-${product.id}`;
+  };
+
+  // Get product display price
+  const getProductPrice = (product) => {
+    return product.sellingPrice || product.mrp || 0;
+  };
+
+  // Get product image
+  const getProductImage = (product) => {
+    if (product.thumbnailImage) {
+      return product.thumbnailImage.startsWith('http') 
+        ? product.thumbnailImage 
+        : `http://luxcycs.com:5501/${product.thumbnailImage}`;
     }
+    
+    // Fallback to first gallery image or placeholder
+    if (product.galleryImage && product.galleryImage.length > 0) {
+      const firstImage = product.galleryImage[0];
+      return firstImage.startsWith('http') 
+        ? firstImage 
+        : `http://luxcycs.com:5501/${firstImage}`;
+    }
+    
+    // Use placeholder with product name
+    return `https://placehold.co/400x400/ffffff/000000?text=${encodeURIComponent(product.name)}`;
+  };
+
+  // Get product category info
+  const getProductCategoryInfo = (product) => {
+    const category = product.category?.name || 'Uncategorized';
+    const subCategory = product.subCategory?.name;
+    
+    if (subCategory) {
+      return `${category} › ${subCategory}`;
+    }
+    return category;
   };
 
   // Handle logout
@@ -286,7 +300,7 @@ const Navbar = () => {
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
-                    placeholder="Search categories..."
+                    placeholder="Search products..."
                     className={`w-full h-12 pl-5 pr-14 bg-gray-50 border-2 rounded-full text-sm font-medium focus:outline-none transition-all duration-300 placeholder-gray-400 ${
                       isSearchFocused 
                         ? 'border-black bg-white shadow-lg' 
@@ -294,38 +308,59 @@ const Navbar = () => {
                     }`}
                   />
                   <button className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 bg-black text-white rounded-full hover:bg-gray-800 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105">
-                    <Search className="w-4 h-4" />
+                    {searchLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
 
-                {/* Search Results for Categories */}
+                {/* Search Results for Products */}
                 {showSearchResults && searchResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-3 bg-white border-2 border-gray-200 rounded-2xl shadow-2xl z-50 max-h-96 overflow-hidden">
                     <div className="p-2">
                       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                         <p className="text-xs font-bold text-black uppercase tracking-wider">
-                          Categories ({searchResults.length})
+                          Products ({searchResults.length})
                         </p>
                       </div>
-                      {searchResults.map((categoryItem, index) => (
+                      {searchResults.map((product, index) => (
                         <Link
-                          key={`${categoryItem.id}-${index}`}
-                          to={getCategoryUrl(categoryItem)}
+                          key={`${product.id}-${index}`}
+                          to={getProductUrl(product)}
                           className="flex items-center gap-4 p-3 hover:bg-gray-100 rounded-xl transition-all duration-200 group border-b border-gray-100 last:border-0"
                           onClick={() => {
                             setShowSearchResults(false);
                             setSearchQuery('');
                           }}
                         >
-                          <div className="w-14 h-14 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden border-2 border-gray-200 group-hover:border-black transition-all flex items-center justify-center">
-                            <ShoppingCart className="w-6 h-6 text-gray-600 group-hover:text-black transition-colors" />
+                          <div className="w-14 h-14 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden border-2 border-gray-200 group-hover:border-black transition-all">
+                            <img
+                              src={getProductImage(product)}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = `https://placehold.co/400x400/ffffff/000000?text=${encodeURIComponent(product.name)}`;
+                              }}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-bold text-black truncate">
-                              {categoryItem.name}
+                              {product.name}
                             </div>
                             <div className="text-xs text-gray-600 font-medium mt-0.5">
-                              {getCategoryDisplayName(categoryItem)}
+                              {getProductCategoryInfo(product)}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-sm font-bold text-black">
+                                {formatINR(getProductPrice(product))}
+                              </span>
+                              {product.mrp && product.mrp > getProductPrice(product) && (
+                                <span className="text-xs text-gray-500 line-through">
+                                  {formatINR(product.mrp)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </Link>
@@ -334,10 +369,10 @@ const Navbar = () => {
                   </div>
                 )}
 
-                {showSearchResults && searchResults.length === 0 && searchQuery && (
+                {showSearchResults && searchResults.length === 0 && searchQuery && !searchLoading && (
                   <div className="absolute top-full left-0 right-0 mt-3 bg-white border-2 border-gray-200 rounded-2xl shadow-2xl z-50 p-8 text-center">
                     <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-sm font-bold text-black">No categories found</p>
+                    <p className="text-sm font-bold text-black">No products found</p>
                     <p className="text-xs text-gray-600 mt-1">Try different keywords</p>
                   </div>
                 )}
@@ -596,33 +631,47 @@ const Navbar = () => {
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                placeholder="Search categories..."
+                placeholder="Search products..."
                 className="w-full h-11 pl-4 pr-12 bg-gray-50 border-2 border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:border-black focus:bg-white transition-all duration-200"
               />
               <button className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-all">
-                <Search className="w-4 h-4" />
+                {searchLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
               </button>
 
               {/* Mobile Search Results */}
               {showSearchResults && searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto">
                   <div className="p-2">
-                    {searchResults.map((categoryItem, index) => (
+                    {searchResults.map((product, index) => (
                       <Link
-                        key={`${categoryItem.id}-${index}`}
-                        to={getCategoryUrl(categoryItem)}
+                        key={`${product.id}-${index}`}
+                        to={getProductUrl(product)}
                         className="flex items-center gap-3 p-2.5 hover:bg-gray-100 rounded-xl transition-all duration-200 border-b border-gray-100 last:border-0"
                         onClick={() => {
                           setShowSearchResults(false);
                           setSearchQuery('');
                         }}
                       >
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center border border-gray-200">
-                          <ShoppingCart className="w-5 h-5 text-gray-600" />
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                          <img
+                            src={getProductImage(product)}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = `https://placehold.co/400x400/ffffff/000000?text=${encodeURIComponent(product.name)}`;
+                            }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-black truncate">{categoryItem.name}</div>
-                          <div className="text-xs text-gray-600 font-medium">{getCategoryDisplayName(categoryItem)}</div>
+                          <div className="text-sm font-bold text-black truncate">{product.name}</div>
+                          <div className="text-xs text-gray-600 font-medium">{getProductCategoryInfo(product)}</div>
+                          <div className="text-sm font-bold text-black mt-1">
+                            {formatINR(getProductPrice(product))}
+                          </div>
                         </div>
                       </Link>
                     ))}

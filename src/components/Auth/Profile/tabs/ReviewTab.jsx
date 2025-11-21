@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star } from "lucide-react";
+import { Star, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { apiService } from "../../../../services/apiservice";
 
@@ -11,6 +11,9 @@ const ratingLabels = {
   5: "Excellent",
 };
 
+// Get base URL for images
+const BASE_URL = 'http://luxcycs.com:5501';
+
 export default function ReviewTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [reviews, setReviews] = useState([]);
@@ -20,16 +23,16 @@ export default function ReviewTab() {
   const [productId, setProductId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [loadingProduct, setLoadingProduct] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
   useEffect(() => {
     fetchUserReviews();
-    // Check if there's a productId in URL params (from order page)
     const productIdFromUrl = searchParams.get('productId');
     if (productIdFromUrl) {
       setProductId(productIdFromUrl);
-      // Fetch product details
       fetchProductDetails(productIdFromUrl);
-      // Scroll to review form
       setTimeout(() => {
         const reviewForm = document.getElementById('review-form');
         if (reviewForm) {
@@ -41,13 +44,80 @@ export default function ReviewTab() {
 
   const fetchProductDetails = async (productId) => {
     try {
-      const response = await apiService.get(`/product/get/${productId}`);
-      if (response.success) {
-        setSelectedProduct(response.data);
+      setLoadingProduct(true);
+      const response = await apiService.get(`/product/get-product/${productId}`);
+      console.log('Product details response:', response);
+      
+      let productData = null;
+      if (response.success && response.data) {
+        productData = response.data;
+      } else if (response.id) {
+        productData = response;
+      }
+      
+      if (productData) {
+        setSelectedProduct(productData);
+      } else {
+        console.error('Product not found');
+        alert('Product details could not be loaded. Please try again.');
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
+      alert('Failed to load product details. Please try again.');
+    } finally {
+      setLoadingProduct(false);
     }
+  };
+
+  const getProductImageUrl = (imagePath) => {
+    if (!imagePath) return "/assets/images/shirt2.webp";
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${BASE_URL}/${imagePath}`;
+  };
+
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    
+    // Limit to 5 images
+    if (selectedImages.length + files.length > 5) {
+      alert('You can only upload up to 5 images');
+      return;
+    }
+
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+      
+      if (!isValidType) {
+        alert(`${file.name} is not a valid image file`);
+        return false;
+      }
+      if (!isValidSize) {
+        alert(`${file.name} is too large. Max size is 5MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    // Create previews
+    const newPreviews = validFiles.map(file => ({
+      file,
+      url: URL.createObjectURL(file)
+    }));
+
+    setSelectedImages(prev => [...prev, ...validFiles]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index) => {
+    // Revoke object URL to prevent memory leaks
+    URL.revokeObjectURL(imagePreviews[index].url);
+    
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const fetchUserReviews = async () => {
@@ -55,7 +125,6 @@ export default function ReviewTab() {
       setLoading(true);
       const response = await apiService.get('/product/review/get-all');
       if (response.success) {
-        // Transform API response to match component's expected format
         const transformedReviews = response.data.map(review => ({
           id: review.id,
           rating: review.rating,
@@ -66,9 +135,8 @@ export default function ReviewTab() {
             year: "numeric",
           }),
           productName: review.Product?.name || "Unknown Product",
-          productImage: review.Product?.thumbnailImage
-            ? `${apiService.getBaseURL()}/${review.Product.thumbnailImage}`
-            : "/assets/images/shirt2.webp"
+          productImage: getProductImageUrl(review.Product?.thumbnailImage),
+          reviewImages: review.images?.map(img => getProductImageUrl(img)) || []
         }));
         setReviews(transformedReviews);
       }
@@ -88,32 +156,68 @@ export default function ReviewTab() {
 
     try {
       setSubmitting(true);
-      const reviewData = {
-        productId: parseInt(productId.trim()),
-        rating,
-        comment: comment.trim()
-      };
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('productId', parseInt(productId.trim()));
+      formData.append('rating', rating);
+      formData.append('comment', comment.trim());
+      
+      // Append images
+      selectedImages.forEach(image => {
+        formData.append('images', image);
+      });
 
-      const response = await apiService.post('/product/review/create', reviewData);
+      const response = await apiService.post('/product/review/create', formData);
 
       if (response.success) {
+        // Create new review object to add to list immediately
+        const newReview = {
+          id: response.data?.id || Date.now(),
+          rating,
+          comment: comment.trim(),
+          date: new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }),
+          productName: selectedProduct?.name || "Product",
+          productImage: getProductImageUrl(selectedProduct?.thumbnailImage),
+          reviewImages: response.data?.images?.map(img => getProductImageUrl(img)) || imagePreviews.map(p => p.url)
+        };
+
+        // Add new review to the top of the list immediately
+        setReviews(prevReviews => [newReview, ...prevReviews]);
+
         alert("Review submitted successfully!");
+        
         // Reset form
         setRating(0);
         setComment("");
-        // Only reset productId if it wasn't from URL params
+        setSelectedImages([]);
+        imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+        setImagePreviews([]);
+        
         if (!searchParams.get('productId')) {
           setProductId("");
         }
         setSelectedProduct(null);
-        // Remove productId from URL after submission
+        
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('productId');
         setSearchParams(newParams);
-        // Refresh reviews
-        await fetchUserReviews();
+        
+        // Scroll to reviews section
+        setTimeout(() => {
+          const reviewsList = document.getElementById('reviews-list');
+          if (reviewsList) {
+            reviewsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+        
+        // Refresh reviews in background
+        fetchUserReviews();
       } else {
-        // Handle specific error messages from backend
         if (response.message && response.message.includes("You can only review products you have purchased and received")) {
           alert("You can only review products from orders that have been delivered. Please wait for your order to be delivered before writing a review.");
         } else {
@@ -128,12 +232,14 @@ export default function ReviewTab() {
     }
   };
 
-  // Function to clear the form and URL params
   const handleClearForm = () => {
     setRating(0);
     setComment("");
     setProductId("");
     setSelectedProduct(null);
+    setSelectedImages([]);
+    imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
+    setImagePreviews([]);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('productId');
     setSearchParams(newParams);
@@ -181,13 +287,18 @@ export default function ReviewTab() {
         </div>
 
         {/* Selected Product Display */}
-        {selectedProduct && (
+        {loadingProduct ? (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-blue-600">Loading product details...</p>
+            </div>
+          </div>
+        ) : selectedProduct ? (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-3">
               <img
-                src={selectedProduct.thumbnailImage 
-                  ? `${apiService.getBaseURL()}/${selectedProduct.thumbnailImage}`
-                  : "/assets/images/shirt2.webp"}
+                src={getProductImageUrl(selectedProduct.thumbnailImage)}
                 alt={selectedProduct.name}
                 className="w-16 h-16 border border-gray-300 rounded-lg object-cover"
               />
@@ -198,33 +309,13 @@ export default function ReviewTab() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Product ID - Hidden from UI */}
-        <div className="hidden">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Product ID <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            required
-            placeholder="Enter product ID"
-            readOnly={!!searchParams.get('productId')}
-            className={`w-full border border-gray-300 rounded-lg px-4 py-3 text-sm outline-none ${
-              searchParams.get('productId')
-                ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
-                : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-            }`}
-          />
-          {searchParams.get('productId') && (
-            <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              Product automatically selected from your order
+        ) : searchParams.get('productId') ? (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              Product ID: {searchParams.get('productId')} - Loading details...
             </p>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {/* Star Rating */}
         <div className="flex flex-col gap-4 mb-6">
@@ -252,7 +343,6 @@ export default function ReviewTab() {
               ))}
             </div>
 
-            {/* Dynamic Label */}
             {rating > 0 && (
               <div className="animate-fadeIn">
                 <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 font-medium text-xs rounded-full">
@@ -279,6 +369,61 @@ export default function ReviewTab() {
           <p className="text-xs text-gray-500 mt-1">
             {comment.length} / 500 characters
           </p>
+        </div>
+
+        {/* Image Upload Section */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Add Photos (Optional)
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Upload up to 5 images (Max 5MB each)
+          </p>
+
+          {/* Image Previews */}
+          {imagePreviews.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
+              {imagePreviews.map((preview, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={preview.url}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-24 object-cover rounded-lg border-2 border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Button */}
+          {imagePreviews.length < 5 && (
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-6 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-600">
+                  Click to upload images ({5 - imagePreviews.length} remaining)
+                </span>
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}
@@ -310,12 +455,12 @@ export default function ReviewTab() {
           <p className="text-sm text-gray-400">You haven't reviewed any products yet.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div id="reviews-list" className="space-y-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Previous Reviews</h3>
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow"
+              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow animate-slideIn"
             >
               {/* Product Info */}
               <div className="flex items-start gap-4 mb-4">
@@ -348,7 +493,22 @@ export default function ReviewTab() {
               </div>
 
               {review.comment && (
-                <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
+                <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.comment}</p>
+              )}
+
+              {/* Review Images */}
+              {review.reviewImages && review.reviewImages.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-4">
+                  {review.reviewImages.map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={img}
+                      alt={`Review ${idx + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(img, '_blank')}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           ))}
@@ -362,6 +522,25 @@ export default function ReviewTab() {
         }
         .animate-fadeIn {
           animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+          from { 
+            opacity: 0; 
+            transform: translateY(-20px);
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0);
+          }
+        }
+        .animate-slideIn {
+          animation: slideIn 0.5s ease-out;
+        }
+        
+        #reviews-list > .animate-slideIn:first-child {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
       `}</style>
     </div>

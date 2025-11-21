@@ -243,9 +243,6 @@ export default function OrderTab() {
             No active orders
           </h3>
           <p className="text-black-300 max-w-sm">
-            {activeTab === "Current"
-              ? "You don't have any orders in progress. All your orders have been delivered or cancelled."
-              : "You haven't placed any orders yet."}
           </p>
           <button
             onClick={() => navigate('/all-products')}

@@ -6,8 +6,8 @@ import ViewMoreTitle from "../Helpers/ViewMoreTitle";
 import Layout from "../Partials/Layout";
 import Ads from "./Ads";
 import Banner from "./Banner";
+import CategorySection from "./CategorySection";
 import BestSellers from "./BestSellers";
-import BrandSection from "./BrandSection";
 import CampaignCountDown from "./CampaignCountDown";
 import ProductsAds from "./ProductsAds";
 import TopProducts from "./TopProducts";
@@ -32,9 +32,9 @@ export default function Home() {
       <Layout>
         {ads && <Ads handler={adsHandle} />}
         <Banner className="banner-wrapper mb-[60px]" />
-        <BrandSection
-          sectionTitle="Shop by Brand"
-          className="brand-section-wrapper mb-[60px]"
+        <CategorySection
+          sectionTitle="Shop by Category"
+          className="brand-section-wrapper"
         />
         <CampaignCountDown
           className="mb-[60px]"

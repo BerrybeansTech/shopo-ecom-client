@@ -1,6 +1,6 @@
 // components/Checkout/Checkout.js
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check } from 'lucide-react';
+import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check, Truck, Home, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../Partials/Layout';
 import ThankYouPopup from './ThankYouPopup';
@@ -8,20 +8,35 @@ import { ordersApi } from './ordersApi';
 import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
 
-// Main Checkout Component
 export default function Checkout() {
   const [step, setStep] = useState(1);
-  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [selectedBillingAddress, setSelectedBillingAddress] = useState(null);
+  const [selectedShippingAddress, setSelectedShippingAddress] = useState(null);
+  const [useSameAddress, setUseSameAddress] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState('');
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({
+  const [showAddBillingAddress, setShowAddBillingAddress] = useState(false);
+  const [showAddShippingAddress, setShowAddShippingAddress] = useState(false);
+  const [newBillingAddress, setNewBillingAddress] = useState({
     name: '',
     fullName: '',
     phone: '',
     address: '',
     city: '',
     state: '',
-    pincode: ''
+    pincode: '',
+    country: 'India',
+    type: 'billing'
+  });
+  const [newShippingAddress, setNewShippingAddress] = useState({
+    name: '',
+    fullName: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    country: 'India',
+    type: 'shipping'
   });
   const [showCoupon, setShowCoupon] = useState(false);
   const [couponCode, setCouponCode] = useState('');
@@ -30,6 +45,8 @@ export default function Checkout() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
   const [apiError, setApiError] = useState(null);
+  const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
 
   const { 
     items: cartItems, 
@@ -37,27 +54,84 @@ export default function Checkout() {
     discount, 
     total, 
     clearCartAfterSuccessfulOrder,
-    refreshCart,
     formatINR,
     isAuthenticated 
   } = useCart();
   
-  const { user } = useAuth();
+  const { user, updateProfile, accessToken } = useAuth();
 
-  // Sample addresses - in real app, fetch from user profile
-  const [savedAddresses, setSavedAddresses] = useState([
-    {
-      id: 1,
-      name: 'Home',
-      fullName: user?.name || 'John Doe',
-      phone: user?.phone || '+91 9876543210',
-      address: '123, MG Road, Indiranagar',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      pincode: '560038',
-      isDefault: true
-    },
-  ]);
+  // Convert customer profile to addresses format
+  const customerToAddresses = (customer) => {
+    if (!customer) return [];
+    
+    const addressMap = new Map();
+
+    // Additional addresses stored in remarks
+    if (customer.remarks) {
+      try {
+        const additionalAddresses = JSON.parse(customer.remarks);
+        if (Array.isArray(additionalAddresses)) {
+          additionalAddresses.forEach((addr) => {
+            const addressId = addr.id || `additional_${Date.now()}_${Math.random()}`;
+            if (!addressMap.has(addressId)) {
+              addressMap.set(addressId, {
+                ...addr,
+                id: addressId,
+                isDefault: addr.isDefault || false
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing remarks:', e);
+      }
+    }
+
+    return Array.from(addressMap.values());
+  };
+
+  // Load addresses from user profile
+  useEffect(() => {
+    if (user) {
+      const addresses = customerToAddresses(user);
+      setSavedAddresses(addresses);
+      
+      // Pre-fill new address forms with user data
+      setNewBillingAddress(prev => ({
+        ...prev,
+        fullName: user.name || '',
+        phone: user.phone || ''
+      }));
+      
+      setNewShippingAddress(prev => ({
+        ...prev,
+        fullName: user.name || '',
+        phone: user.phone || ''
+      }));
+      
+      // Set default addresses only if not already set
+      if (!selectedBillingAddress && addresses.length > 0) {
+        const defaultBilling = addresses.find(addr => addr.type === 'billing' && addr.isDefault) || 
+                              addresses.find(addr => addr.type === 'billing') || 
+                              addresses[0];
+        if (defaultBilling) setSelectedBillingAddress(defaultBilling.id);
+      }
+      
+      if (!selectedShippingAddress && addresses.length > 0) {
+        const defaultShipping = addresses.find(addr => addr.type === 'shipping' && addr.isDefault) || 
+                               addresses.find(addr => addr.type === 'shipping') || 
+                               addresses[0];
+        if (defaultShipping) setSelectedShippingAddress(defaultShipping.id);
+      }
+    }
+  }, [user]);
+
+  // Auto-update shipping address when useSameAddress is true
+  useEffect(() => {
+    if (useSameAddress && selectedBillingAddress) {
+      setSelectedShippingAddress(selectedBillingAddress);
+    }
+  }, [useSameAddress, selectedBillingAddress]);
 
   const paymentMethods = [
     { id: 'upi', name: 'UPI', icon: Smartphone, subtitle: 'Google Pay, PhonePe, Paytm & more' },
@@ -67,13 +141,11 @@ export default function Checkout() {
     { id: 'cod', name: 'Cash on Delivery', icon: Package, subtitle: '₹50 handling fee' }
   ];
 
-  // Calculate order summary
   const shipping = subtotal >= 999 ? 0 : 80;
   const codFee = selectedPayment === 'cod' ? 50 : 0;
   const couponDiscount = appliedCoupon ? 200 : 0;
   const finalTotal = subtotal + shipping + codFee - couponDiscount;
 
-  // Format cart items for API
   const formatCartItemsForAPI = () => {
     return cartItems.map(item => ({
       productId: item.productId || item.id,
@@ -84,46 +156,259 @@ export default function Checkout() {
     }));
   };
 
-  // Handle new address input changes
-  const handleNewAddressChange = (field, value) => {
-    setNewAddress(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleNewAddressChange = (type, field, value) => {
+    if (type === 'billing') {
+      setNewBillingAddress(prev => ({ ...prev, [field]: value }));
+    } else {
+      setNewShippingAddress(prev => ({ ...prev, [field]: value }));
+    }
   };
 
-  // Save new address
-  const handleSaveNewAddress = () => {
-    if (!newAddress.pincode || !newAddress.fullName || !newAddress.phone || !newAddress.address || !newAddress.city || !newAddress.state) {
-      setApiError('Please fill all address fields');
+  const handleSaveNewAddress = async (type) => {
+    const newAddress = type === 'billing' ? newBillingAddress : newShippingAddress;
+    
+    if (!newAddress.pincode || !newAddress.fullName || !newAddress.phone || 
+        !newAddress.address || !newAddress.city || !newAddress.state) {
+      setApiError('Please fill all required fields');
       return;
     }
 
-    const newAddressObj = {
-      id: savedAddresses.length + 1,
-      name: newAddress.name || 'New Address',
-      fullName: newAddress.fullName,
-      phone: newAddress.phone,
-      address: newAddress.address,
-      city: newAddress.city,
-      state: newAddress.state,
-      pincode: newAddress.pincode,
-      isDefault: false
-    };
+    if (!/^\d{10}$/.test(newAddress.phone)) {
+      setApiError('Please enter a valid 10-digit phone number');
+      return;
+    }
 
-    setSavedAddresses(prev => [...prev, newAddressObj]);
-    setSelectedAddress(newAddressObj.id);
-    setNewAddress({
-      name: '',
-      fullName: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: ''
-    });
-    setShowAddAddress(false);
+    if (!/^\d{6}$/.test(newAddress.pincode)) {
+      setApiError('Please enter a valid 6-digit pincode');
+      return;
+    }
+
+    setIsUpdatingAddress(true);
     setApiError(null);
+
+    try {
+      const currentAddresses = customerToAddresses(user);
+      
+      const isDuplicate = currentAddresses.some(addr => 
+        addr.address === newAddress.address &&
+        addr.city === newAddress.city &&
+        addr.pincode === newAddress.pincode &&
+        addr.type === type
+      );
+
+      if (isDuplicate) {
+        setApiError('This address already exists');
+        setIsUpdatingAddress(false);
+        return;
+      }
+
+      const newAddressId = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newAddressObj = {
+        id: newAddressId,
+        name: newAddress.name || `${type === 'billing' ? 'Billing' : 'Shipping'} Address`,
+        fullName: newAddress.fullName,
+        phone: newAddress.phone,
+        address: newAddress.address,
+        city: newAddress.city,
+        state: newAddress.state,
+        pincode: newAddress.pincode,
+        country: newAddress.country,
+        type: type,
+        isDefault: false
+      };
+
+      let updatedCustomer = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      };
+
+      const hasBillingAddress = currentAddresses.some(addr => addr.type === 'billing');
+      if (type === 'billing' && !hasBillingAddress) {
+        updatedCustomer = {
+          ...updatedCustomer,
+          address: newAddressObj.address,
+          city: newAddressObj.city,
+          state: newAddressObj.state,
+          country: newAddressObj.country,
+          postalCode: newAddressObj.pincode
+        };
+        newAddressObj.isDefault = true;
+      }
+
+      const allAddresses = [...currentAddresses, newAddressObj];
+      const additionalAddresses = allAddresses.filter(addr => addr.id);
+      updatedCustomer.remarks = additionalAddresses.length > 0 
+        ? JSON.stringify(additionalAddresses) 
+        : user.remarks;
+
+      const result = await updateProfile(updatedCustomer, accessToken);
+      
+      if (result.success) {
+        const updatedAddresses = customerToAddresses({ ...user, ...updatedCustomer });
+        setSavedAddresses(updatedAddresses);
+        
+        if (type === 'billing') {
+          setSelectedBillingAddress(newAddressObj.id);
+          setNewBillingAddress({
+            name: '',
+            fullName: user.name || '',
+            phone: user.phone || '',
+            address: '',
+            city: '',
+            state: '',
+            pincode: '',
+            country: 'India',
+            type: 'billing'
+          });
+          setShowAddBillingAddress(false);
+        } else {
+          setSelectedShippingAddress(newAddressObj.id);
+          setNewShippingAddress({
+            name: '',
+            fullName: user.name || '',
+            phone: user.phone || '',
+            address: '',
+            city: '',
+            state: '',
+            pincode: '',
+            country: 'India',
+            type: 'shipping'
+          });
+          setShowAddShippingAddress(false);
+        }
+        
+        setApiError(null);
+      } else {
+        setApiError(result.error || 'Failed to save address');
+      }
+    } catch (error) {
+      console.error('Save address error:', error);
+      setApiError('Failed to save address. Please try again.');
+    } finally {
+      setIsUpdatingAddress(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId) => {
+    if (!window.confirm('Are you sure you want to delete this address?')) return;
+
+    setIsUpdatingAddress(true);
+    setApiError(null);
+
+    try {
+      const currentAddresses = customerToAddresses(user);
+      const addressToDelete = currentAddresses.find(addr => addr.id === addressId);
+      const updatedAddresses = currentAddresses.filter(addr => addr.id !== addressId);
+      
+      let updatedCustomer = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      };
+
+      if (addressToDelete?.type === 'billing' && addressToDelete?.isDefault) {
+        const newDefaultBilling = updatedAddresses.find(addr => addr.type === 'billing');
+        if (newDefaultBilling) {
+          updatedCustomer = {
+            ...updatedCustomer,
+            address: newDefaultBilling.address,
+            city: newDefaultBilling.city,
+            state: newDefaultBilling.state,
+            country: newDefaultBilling.country,
+            postalCode: newDefaultBilling.pincode
+          };
+        } else {
+          updatedCustomer = {
+            ...updatedCustomer,
+            address: '',
+            city: '',
+            state: '',
+            country: '',
+            postalCode: ''
+          };
+        }
+      }
+
+      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
+      updatedCustomer.remarks = additionalAddresses.length > 0 
+        ? JSON.stringify(additionalAddresses) 
+        : null;
+
+      const result = await updateProfile(updatedCustomer, accessToken);
+      if (result.success) {
+        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
+        setSavedAddresses(newAddresses);
+        
+        if (selectedBillingAddress === addressId) {
+          const newBillingAddr = newAddresses.find(addr => addr.type === 'billing');
+          setSelectedBillingAddress(newBillingAddr?.id || null);
+        }
+        if (selectedShippingAddress === addressId) {
+          const newShippingAddr = newAddresses.find(addr => addr.type === 'shipping') || 
+                                 newAddresses.find(addr => addr.type === 'billing');
+          setSelectedShippingAddress(newShippingAddr?.id || null);
+        }
+      }
+    } catch (error) {
+      console.error('Delete address error:', error);
+      setApiError('Failed to delete address. Please try again.');
+    } finally {
+      setIsUpdatingAddress(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId, type) => {
+    const address = savedAddresses.find(addr => addr.id === addressId);
+    if (!address) return;
+
+    setIsUpdatingAddress(true);
+    setApiError(null);
+
+    try {
+      const currentAddresses = customerToAddresses(user);
+      
+      const updatedAddresses = currentAddresses.map(addr => ({
+        ...addr,
+        isDefault: addr.id === addressId && addr.type === type
+      }));
+
+      let updatedCustomer = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      };
+
+      if (type === 'billing') {
+        updatedCustomer = {
+          ...updatedCustomer,
+          address: address.address,
+          city: address.city,
+          state: address.state,
+          country: address.country,
+          postalCode: address.pincode
+        };
+      }
+
+      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
+      updatedCustomer.remarks = additionalAddresses.length > 0 
+        ? JSON.stringify(additionalAddresses) 
+        : null;
+
+      const result = await updateProfile(updatedCustomer, accessToken);
+      if (result.success) {
+        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
+        setSavedAddresses(newAddresses);
+      }
+    } catch (error) {
+      console.error('Set default address error:', error);
+      setApiError('Failed to set default address. Please try again.');
+    } finally {
+      setIsUpdatingAddress(false);
+    }
   };
 
   const handleApplyCoupon = () => {
@@ -142,7 +427,6 @@ export default function Checkout() {
     setApiError(null);
   };
 
-  // MAIN FUNCTION: Place order and clear cart
   const handlePlaceOrder = async () => {
     if (!isAuthenticated || !user) {
       setApiError('Please login to place order');
@@ -154,26 +438,30 @@ export default function Checkout() {
       return;
     }
 
+    const billingAddressData = savedAddresses.find(addr => addr.id === selectedBillingAddress);
+    const shippingAddressData = useSameAddress ? billingAddressData : savedAddresses.find(addr => addr.id === selectedShippingAddress);
+    
+    if (!billingAddressData) {
+      setApiError('Please select a billing address');
+      return;
+    }
+
+    if (!selectedPayment) {
+      setApiError('Please select a payment method');
+      return;
+    }
+
     setIsPlacingOrder(true);
     setApiError(null);
 
     try {
-      const selectedAddressData = savedAddresses.find(addr => addr.id === selectedAddress);
-      
-      if (!selectedAddressData) {
-        throw new Error('Please select a delivery address');
-      }
-
-      if (!selectedPayment) {
-        throw new Error('Please select a payment method');
-      }
-
       const orderData = {
         customerId: user.id,
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-        shippingAddress: `${selectedAddressData.fullName}, ${selectedAddressData.address}, ${selectedAddressData.city}, ${selectedAddressData.state} - ${selectedAddressData.pincode}`,
+        billingAddress: `${billingAddressData.fullName}, ${billingAddressData.address}, ${billingAddressData.city}, ${billingAddressData.state} - ${billingAddressData.pincode}`,
+        shippingAddress: `${shippingAddressData.fullName}, ${shippingAddressData.address}, ${shippingAddressData.city}, ${shippingAddressData.state} - ${shippingAddressData.pincode}`,
         subTotal: subtotal,
-        tax: Math.round(subtotal * 0.18), // 18% GST
+        tax: Math.round(subtotal * 0.18),
         shippingCharge: shipping,
         totalAmount: finalTotal,
         finalAmount: finalTotal,
@@ -182,32 +470,21 @@ export default function Checkout() {
         productItems: formatCartItemsForAPI()
       };
 
-      console.log('Placing order with data:', orderData);
-
-      // Call the API to create order
       const response = await ordersApi.createOrder(orderData);
 
       if (response.success) {
-        console.log('Order created successfully, clearing cart...');
-        
-        // CLEAR CART AFTER SUCCESSFUL ORDER
-        const clearCartResult = await clearCartAfterSuccessfulOrder();
-        
-        if (clearCartResult.success) {
-          console.log('Cart cleared successfully after order');
-        } else {
-          console.warn('Cart clearing had issues:', clearCartResult.message);
-        }
+        await clearCartAfterSuccessfulOrder();
 
-        // Set order details for thank you popup
         const orderDetailsData = {
           orderId: response.data.id,
           items: cartItems,
-          deliveryAddress: selectedAddressData,
-          paymentMethod: paymentMethods.find(m => m.id === selectedPayment)?.name,
+          billingAddress: billingAddressData,
+          shippingAddress: shippingAddressData,
+          paymentMethod: selectedPayment,
           totalAmount: finalTotal,
           savings: discount + couponDiscount,
-          apiResponse: response.data
+          apiResponse: response.data,
+          useSameAddress: useSameAddress // Add this flag for ThankYouPopup
         };
 
         setOrderDetails(orderDetailsData);
@@ -229,12 +506,15 @@ export default function Checkout() {
     window.location.href = '/products';
   };
 
-  // Validation states
-  const isContinueToPaymentDisabled = !selectedAddress;
-  const isContinueToReviewDisabled = !selectedPayment;
-  const isPlaceOrderDisabled = !selectedAddress || !selectedPayment || isPlacingOrder || cartItems.length === 0;
+  const getAddressesByType = (type) => {
+    return savedAddresses.filter(addr => addr.type === type);
+  };
 
-  // Show login prompt if not authenticated
+  const isContinueToPaymentDisabled = !selectedBillingAddress || (useSameAddress ? false : !selectedShippingAddress);
+  const isContinueToReviewDisabled = !selectedPayment;
+  const isPlaceOrderDisabled = !selectedBillingAddress || (useSameAddress ? false : !selectedShippingAddress) || 
+                               !selectedPayment || isPlacingOrder || cartItems.length === 0;
+
   if (!isAuthenticated) {
     return (
       <Layout childrenClasses="pt-0 pb-0">
@@ -258,7 +538,6 @@ export default function Checkout() {
     );
   }
 
-  // Show empty cart message
   if (cartItems.length === 0 && !showThankYou) {
     return (
       <Layout childrenClasses="pt-0 pb-0">
@@ -284,7 +563,6 @@ export default function Checkout() {
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="min-h-screen bg-gray-50 font-inter">
-        {/* Error Message */}
         {apiError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mx-4 mt-4">
             <div className="flex justify-between items-center">
@@ -295,6 +573,15 @@ export default function Checkout() {
               >
                 ×
               </button>
+            </div>
+          </div>
+        )}
+
+        {isUpdatingAddress && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
+              <p className="text-sm text-gray-600 mt-2">Updating addresses...</p>
             </div>
           </div>
         )}
@@ -335,190 +622,468 @@ export default function Checkout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-6">
               
-              {/* Step 1: Delivery Address */}
+              {/* Step 1: Billing & Shipping Address */}
               {step >= 1 && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="p-4 sm:p-6 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
-                        <MapPin className="w-5 h-5 mr-2 text-black" />
-                        Delivery Address
-                      </h2>
-                      {step > 1 && selectedAddress && (
-                        <button 
-                          onClick={() => setStep(1)}
-                          className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
-                        >
-                          <Edit2 className="w-4 h-4 mr-1" />
-                          Change
-                        </button>
+                <div className="space-y-6">
+                  {/* Billing Address */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-4 sm:p-6 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
+                          <Home className="w-5 h-5 mr-2 text-black" />
+                          Billing Address
+                        </h2>
+                        {step > 1 && selectedBillingAddress && (
+                          <button 
+                            onClick={() => setStep(1)}
+                            className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
+                          >
+                            <Edit2 className="w-4 h-4 mr-1" />
+                            Change
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-4 sm:p-6">
+                      {step === 1 ? (
+                        <div className="space-y-3">
+                          {getAddressesByType('billing').map(addr => (
+                            <div
+                              key={addr.id}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedBillingAddress === addr.id
+                                  ? 'border-black bg-gray-50'
+                                  : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div 
+                                  className="flex-1"
+                                  onClick={() => setSelectedBillingAddress(addr.id)}
+                                >
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <span className="font-semibold text-black">{addr.name}</span>
+                                    {addr.isDefault && (
+                                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded">Default Billing</span>
+                                    )}
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                                  </div>
+                                  <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                  <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
+                                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                                  <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                </div>
+                                <div className="flex space-x-2">
+                                  {!addr.isDefault && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSetDefaultAddress(addr.id, 'billing');
+                                      }}
+                                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                      title="Set as default billing"
+                                    >
+                                      <Check className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAddress(addr.id);
+                                    }}
+                                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                    title="Delete address"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-gray-600" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          <button
+                            onClick={() => setShowAddBillingAddress(!showAddBillingAddress)}
+                            className="w-full p-4 border-2 border-dashed border-gray-300 hover:border-black rounded-lg text-gray-600 hover:text-black transition-all flex items-center justify-center space-x-2"
+                          >
+                            <Plus className="w-5 h-5" />
+                            <span className="font-medium">Add New Billing Address</span>
+                          </button>
+
+                          {showAddBillingAddress && (
+                            <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+                              <h4 className="font-semibold text-black">Add Billing Address</h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input
+                                  type="text"
+                                  placeholder="Address Name (e.g., Home, Office)"
+                                  value={newBillingAddress.name}
+                                  onChange={(e) => handleNewAddressChange('billing', 'name', e.target.value)}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Pincode *"
+                                  value={newBillingAddress.pincode}
+                                  onChange={(e) => handleNewAddressChange('billing', 'pincode', e.target.value)}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                  maxLength="6"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input 
+                                  type="text" 
+                                  placeholder="Full Name *" 
+                                  value={newBillingAddress.fullName}
+                                  onChange={(e) => handleNewAddressChange('billing', 'fullName', e.target.value)}
+                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                />
+                                <input 
+                                  type="text" 
+                                  placeholder="Mobile *" 
+                                  value={newBillingAddress.phone}
+                                  onChange={(e) => handleNewAddressChange('billing', 'phone', e.target.value)}
+                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                  maxLength="10"
+                                />
+                              </div>
+                              <input 
+                                type="text" 
+                                placeholder="Address (House No, Building, Street) *" 
+                                value={newBillingAddress.address}
+                                onChange={(e) => handleNewAddressChange('billing', 'address', e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                              />
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input 
+                                  type="text" 
+                                  placeholder="City *" 
+                                  value={newBillingAddress.city}
+                                  onChange={(e) => handleNewAddressChange('billing', 'city', e.target.value)}
+                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                />
+                                <input 
+                                  type="text" 
+                                  placeholder="State *" 
+                                  value={newBillingAddress.state}
+                                  onChange={(e) => handleNewAddressChange('billing', 'state', e.target.value)}
+                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                />
+                              </div>
+                              <div className="flex space-x-3">
+                                <button 
+                                  onClick={() => handleSaveNewAddress('billing')}
+                                  disabled={isUpdatingAddress}
+                                  className={`flex-1 py-3 font-medium rounded-lg transition-colors ${
+                                    isUpdatingAddress
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-black hover:bg-gray-800 text-white'
+                                  }`}
+                                >
+                                  {isUpdatingAddress ? 'Saving...' : 'Save Billing Address'}
+                                </button>
+                                <button 
+                                  onClick={() => setShowAddBillingAddress(false)}
+                                  className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg">
+                          {savedAddresses.find(a => a.id === selectedBillingAddress) && (
+                            <div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="font-semibold text-black">
+                                  {savedAddresses.find(a => a.id === selectedBillingAddress).name}
+                                </span>
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                              </div>
+                              <p className="text-sm font-medium text-black">
+                                {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-6">
-                    {step === 1 ? (
-                      <div className="space-y-3">
-                        {savedAddresses.map(addr => (
-                          <div
-                            key={addr.id}
-                            onClick={() => setSelectedAddress(addr.id)}
-                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                              selectedAddress === addr.id
-                                ? 'border-black bg-gray-50'
-                                : 'border-gray-200 hover:border-gray-400'
-                            }`}
+                  {/* Shipping Address */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-4 sm:p-6 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-lg sm:text-xl font-semibold text-black flex items-center">
+                          <Truck className="w-5 h-5 mr-2 text-black" />
+                          Shipping Address
+                        </h2>
+                        {step > 1 && selectedShippingAddress && (
+                          <button 
+                            onClick={() => setStep(1)}
+                            className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <span className="font-semibold text-black">{addr.name}</span>
-                                  {addr.isDefault && (
-                                    <span className="px-2 py-0.5 bg-black text-white text-xs rounded">Default</span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-black font-medium">{addr.fullName}</p>
-                                <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                                <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                                <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
-                              </div>
-                              <div className="flex space-x-2">
-                                <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                                  <Edit2 className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-                                  <Trash2 className="w-4 h-4 text-gray-600" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        <button
-                          onClick={() => setShowAddAddress(!showAddAddress)}
-                          className="w-full p-4 border-2 border-dashed border-gray-300 hover:border-black rounded-lg text-gray-600 hover:text-black transition-all flex items-center justify-center space-x-2"
-                        >
-                          <Plus className="w-5 h-5" />
-                          <span className="font-medium">Add New Address</span>
-                        </button>
-
-                        {showAddAddress && (
-                          <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input
-                                type="text"
-                                placeholder="Address Name (e.g., Home, Office)"
-                                value={newAddress.name}
-                                onChange={(e) => handleNewAddressChange('name', e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Pincode"
-                                value={newAddress.pincode}
-                                onChange={(e) => handleNewAddressChange('pincode', e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
-                              />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input 
-                                type="text" 
-                                placeholder="Full Name" 
-                                value={newAddress.fullName}
-                                onChange={(e) => handleNewAddressChange('fullName', e.target.value)}
-                                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                              />
-                              <input 
-                                type="text" 
-                                placeholder="Mobile" 
-                                value={newAddress.phone}
-                                onChange={(e) => handleNewAddressChange('phone', e.target.value)}
-                                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                              />
-                            </div>
-                            <input 
-                              type="text" 
-                              placeholder="Address (House No, Building, Street)" 
-                              value={newAddress.address}
-                              onChange={(e) => handleNewAddressChange('address', e.target.value)}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                            />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input 
-                                type="text" 
-                                placeholder="City" 
-                                value={newAddress.city}
-                                onChange={(e) => handleNewAddressChange('city', e.target.value)}
-                                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                              />
-                              <input 
-                                type="text" 
-                                placeholder="State" 
-                                value={newAddress.state}
-                                onChange={(e) => handleNewAddressChange('state', e.target.value)}
-                                className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                              />
-                            </div>
-                            <div className="flex space-x-3">
-                              <button 
-                                onClick={handleSaveNewAddress}
-                                className="flex-1 py-3 bg-black hover:bg-gray-800 text-white font-medium rounded-lg transition-colors"
-                              >
-                                Save Address
-                              </button>
-                              <button 
-                                onClick={() => setShowAddAddress(false)}
-                                className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
+                            <Edit2 className="w-4 h-4 mr-1" />
+                            Change
+                          </button>
                         )}
-
-                        <button
-                          onClick={() => setStep(2)}
-                          disabled={isContinueToPaymentDisabled}
-                          className={`w-full mt-4 py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
-                            isContinueToPaymentDisabled
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-black hover:bg-gray-800 text-white'
-                          }`}
-                        >
-                          Continue to Payment
-                        </button>
                       </div>
-                    ) : (
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        {savedAddresses.find(a => a.id === selectedAddress) && (
-                          <div>
-                            <div className="flex items-center space-x-2 mb-2">
-                              <span className="font-semibold text-black">
-                                {savedAddresses.find(a => a.id === selectedAddress).name}
-                              </span>
-                              {savedAddresses.find(a => a.id === selectedAddress).isDefault && (
-                                <span className="px-2 py-0.5 bg-black text-white text-xs rounded">Default</span>
+                    </div>
+
+                    <div className="p-4 sm:p-6">
+                      {step === 1 ? (
+                        <div className="space-y-3">
+                          {/* Same as Billing Address Toggle */}
+                          <div className="flex items-center space-x-2 mb-4">
+                            <input
+                              type="checkbox"
+                              id="sameAddress"
+                              checked={useSameAddress}
+                              onChange={(e) => setUseSameAddress(e.target.checked)}
+                              className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
+                            />
+                            <label htmlFor="sameAddress" className="text-sm font-medium text-gray-700">
+                              Same as billing address
+                            </label>
+                          </div>
+
+                          {useSameAddress ? (
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center space-x-2 text-green-700">
+                                <Check className="w-4 h-4" />
+                                <span className="text-sm font-medium">Shipping address same as billing address</span>
+                              </div>
+                              <p className="text-xs text-green-600 mt-1">
+                                Your order will be shipped to your billing address
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              {getAddressesByType('shipping').map(addr => (
+                                <div
+                                  key={addr.id}
+                                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                    selectedShippingAddress === addr.id
+                                      ? 'border-black bg-gray-50'
+                                      : 'border-gray-200 hover:border-gray-400'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div 
+                                      className="flex-1"
+                                      onClick={() => setSelectedShippingAddress(addr.id)}
+                                    >
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <span className="font-semibold text-black">{addr.name}</span>
+                                        {addr.isDefault && (
+                                          <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded">Default Shipping</span>
+                                        )}
+                                        <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
+                                      </div>
+                                      <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                      <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
+                                      <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                                      <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                      {!addr.isDefault && (
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSetDefaultAddress(addr.id, 'shipping');
+                                          }}
+                                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                          title="Set as default shipping"
+                                        >
+                                          <Check className="w-4 h-4 text-gray-600" />
+                                        </button>
+                                      )}
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteAddress(addr.id);
+                                        }}
+                                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                        title="Delete address"
+                                      >
+                                        <Trash2 className="w-4 h-4 text-gray-600" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              <button
+                                onClick={() => setShowAddShippingAddress(!showAddShippingAddress)}
+                                className="w-full p-4 border-2 border-dashed border-gray-300 hover:border-black rounded-lg text-gray-600 hover:text-black transition-all flex items-center justify-center space-x-2"
+                              >
+                                <Plus className="w-5 h-5" />
+                                <span className="font-medium">Add New Shipping Address</span>
+                              </button>
+
+                              {showAddShippingAddress && (
+                                <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+                                  <h4 className="font-semibold text-black">Add Shipping Address</h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input
+                                      type="text"
+                                      placeholder="Address Name (e.g., Home, Office)"
+                                      value={newShippingAddress.name}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'name', e.target.value)}
+                                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Pincode *"
+                                      value={newShippingAddress.pincode}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'pincode', e.target.value)}
+                                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                      maxLength="6"
+                                    />
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input 
+                                      type="text" 
+                                      placeholder="Full Name *" 
+                                      value={newShippingAddress.fullName}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'fullName', e.target.value)}
+                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                    />
+                                    <input 
+                                      type="text" 
+                                      placeholder="Mobile *" 
+                                      value={newShippingAddress.phone}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'phone', e.target.value)}
+                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                      maxLength="10"
+                                    />
+                                  </div>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Address (House No, Building, Street) *" 
+                                    value={newShippingAddress.address}
+                                    onChange={(e) => handleNewAddressChange('shipping', 'address', e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                  />
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input 
+                                      type="text" 
+                                      placeholder="City *" 
+                                      value={newShippingAddress.city}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'city', e.target.value)}
+                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                    />
+                                    <input 
+                                      type="text" 
+                                      placeholder="State *" 
+                                      value={newShippingAddress.state}
+                                      onChange={(e) => handleNewAddressChange('shipping', 'state', e.target.value)}
+                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                    />
+                                  </div>
+                                  <div className="flex space-x-3">
+                                    <button 
+                                      onClick={() => handleSaveNewAddress('shipping')}
+                                      disabled={isUpdatingAddress}
+                                      className={`flex-1 py-3 font-medium rounded-lg transition-colors ${
+                                        isUpdatingAddress
+                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          : 'bg-black hover:bg-gray-800 text-white'
+                                      }`}
+                                    >
+                                      {isUpdatingAddress ? 'Saving...' : 'Save Shipping Address'}
+                                    </button>
+                                    <button 
+                                      onClick={() => setShowAddShippingAddress(false)}
+                                      className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg">
+                          {useSameAddress ? (
+                            <div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="font-semibold text-black">Same as Billing Address</span>
+                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded flex items-center">
+                                  <Copy className="w-3 h-3 mr-1" />
+                                  Copied from Billing
+                                </span>
+                              </div>
+                              {savedAddresses.find(a => a.id === selectedBillingAddress) && (
+                                <div>
+                                  <p className="text-sm font-medium text-black">
+                                    {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
+                                  </p>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
+                                  </p>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
+                                  </p>
+                                </div>
                               )}
                             </div>
-                            <p className="text-sm font-medium text-black">
-                              {savedAddresses.find(a => a.id === selectedAddress).fullName}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {savedAddresses.find(a => a.id === selectedAddress).address}, {savedAddresses.find(a => a.id === selectedAddress).city}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {savedAddresses.find(a => a.id === selectedAddress).state} - {savedAddresses.find(a => a.id === selectedAddress).pincode}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Mobile: {savedAddresses.find(a => a.id === selectedAddress).phone}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (
+                            <div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="font-semibold text-black">
+                                  {savedAddresses.find(a => a.id === selectedShippingAddress).name}
+                                </span>
+                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
+                              </div>
+                              <p className="text-sm font-medium text-black">
+                                {savedAddresses.find(a => a.id === selectedShippingAddress).fullName}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {savedAddresses.find(a => a.id === selectedShippingAddress).address}, {savedAddresses.find(a => a.id === selectedShippingAddress).city}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {savedAddresses.find(a => a.id === selectedShippingAddress).state} - {savedAddresses.find(a => a.id === selectedShippingAddress).pincode}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Mobile: {savedAddresses.find(a => a.id === selectedShippingAddress).phone}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => setStep(2)}
+                    disabled={isContinueToPaymentDisabled}
+                    className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
+                      isContinueToPaymentDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-black hover:bg-gray-800 text-white'
+                    }`}
+                  >
+                    Continue to Payment
+                  </button>
                 </div>
               )}
 
@@ -611,7 +1176,52 @@ export default function Checkout() {
                     </h2>
                   </div>
 
-                  <div className="p-4 sm:p-6 space-y-4">
+                  <div className="p-4 sm:p-6 space-y-6">
+                    {/* Addresses Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <h3 className="font-semibold text-black mb-2 flex items-center">
+                          <Home className="w-4 h-4 mr-2" />
+                          Billing Address
+                        </h3>
+                        {savedAddresses.find(a => a.id === selectedBillingAddress) && (
+                          <div className="text-sm text-gray-600">
+                            <p className="font-medium text-black">{savedAddresses.find(a => a.id === selectedBillingAddress).fullName}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedBillingAddress).address}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedBillingAddress).city}, {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}</p>
+                            <p>Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <h3 className="font-semibold text-black mb-2 flex items-center">
+                          <Truck className="w-4 h-4 mr-2" />
+                          Shipping Address
+                        </h3>
+                        {useSameAddress ? (
+                          <div className="text-sm text-gray-600">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center">
+                                <Copy className="w-3 h-3 mr-1" />
+                                Same as Billing Address
+                              </span>
+                            </div>
+                            <p className="font-medium text-black">{savedAddresses.find(a => a.id === selectedBillingAddress)?.fullName}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedBillingAddress)?.address}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedBillingAddress)?.city}, {savedAddresses.find(a => a.id === selectedBillingAddress)?.state} - {savedAddresses.find(a => a.id === selectedBillingAddress)?.pincode}</p>
+                            <p>Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress)?.phone}</p>
+                          </div>
+                        ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (
+                          <div className="text-sm text-gray-600">
+                            <p className="font-medium text-black">{savedAddresses.find(a => a.id === selectedShippingAddress).fullName}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedShippingAddress).address}</p>
+                            <p>{savedAddresses.find(a => a.id === selectedShippingAddress).city}, {savedAddresses.find(a => a.id === selectedShippingAddress).state} - {savedAddresses.find(a => a.id === selectedShippingAddress).pincode}</p>
+                            <p>Mobile: {savedAddresses.find(a => a.id === selectedShippingAddress).phone}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-start space-x-2 p-3 bg-gray-100 rounded-lg">
                       <Clock className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
                       <div>
