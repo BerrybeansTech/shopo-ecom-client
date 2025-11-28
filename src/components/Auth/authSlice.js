@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { storage } from '../../utils/storage';
 
 const getInitialState = () => {
   if (typeof window === 'undefined') {
@@ -14,11 +15,11 @@ const getInitialState = () => {
     };
   }
 
-  const storedToken = localStorage.getItem('accessToken');
-  const storedUser = localStorage.getItem('user');
+  const storedToken = storage.getToken();
+  const storedUser = storage.getUser();
   
   return {
-    user: storedUser ? JSON.parse(storedUser) : null,
+    user: storedUser || null,
     accessToken: storedToken || null,
     isAuthenticated: !!storedToken,
     loading: false,
@@ -66,10 +67,8 @@ const authSlice = createSlice({
       state.error = null;
       state.message = action.payload.message || 'Login successful';
       
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', action.payload.accessToken);
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
-      }
+      storage.setToken(action.payload.accessToken);
+      storage.setUser(action.payload.user);
     },
     
     registerSuccess: (state, action) => {
@@ -80,14 +79,14 @@ const authSlice = createSlice({
       state.error = null;
       state.message = action.payload.message || 'Registration successful';
       
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', action.payload.accessToken);
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
-      }
+      storage.setToken(action.payload.accessToken);
+      storage.setUser(action.payload.user);
     },
     
     logout: (state) => {
-      console.log("Clearing auth state...");
+      if (import.meta.env.DEV) {
+        console.log("Clearing auth state...");
+      }
       
       state.user = null;
       state.accessToken = null;
@@ -98,20 +97,14 @@ const authSlice = createSlice({
       state.message = 'Logged out successfully';
       state.loading = false;
       
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
-        console.log("LocalStorage cleared");
-      }
+      storage.clearAuth();
     },
     
     updateUserSuccess: (state, action) => {
       state.user = { ...state.user, ...action.payload };
       state.message = 'Profile updated successfully';
       
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(state.user));
-      }
+      storage.setUser(state.user);
     },
     
     setMessage: (state, action) => {
