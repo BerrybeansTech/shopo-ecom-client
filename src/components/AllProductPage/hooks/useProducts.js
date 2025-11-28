@@ -123,20 +123,44 @@ export const useProducts = () => {
     }
   }, [dispatch, isCacheValid]);
 
-  // Add to your useProducts hook
-const fetchCategoriesOnly = useCallback(async () => {
-  try {
-    dispatch(setLoading(true));
-    const categoriesData = await categoryApi.getAll();
-    dispatch(setCategories(categoriesData.data || categoriesData));
-    return categoriesData;
-  } catch (error) {
-    dispatch(setError(error.message));
-    throw error;
-  } finally {
-    dispatch(setLoading(false));
-  }
-}, [dispatch]);
+  // Fetch only categories with caching and error handling
+  const fetchCategoriesOnly = useCallback(async (force = false) => {
+    // Return cached categories if available and not forcing refresh
+    if (globalCache.categories?.length > 0 && !force) {
+      return globalCache.categories;
+    }
+
+    try {
+      dispatch(setLoading(true));
+      setLocalLoading(true);
+      setLocalError(null);
+      globalCache.error = null;
+
+      const categoriesData = await categoryApi.getAll();
+      const categories = categoriesData.data || categoriesData;
+      
+      // Update cache
+      globalCache.categories = categories;
+      globalCache.lastFetched = Date.now();
+      globalCache.error = null;
+
+      // Update Redux store
+      dispatch(setCategories(categories));
+      
+      return categories;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch categories';
+      console.error('Error fetching categories:', errorMessage);
+      globalCache.error = errorMessage;
+      globalCache.lastFetched = Date.now();
+      dispatch(setError(errorMessage));
+      setLocalError(errorMessage);
+      throw error;
+    } finally {
+      dispatch(setLoading(false));
+      setLocalLoading(false);
+    }
+  }, [dispatch]);
 
   // Initialize data on mount
   useEffect(() => {

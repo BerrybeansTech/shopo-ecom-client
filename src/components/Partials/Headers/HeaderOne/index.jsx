@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Home,
@@ -61,21 +61,75 @@ const Navbar = () => {
   // Use the cart hook to get cart data
   const { itemCount, total, formatINR, isEmpty } = useCart();
 
-  // Fetch ONLY categories data on component mount if not already loaded
-  useEffect(() => {
-    const initializeCategories = async () => {
-      if ((!categories || categories.length === 0) && !loading) {
-        console.log('Navbar: Fetching categories data only');
-        try {
-          await fetchCategoriesOnly();
-        } catch (error) {
-          console.error('Navbar: Failed to fetch categories data', error);
+  // State for error handling and retry logic
+  const [fetchError, setFetchError] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const retryTimeoutRef = useRef(null);
+  const MAX_RETRIES = 3;
+  const retryCountRef = useRef(0);
+
+  // Memoize the fetchCategories function with retry logic
+  const fetchCategories = useCallback(async () => {
+    if (retryCountRef.current >= MAX_RETRIES) {
+      console.log('Max retries reached, giving up');
+      return;
+    }
+
+    // Skip if already fetching
+    if (isFetching) return;
+
+    try {
+      console.log('Fetching categories... Attempt:', retryCountRef.current + 1);
+      setIsFetching(true);
+      setFetchError(null);
+      
+      // Force refresh to ensure we get the latest data
+      await fetchCategoriesOnly(true);
+      
+      // Reset retry counter on success
+      retryCountRef.current = 0;
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch categories';
+      setFetchError(errorMessage);
+      
+      // Increment retry counter
+      retryCountRef.current++;
+      
+      // Only retry if we haven't reached max retries
+      if (retryCountRef.current < MAX_RETRIES) {
+        const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000); // Exponential backoff with max 10s
+        console.log(`Retrying in ${delay}ms...`);
+        
+        // Clear any existing timeout
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
         }
+        
+        // Set new timeout for retry
+        retryTimeoutRef.current = setTimeout(() => {
+          fetchCategories();
+        }, delay);
+      }
+    } finally {
+      setIsFetching(false);
+    }
+  }, [fetchCategoriesOnly, isFetching]);
+
+  // Fetch categories when component mounts or when categories/loading state changes
+  useEffect(() => {
+    // Only fetch if we don't have categories and not currently loading
+    if ((!categories || categories.length === 0) && !loading) {
+      fetchCategories();
+    }
+
+    // Cleanup function to clear any pending timeouts
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
       }
     };
-
-    initializeCategories();
-  }, [categories, loading, fetchCategoriesOnly]);
+  }, [categories, loading, fetchCategories]);
 
   // Click outside handler for search and account dropdown
   useEffect(() => {
