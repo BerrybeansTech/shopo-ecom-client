@@ -31,7 +31,7 @@ export const useOrders = () => {
       // Build fully-qualified thumbnail URLs so images load from the remote host
       items: apiOrder.OrderItems?.map(item => {
         const rawThumb = item.Product?.thumbnailImage || '';
-        const IMAGE_HOST = 'http://luxcycs.com:5501';
+        const IMAGE_HOST = import.meta.env.VITE_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501';
 
         let thumbnail = '';
         if (!rawThumb) {

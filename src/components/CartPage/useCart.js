@@ -2,6 +2,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { storage } from '../../utils/storage';
 import {
   fetchCartItems,
   addToCart,
@@ -32,10 +33,8 @@ export const useCart = () => {
   // Check authentication and load cart
   useEffect(() => {
     const checkAuth = () => {
-      if (typeof window !== 'undefined') {
-        const isAuth = !!localStorage.getItem('accessToken');
-        dispatch(setAuthStatus(isAuth));
-      }
+      const isAuth = storage.isAuthenticated();
+      dispatch(setAuthStatus(isAuth));
     };
     
     checkAuth();
@@ -158,7 +157,7 @@ export const useCart = () => {
   }, [dispatch]);
 
   const refreshCart = useCallback(() => {
-    const isAuth = !!localStorage.getItem('accessToken');
+    const isAuth = storage.isAuthenticated();
     if (isAuth) {
       dispatch(setAuthStatus(true));
       dispatch(resetOrderCompleted());
