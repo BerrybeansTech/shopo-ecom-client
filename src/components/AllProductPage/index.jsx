@@ -15,7 +15,11 @@ import ProductsFilter from "./ProductsFilter";
 import { useProducts } from "./hooks/useProducts";
 import { useCart } from "../CartPage/useCart";
 import { productApi, productUtils } from "./productApi";
-import { updateWishlist, getWishlist, wishlistEvents } from "../../services/wishlistApi";
+import {
+  updateWishlist,
+  getWishlist,
+  wishlistEvents,
+} from "../../services/wishlistApi";
 import { useAuth } from "../../components/Auth/hooks/useAuth";
 
 export default function AllProductPage() {
@@ -24,7 +28,12 @@ export default function AllProductPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [cartNotification, setCartNotification] = useState(null);
   const [filterToggle, setFilterToggle] = useState(false);
-  const [sortOption, setSortOption] = useState();
+  
+  // FIXED: Initialize sortOption from URL or use default
+  const [sortOption, setSortOption] = useState(
+    searchParams.get("sort") || "default"
+  );
+  
   const [wishlistItems, setWishlistItems] = useState(new Set());
   const [wishlistLoading, setWishlistLoading] = useState({});
 
@@ -33,48 +42,74 @@ export default function AllProductPage() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(null);
   const [pagination, setPagination] = useState({
-    currentPage: parseInt(searchParams.get('page')) || 1,
-    itemsPerPage: parseInt(searchParams.get('limit')) || 50,
+    currentPage: parseInt(searchParams.get("page")) || 1,
+    itemsPerPage: parseInt(searchParams.get("limit")) || 50,
     totalItems: 0,
     totalPages: 0,
   });
-  
+
   // Fetch guard to prevent duplicate requests
-  const fetchGuardRef = useRef({ 
-    inFlight: false, 
+  const fetchGuardRef = useRef({
+    inFlight: false,
     lastKey: null,
-    timeoutId: null 
+    timeoutId: null,
   });
 
-  // Filter States
+  // Filter States - Initialize from URL
   const [selectedSubCategories, setSelectedSubCategories] = useState(
-    searchParams.getAll('subCategory') || []
+    searchParams.getAll("subCategory") || []
   );
   const [selectedDetails, setSelectedDetails] = useState([]);
-  const [priceRange, setPriceRange] = useState({ 
-    min: parseInt(searchParams.get('minPrice')) || 0, 
-    max: parseInt(searchParams.get('maxPrice')) || 10000 
+  const [priceRange, setPriceRange] = useState({
+    min: parseInt(searchParams.get("minPrice")) || 0,
+    max: parseInt(searchParams.get("maxPrice")) || 10000,
   });
   const [selectedColors, setSelectedColors] = useState(
-    searchParams.getAll('productColor') || []
+    searchParams.getAll("productColor") || []
   );
   const [selectedSizes, setSelectedSizes] = useState(
-    searchParams.getAll('productSize') || []
+    searchParams.getAll("productSize") || []
   );
   const [selectedOccasions, setSelectedOccasions] = useState(
-    searchParams.getAll('occasion') || []
+    searchParams.getAll("occasion") || []
   );
-  const [selectedBrands, setSelectedBrands] = useState(
-    searchParams.getAll('brand') || []
+  const [selectedMaterials, setSelectedMaterials] = useState(
+    searchParams.getAll("material") || []
   );
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('name') || '');
+  
+  // FIXED: Initialize rating filter from URL
+  const [selectedReviewThresholds, setSelectedReviewThresholds] = useState(() => {
+    const minAvgRating = searchParams.get("minAvgRating");
+    console.log('🎯 Initializing selectedReviewThresholds from URL minAvgRating:', minAvgRating);
+    if (minAvgRating) {
+      return [minAvgRating];
+    }
+    return [];
+  });
+
+  const [selectedAvailability, setSelectedAvailability] = useState(() => {
+    const inStockParam = searchParams.get("inStock");
+    if (inStockParam === "true") return ["in"];
+    if (inStockParam === "false") return ["out"];
+    return [];
+  });
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get("name") || ""
+  );
+
+  // FIXED: Initialize newArrival from URL
+  const [newArrival, setNewArrival] = useState(
+    searchParams.get("newArrival") === "true" || false
+  );
 
   // Use products hook for filter data
   const {
     categories,
+    occasions,
+    materials,
     loading: filtersLoading,
     error: filtersError,
-    fetchAllProductData
+    fetchAllProductData,
   } = useProducts();
 
   // Subscribe to wishlist changes
@@ -89,18 +124,32 @@ export default function AllProductPage() {
 
   // Build query params from filters
   const buildQueryParams = useCallback(() => {
-    const params = productUtils.transformFiltersToQueryParams({
-      selectedSubCategories,
-      selectedDetails,
-      priceRange,
-      selectedColors,
-      selectedSizes,
-      selectedOccasions,
-      selectedBrands,
-      sortOption,
-      searchQuery,
-      pagination
-    }, categories);
+    console.log('🔧 buildQueryParams called with selectedReviewThresholds:', selectedReviewThresholds);
+    console.log('🔧 sortOption:', sortOption);
+    console.log('🔧 newArrival:', newArrival);
+    
+    const params = productUtils.transformFiltersToQueryParams(
+      {
+        selectedSubCategories,
+        selectedDetails,
+        priceRange,
+        selectedColors,
+        selectedSizes,
+        selectedOccasions,
+        selectedMaterials,
+        selectedReviewThresholds,
+        selectedAvailability,
+        sortOption,
+        newArrival, // FIXED: Pass newArrival state
+        searchQuery,
+        pagination,
+      },
+      categories,
+      occasions,
+      materials
+    );
+    
+    console.log('🔧 buildQueryParams result:', params);
     return params;
   }, [
     selectedSubCategories,
@@ -109,18 +158,53 @@ export default function AllProductPage() {
     selectedColors,
     selectedSizes,
     selectedOccasions,
-    selectedBrands,
+    selectedMaterials,
+    selectedReviewThresholds,
+    selectedAvailability,
     sortOption,
+    newArrival, // FIXED: Add dependency
     searchQuery,
     pagination,
-    categories
+    categories,
+    occasions,
+    materials,
   ]);
 
   // Update URL when filters change
   useEffect(() => {
     const queryParams = buildQueryParams();
-    setSearchParams(queryParams, { replace: true });
-  }, [buildQueryParams, setSearchParams]);
+    console.log('🌐 Updating URL with queryParams:', queryParams);
+    
+    // Convert arrays to query string format
+    const newSearchParams = new URLSearchParams();
+    Object.keys(queryParams).forEach(key => {
+      const value = queryParams[key];
+      if (value !== null && value !== undefined && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            if (item !== null && item !== undefined && item !== '') {
+              newSearchParams.append(key, item);
+            }
+          });
+        } else {
+          newSearchParams.append(key, value);
+        }
+      }
+    });
+    
+    // FIXED: Add sort to URL
+    if (sortOption && sortOption !== "default") {
+      newSearchParams.set("sort", sortOption);
+    }
+    
+    // FIXED: Add newArrival to URL
+    if (newArrival) {
+      newSearchParams.set("newArrival", "true");
+    }
+    
+    console.log('🌐 Final URL search params:', newSearchParams.toString());
+    setSearchParams(newSearchParams, { replace: true });
+  }, [buildQueryParams, setSearchParams, sortOption, newArrival]);
 
   // Initialize product data
   useEffect(() => {
@@ -131,7 +215,7 @@ export default function AllProductPage() {
         console.error("Failed to initialize product data:", error);
       }
     };
-    
+
     if (filtersError || !categories.length) {
       initializeData();
     }
@@ -149,16 +233,24 @@ export default function AllProductPage() {
         const wishlistArray = response.wishList || [];
         setWishlistItems(new Set(wishlistArray));
       } catch (error) {
-        console.error('Error fetching wishlist:', error);
+        console.error("Error fetching wishlist:", error);
         setWishlistItems(new Set());
       }
     };
     fetchUserWishlist();
   }, [isAuthenticated]);
 
+  // Add this ref to track initial load
+  const initialLoadDone = useRef(false);
+
   // Fetch products from API
   useEffect(() => {
     const fetchProducts = async () => {
+      // Don't fetch if we're already fetching or no categories loaded yet
+      if (fetchGuardRef.current.inFlight || categories.length === 0) {
+        return;
+      }
+
       if (fetchGuardRef.current.timeoutId) {
         clearTimeout(fetchGuardRef.current.timeoutId);
       }
@@ -166,8 +258,17 @@ export default function AllProductPage() {
       fetchGuardRef.current.timeoutId = setTimeout(async () => {
         const queryParams = buildQueryParams();
         const key = JSON.stringify(queryParams);
-        
-        if (fetchGuardRef.current.inFlight && fetchGuardRef.current.lastKey === key) {
+
+        console.log('📡 === FETCH PRODUCTS DEBUG ===');
+        console.log('📡 selectedReviewThresholds:', selectedReviewThresholds);
+        console.log('📡 queryParams:', queryParams);
+        console.log('📡 queryParams.newArrival:', queryParams.newArrival);
+
+        // Only fetch if parameters changed or it's initial load
+        if (
+          fetchGuardRef.current.inFlight ||
+          (fetchGuardRef.current.lastKey === key && initialLoadDone.current)
+        ) {
           return;
         }
 
@@ -178,23 +279,33 @@ export default function AllProductPage() {
         setProductsError(null);
 
         try {
-          console.log("Fetching products with params:", queryParams);
+          console.log("📡 Fetching products with params:", queryParams);
+          
+          // Log new arrival parameter for debugging
+          if (queryParams.newArrival) {
+            console.log("📡 New Arrivals filter is ACTIVE");
+          }
+          
           const response = await productApi.getAll(queryParams);
 
           const productsData = response.data || response || [];
           const total = response.pagination?.total || productsData.length || 0;
 
-          console.log("Products received:", productsData.length);
+          console.log("📡 Products received:", productsData.length);
+          
           setApiProducts(Array.isArray(productsData) ? productsData : []);
           setPagination((prev) => ({
             ...prev,
             totalItems: total,
             totalPages: Math.ceil(total / prev.itemsPerPage),
           }));
+          
+          initialLoadDone.current = true;
         } catch (error) {
           console.error("Error fetching products:", error);
           setProductsError(
-            error.message === 'Unable to connect to server. Please check your connection.' 
+            error.message ===
+              "Unable to connect to server. Please check your connection."
               ? "Unable to load products. Please check your internet connection."
               : "Failed to load products. Please try again later."
           );
@@ -204,7 +315,6 @@ export default function AllProductPage() {
           fetchGuardRef.current.inFlight = false;
         }
       }, 500);
-
     };
 
     fetchProducts();
@@ -214,34 +324,62 @@ export default function AllProductPage() {
         clearTimeout(fetchGuardRef.current.timeoutId);
       }
     };
-  }, [buildQueryParams]);
+  }, [buildQueryParams, categories.length, selectedReviewThresholds]);
 
   // Handler for search input
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   // Handler for filter changes
   const handleFilterChange = (setter) => (value) => {
     setter(value);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  // FIXED: Handler for sort option changes
+  const handleSortChange = (option) => {
+    console.log('Sort option changed:', option);
+    
+    // Reset newArrival when sort changes
+    if (sortOption === "New Arrivals" && option !== "New Arrivals") {
+      console.log('Clearing newArrival filter because sort changed from New Arrivals');
+      setNewArrival(false);
+    }
+    
+    // Set newArrival only when "New Arrivals" is explicitly selected
+    if (option === "New Arrivals") {
+      console.log('Setting newArrival to true');
+      setNewArrival(true);
+    }
+    
+    setSortOption(option);
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   // Wrapped filter setters
-  const wrappedSetSelectedSubCategories = handleFilterChange(setSelectedSubCategories);
+  const wrappedSetSelectedSubCategories = handleFilterChange(
+    setSelectedSubCategories
+  );
   const wrappedSetSelectedDetails = handleFilterChange(setSelectedDetails);
   const wrappedSetSelectedColors = handleFilterChange(setSelectedColors);
   const wrappedSetSelectedSizes = handleFilterChange(setSelectedSizes);
   const wrappedSetSelectedOccasions = handleFilterChange(setSelectedOccasions);
-  const wrappedSetSelectedBrands = handleFilterChange(setSelectedBrands);
+  const wrappedSetSelectedMaterials = handleFilterChange(setSelectedMaterials);
+  const wrappedSetSelectedReviewThresholds = handleFilterChange(
+    setSelectedReviewThresholds
+  );
+  const wrappedSetSelectedAvailability = handleFilterChange(
+    setSelectedAvailability
+  );
   const wrappedSetPriceRange = handleFilterChange(setPriceRange);
-  const wrappedSetSortOption = handleFilterChange(setSortOption);
+  const wrappedSetSortOption = handleSortChange; // FIXED: Use new handler
 
   const retryProductsFetch = () => {
     setProductsError(null);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   const retryFiltersFetch = () => {
@@ -255,10 +393,13 @@ export default function AllProductPage() {
     setSelectedColors([]);
     setSelectedSizes([]);
     setSelectedOccasions([]);
-    setSelectedBrands([]);
-    setSearchQuery('');
-    setSortOption('New Arrivals');
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setSelectedMaterials([]);
+    setSelectedReviewThresholds([]);
+    setSelectedAvailability([]);
+    setSearchQuery("");
+    setSortOption("default"); // FIXED: Reset to default
+    setNewArrival(false); // FIXED: Clear newArrival
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   // Body overflow management
@@ -290,7 +431,7 @@ export default function AllProductPage() {
     };
 
     if (searchQuery) {
-      pushFilter(`Search: "${searchQuery}"`, () => setSearchQuery(''));
+      pushFilter(`Search: "${searchQuery}"`, () => setSearchQuery(""));
     }
 
     selectedDetails.forEach((detailKey) => {
@@ -328,11 +469,44 @@ export default function AllProductPage() {
       )
     );
 
-    selectedBrands.forEach((b) =>
-      pushFilter(b, () =>
-        setSelectedBrands((prev) => prev.filter((i) => i !== b))
+    selectedMaterials.forEach((m) =>
+      pushFilter(m, () =>
+        setSelectedMaterials((prev) => prev.filter((i) => i !== m))
       )
     );
+
+    // Availability breadcrumb
+    selectedAvailability.forEach((a) =>
+      pushFilter(
+        a === "in" ? "In Stock" : "Out of Stock",
+        () =>
+          setSelectedAvailability((prev) =>
+            prev.filter((i) => i !== a)
+          )
+      )
+    );
+
+    // Add review filter to breadcrumb
+    if (selectedReviewThresholds.length > 0) {
+      selectedReviewThresholds.forEach((threshold) => {
+        pushFilter(`${threshold}★ & above`, () =>
+          setSelectedReviewThresholds((prev) =>
+            prev.filter((t) => t !== threshold)
+          )
+        );
+      });
+    }
+
+    // FIXED: Add New Arrivals to breadcrumb
+    if (newArrival) {
+      pushFilter("New Arrivals", () => {
+        setNewArrival(false);
+        // Also reset sort option if it's set to New Arrivals
+        if (sortOption === "New Arrivals") {
+          setSortOption("default");
+        }
+      });
+    }
 
     return activeFilters.length ? [...base, ...activeFilters] : base;
   }, [
@@ -343,33 +517,56 @@ export default function AllProductPage() {
     selectedColors,
     selectedSizes,
     selectedOccasions,
-    selectedBrands,
+    selectedMaterials,
+    selectedReviewThresholds,
+    selectedAvailability,
+    newArrival,
+    sortOption,
   ]);
 
   // Placeholder image URL
-  const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
+  const PLACEHOLDER_IMAGE =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
 
   // Transform API products for display
   const transformedProducts = useMemo(() => {
     return apiProducts.map((product) => {
       const mrp = parseFloat(product.mrp || 0);
       const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
-      const discount = mrp > 0 && sellingPrice < mrp
-        ? Math.round(((mrp - sellingPrice) / mrp) * 100)
-        : 0;
+      const discount =
+        mrp > 0 && sellingPrice < mrp
+          ? Math.round(((mrp - sellingPrice) / mrp) * 100)
+          : 0;
 
       const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
 
-      const totalStock = product.inventories?.reduce(
-        (sum, inv) => sum + (inv.availableQuantity || 0), 0
-      ) || 0;
+      const totalStock =
+        product.inventories?.reduce(
+          (sum, inv) => sum + (inv.availableQuantity || 0),
+          0
+        ) || 0;
 
+      // Extract colors from inventory
       const productColors = [
-        ...new Set(product.inventories?.map((inv) => inv.productColor?.color).filter(Boolean) || [])
+        ...new Set(
+          product.inventories
+            ?.map((inv) => {
+              const color = inv.productColor?.color;
+              if (color) {
+                return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+              }
+              return null;
+            })
+            .filter(Boolean) || []
+        ),
       ];
 
       const productSizes = [
-        ...new Set(product.inventories?.flatMap((inv) => inv.productSize?.size || []).filter(Boolean) || [])
+        ...new Set(
+          product.inventories
+            ?.flatMap((inv) => inv.productSize?.size || [])
+            .filter(Boolean) || []
+        ),
       ];
 
       return {
@@ -386,50 +583,84 @@ export default function AllProductPage() {
         subCategoryDetail: product.childCategory?.name || "",
         colors: productColors,
         sizes: productSizes,
+        material: product.material?.name || "",
         occasion: product.occasion ? [product.occasion.name] : [],
-        brand: product.brand || "Generic",
-        product_type: product.status === "featured" ? "featured" : product.status === "popular" ? "popular" : "",
+        product_type:
+          product.status === "featured"
+            ? "featured"
+            : product.status === "popular"
+            ? "popular"
+            : "",
       };
     });
   }, [apiProducts]);
 
   // Apply client-side filtering as fallback
   const filteredProducts = useMemo(() => {
-    const hasClientSideFilters = selectedColors.length > 0 || selectedSizes.length > 0;
-    
+    const hasClientSideFilters =
+      selectedColors.length > 0 ||
+      selectedSizes.length > 0 ||
+      selectedMaterials.length > 0 ||
+      selectedReviewThresholds.length > 0 ||
+      selectedAvailability.length > 0;
+
     if (hasClientSideFilters) {
-      console.log("Applying client-side filtering for colors/sizes");
-      const clientSideFiltered = productUtils.filterProductsClientSide(apiProducts, {
-        selectedSubCategories,
-        selectedDetails,
-        priceRange,
-        selectedColors,
-        selectedSizes,
-        selectedOccasions,
-        selectedBrands,
-      });
+      console.log("Applying client-side filtering for colors/sizes/materials/ratings");
+      const clientSideFiltered = productUtils.filterProductsClientSide(
+        apiProducts,
+        {
+          selectedSubCategories,
+          selectedDetails,
+          priceRange,
+          selectedColors,
+          selectedSizes,
+          selectedOccasions,
+          selectedMaterials,
+          selectedReviewThresholds,
+          selectedAvailability,
+        }
+      );
 
       console.log("Client-side filtered products:", clientSideFiltered.length);
-      
+
       return clientSideFiltered.map((product) => {
         const mrp = parseFloat(product.mrp || 0);
-        const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
-        const discount = mrp > 0 && sellingPrice < mrp
-          ? Math.round(((mrp - sellingPrice) / mrp) * 100)
-          : 0;
+        const sellingPrice = parseFloat(
+          product.sellingPrice || product.mrp || 0
+        );
+        const discount =
+          mrp > 0 && sellingPrice < mrp
+            ? Math.round(((mrp - sellingPrice) / mrp) * 100)
+            : 0;
 
         const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
 
-        const totalStock = product.inventories?.reduce(
-          (sum, inv) => sum + (inv.availableQuantity || 0), 0
-        ) || 0;
+        const totalStock =
+          product.inventories?.reduce(
+            (sum, inv) => sum + (inv.availableQuantity || 0),
+            0
+          ) || 0;
 
         const productColors = [
-          ...new Set(product.inventories?.map((inv) => inv.productColor?.color).filter(Boolean) || [])
+          ...new Set(
+            product.inventories
+              ?.map((inv) => {
+                const color = inv.productColor?.color;
+                if (color) {
+                  return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+                }
+                return null;
+              })
+              .filter(Boolean) || []
+          ),
         ];
 
         const productSizes = [
-          ...new Set(product.inventories?.flatMap((inv) => inv.productSize?.size || []).filter(Boolean) || [])
+          ...new Set(
+            product.inventories
+              ?.flatMap((inv) => inv.productSize?.size || [])
+              .filter(Boolean) || []
+          ),
         ];
 
         return {
@@ -446,9 +677,14 @@ export default function AllProductPage() {
           subCategoryDetail: product.childCategory?.name || "",
           colors: productColors,
           sizes: productSizes,
+          material: product.material?.name || "",
           occasion: product.occasion ? [product.occasion.name] : [],
-          brand: product.brand || "Generic",
-          product_type: product.status === "featured" ? "featured" : product.status === "popular" ? "popular" : "",
+          product_type:
+            product.status === "featured"
+              ? "featured"
+              : product.status === "popular"
+              ? "popular"
+              : "",
         };
       });
     }
@@ -464,7 +700,9 @@ export default function AllProductPage() {
     selectedColors,
     selectedSizes,
     selectedOccasions,
-    selectedBrands
+    selectedMaterials,
+    selectedReviewThresholds,
+    selectedAvailability,
   ]);
 
   // Apply sorting to filtered products
@@ -472,23 +710,36 @@ export default function AllProductPage() {
     let result = [...filteredProducts];
 
     if (sortOption === "New Arrivals") {
+      // FIXED: This is now just client-side fallback sorting
+      // The actual filtering should be done by API with newArrival=true
       result.sort((a, b) => b.id - a.id);
     } else if (sortOption === "Best Sellers") {
       result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
     } else if (sortOption === "Sale / Clearance") {
       result.sort((a, b) => b.discount - a.discount);
     } else if (sortOption === "Trending Now") {
-      result.sort((a, b) => b.review * (b.reviewCount || 1) - a.review * (a.reviewCount || 1));
+      result.sort(
+        (a, b) =>
+          b.review * (b.reviewCount || 1) - a.review * (a.reviewCount || 1)
+      );
     } else if (sortOption === "Price: Low to High") {
       result.sort((a, b) => {
-        const priceA = parseFloat(a.offer_price.replace("₹", "").replace(/,/g, ""));
-        const priceB = parseFloat(b.offer_price.replace("₹", "").replace(/,/g, ""));
+        const priceA = parseFloat(
+          a.offer_price.replace("₹", "").replace(/,/g, "")
+        );
+        const priceB = parseFloat(
+          b.offer_price.replace("₹", "").replace(/,/g, "")
+        );
         return priceA - priceB;
       });
     } else if (sortOption === "Price: High to Low") {
       result.sort((a, b) => {
-        const priceA = parseFloat(a.offer_price.replace("₹", "").replace(/,/g, ""));
-        const priceB = parseFloat(b.offer_price.replace("₹", "").replace(/,/g, ""));
+        const priceA = parseFloat(
+          a.offer_price.replace("₹", "").replace(/,/g, "")
+        );
+        const priceB = parseFloat(
+          b.offer_price.replace("₹", "").replace(/,/g, "")
+        );
         return priceB - priceA;
       });
     }
@@ -503,9 +754,12 @@ export default function AllProductPage() {
       selectedColors.length,
       selectedSizes.length,
       selectedOccasions.length,
-      selectedBrands.length,
+      selectedMaterials.length,
+      selectedReviewThresholds.length,
+      selectedAvailability.length,
       priceRange.min !== 0 || priceRange.max !== 10000 ? 1 : 0,
       searchQuery ? 1 : 0,
+      newArrival ? 1 : 0, // FIXED: Count newArrival as a filter
     ].reduce((a, b) => a + b, 0);
   }, [
     selectedSubCategories,
@@ -513,9 +767,12 @@ export default function AllProductPage() {
     selectedColors,
     selectedSizes,
     selectedOccasions,
-    selectedBrands,
+    selectedMaterials,
+    selectedReviewThresholds,
+    selectedAvailability,
     priceRange,
     searchQuery,
+    newArrival,
   ]);
 
   const handleWishlistToggle = async (e, productId) => {
@@ -523,14 +780,14 @@ export default function AllProductPage() {
     e.preventDefault();
 
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
     if (wishlistLoading[productId]) return;
 
     // Optimistically update UI
-    setWishlistItems(prev => {
+    setWishlistItems((prev) => {
       const newWishlist = new Set(prev);
       if (newWishlist.has(productId)) {
         newWishlist.delete(productId);
@@ -540,15 +797,14 @@ export default function AllProductPage() {
       return newWishlist;
     });
 
-    setWishlistLoading(prev => ({ ...prev, [productId]: true }));
+    setWishlistLoading((prev) => ({ ...prev, [productId]: true }));
 
     try {
-      // This will update the backend and emit event to sync all components
       await updateWishlist(productId);
     } catch (error) {
-      console.error('Error updating wishlist:', error);
+      console.error("Error updating wishlist:", error);
       // Revert optimistic update on error
-      setWishlistItems(prev => {
+      setWishlistItems((prev) => {
         const newWishlist = new Set(prev);
         if (newWishlist.has(productId)) {
           newWishlist.delete(productId);
@@ -557,14 +813,15 @@ export default function AllProductPage() {
         }
         return newWishlist;
       });
-      alert('Failed to update wishlist. Please try again.');
+      alert("Failed to update wishlist. Please try again.");
     } finally {
-      setWishlistLoading(prev => ({ ...prev, [productId]: false }));
+      setWishlistLoading((prev) => ({ ...prev, [productId]: false }));
     }
   };
 
   const isInWishlist = (productId) => wishlistItems.has(productId);
-  const isLoading = (productsLoading || filtersLoading) && !productsError && !filtersError;
+  const isLoading =
+    (productsLoading || filtersLoading) && !productsError && !filtersError;
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
@@ -583,7 +840,9 @@ export default function AllProductPage() {
                   </p>
                 </div>
                 <button
-                  onClick={productsError ? retryProductsFetch : retryFiltersFetch}
+                  onClick={
+                    productsError ? retryProductsFetch : retryFiltersFetch
+                  }
                   className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -595,33 +854,45 @@ export default function AllProductPage() {
 
           {/* Cart Notification */}
           {cartNotification && (
-            <div className={`mb-6 p-4 rounded-lg border flex items-center justify-between ${
-              cartNotification.type === 'success' 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
-            }`}>
+            <div
+              className={`mb-6 p-4 rounded-lg border flex items-center justify-between ${
+                cartNotification.type === "success"
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
               <div className="flex items-center gap-3">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                  cartNotification.type === 'success' ? 'bg-green-100' : 'bg-red-100'
-                }`}>
-                  <span className={`text-sm font-bold ${
-                    cartNotification.type === 'success' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {cartNotification.type === 'success' ? '✓' : '!'}
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                    cartNotification.type === "success"
+                      ? "bg-green-100"
+                      : "bg-red-100"
+                  }`}
+                >
+                  <span
+                    className={`text-sm font-bold ${
+                      cartNotification.type === "success"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {cartNotification.type === "success" ? "✓" : "!"}
                   </span>
                 </div>
-                <p className={`text-sm font-medium ${
-                  cartNotification.type === 'success' ? 'text-green-800' : 'text-red-800'
-                }`}>
+                <p
+                  className={`text-sm font-medium ${
+                    cartNotification.type === "success"
+                      ? "text-green-800"
+                      : "text-red-800"
+                  }`}
+                >
                   {cartNotification.message}
                 </p>
               </div>
               <button onClick={() => setCartNotification(null)}>×</button>
             </div>
           )}
-
           <div className="w-full lg:flex lg:gap-6 xl:gap-8">
-            {/* Filter Sidebar - Desktop */}
             <div className="lg:w-[280px] xl:w-[320px] flex-shrink-0 hidden lg:block">
               <div className="sticky top-6">
                 <ProductsFilter
@@ -636,10 +907,14 @@ export default function AllProductPage() {
                   setSelectedColors={wrappedSetSelectedColors}
                   selectedSizes={selectedSizes}
                   setSelectedSizes={wrappedSetSelectedSizes}
+                  selectedMaterials={selectedMaterials}
+                  setSelectedMaterials={wrappedSetSelectedMaterials}
+                  selectedReviewThresholds={selectedReviewThresholds}
+                  setSelectedReviewThresholds={wrappedSetSelectedReviewThresholds}
                   selectedOccasions={selectedOccasions}
                   setSelectedOccasions={wrappedSetSelectedOccasions}
-                  selectedBrands={selectedBrands}
-                  setSelectedBrands={wrappedSetSelectedBrands}
+                  selectedAvailability={selectedAvailability}
+                  setSelectedAvailability={wrappedSetSelectedAvailability}
                   searchQuery={searchQuery}
                   setSearchQuery={handleSearchChange}
                   filterToggle={filterToggle}
@@ -649,7 +924,6 @@ export default function AllProductPage() {
               </div>
             </div>
 
-            {/* Mobile Filter Overlay */}
             {filterToggle && (
               <div className="lg:hidden fixed inset-0 z-50">
                 <ProductsFilter
@@ -664,10 +938,14 @@ export default function AllProductPage() {
                   setSelectedColors={wrappedSetSelectedColors}
                   selectedSizes={selectedSizes}
                   setSelectedSizes={wrappedSetSelectedSizes}
+                  selectedMaterials={selectedMaterials}
+                  setSelectedMaterials={wrappedSetSelectedMaterials}
+                  selectedReviewThresholds={selectedReviewThresholds}
+                  setSelectedReviewThresholds={wrappedSetSelectedReviewThresholds}
                   selectedOccasions={selectedOccasions}
                   setSelectedOccasions={wrappedSetSelectedOccasions}
-                  selectedBrands={selectedBrands}
-                  setSelectedBrands={wrappedSetSelectedBrands}
+                  selectedAvailability={selectedAvailability}
+                  setSelectedAvailability={wrappedSetSelectedAvailability}
                   searchQuery={searchQuery}
                   setSearchQuery={handleSearchChange}
                   filterToggle={filterToggle}
@@ -721,7 +999,8 @@ export default function AllProductPage() {
                         Clothing And Accessories
                       </h2>
                       <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium border border-gray-300">
-                        {sortedProducts.length} {sortedProducts.length === 1 ? "Product" : "Products"}
+                        {sortedProducts.length}{" "}
+                        {sortedProducts.length === 1 ? "Product" : "Products"}
                       </span>
                     </div>
 
@@ -762,6 +1041,7 @@ export default function AllProductPage() {
                     </span>
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       {[
+                        { key: "default", label: "Default" }, // FIXED: Added default option
                         { key: "New Arrivals", label: "New Arrivals" },
                         { key: "Best Sellers", label: "Best Sellers" },
                         { key: "Sale / Clearance", label: "Sale" },
@@ -800,13 +1080,26 @@ export default function AllProductPage() {
                     <div className="p-8 sm:p-12 text-center">
                       <div className="max-w-md mx-auto">
                         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                          <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          <svg
+                            className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                            />
                           </svg>
                         </div>
-                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                          No products found
+                        </h3>
                         <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
-                          Try adjusting your filters to find what you're looking for.
+                          Try adjusting your filters to find what you're looking
+                          for.
                         </p>
                         <button
                           onClick={clearAllFilters}
@@ -837,11 +1130,9 @@ export default function AllProductPage() {
                                   <img
                                     src={product.image}
                                     alt={product.name}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    className="w-full h-full object-cover"
                                     onError={(e) => {
-                                      if (e.target.src !== PLACEHOLDER_IMAGE) {
-                                        e.target.src = PLACEHOLDER_IMAGE;
-                                      }
+                                      e.target.src = PLACEHOLDER_IMAGE;
                                     }}
                                   />
 
@@ -851,17 +1142,20 @@ export default function AllProductPage() {
                                     </div>
                                   )}
 
-                                  {product.product_type && product.discount === 0 && (
-                                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
-                                      <span
-                                        className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
-                                          product.product_type === "popular" ? "bg-orange-500" : "bg-red-600"
-                                        }`}
-                                      >
-                                        {product.product_type}
-                                      </span>
-                                    </div>
-                                  )}
+                                  {product.product_type &&
+                                    product.discount === 0 && (
+                                      <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+                                        <span
+                                          className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
+                                            product.product_type === "popular"
+                                              ? "bg-orange-500"
+                                              : "bg-red-600"
+                                          }`}
+                                        >
+                                          {product.product_type}
+                                        </span>
+                                      </div>
+                                    )}
                                 </div>
 
                                 {/* Details Section */}
@@ -874,6 +1168,15 @@ export default function AllProductPage() {
                                     {product.name}
                                   </h3>
 
+                                  {/* Material Badge */}
+                                  {product.material && (
+                                    <div className="mb-2">
+                                      <span className="inline-block bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded-full border border-gray-300">
+                                        {product.material}
+                                      </span>
+                                    </div>
+                                  )}
+
                                   {/* Rating Section */}
                                   <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-2.5">
                                     <div className="flex items-center gap-0.5">
@@ -883,7 +1186,9 @@ export default function AllProductPage() {
                                           className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                                             star <= Math.floor(product.review)
                                               ? "text-yellow-400 fill-current"
-                                              : product.review % 1 >= 0.5 && star === Math.ceil(product.review)
+                                              : product.review % 1 >= 0.5 &&
+                                                star ===
+                                                  Math.ceil(product.review)
                                               ? "text-yellow-400 fill-current"
                                               : "text-gray-300 fill-current"
                                           }`}
@@ -899,7 +1204,11 @@ export default function AllProductPage() {
                                     </span>
 
                                     <span className="text-xs text-gray-600 font-medium">
-                                      ({product.reviewCount ? product.reviewCount.toLocaleString() : "0"})
+                                      (
+                                      {product.reviewCount
+                                        ? product.reviewCount.toLocaleString()
+                                        : "0"}
+                                      )
                                     </span>
                                   </div>
 
@@ -920,6 +1229,38 @@ export default function AllProductPage() {
                                     )}
                                   </div>
 
+                                  {/* Color Indicators */}
+                                  {product.colors && product.colors.length > 0 && (
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                      <span className="text-xs text-gray-500">Colors:</span>
+                                      <div className="flex items-center gap-1">
+                                        {product.colors.slice(0, 3).map((color, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="w-3 h-3 rounded-full border border-gray-300"
+                                            style={{
+                                              backgroundColor: 
+                                                color === 'Red' ? '#EF4444' :
+                                                color === 'Blue' ? '#3B82F6' :
+                                                color === 'Yellow' ? '#FBBF24' :
+                                                color === 'Green' ? '#10B981' :
+                                                color === 'Black' ? '#000000' :
+                                                color === 'White' ? '#FFFFFF' :
+                                                color === 'Grey' || color === 'Gray' ? '#9CA3AF' :
+                                                '#E5E7EB'
+                                            }}
+                                            title={color}
+                                          />
+                                        ))}
+                                        {product.colors.length > 3 && (
+                                          <span className="text-xs text-gray-400">
+                                            +{product.colors.length - 3} more
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* Stock Info */}
                                   {product.stock > 0 && product.stock < 30 && (
                                     <p className="text-xs text-orange-600 font-semibold mt-auto">
@@ -937,13 +1278,19 @@ export default function AllProductPage() {
 
                               {/* Wishlist Button */}
                               <button
-                                onClick={(e) => handleWishlistToggle(e, product.id)}
+                                onClick={(e) =>
+                                  handleWishlistToggle(e, product.id)
+                                }
                                 disabled={isLoadingWishlist}
                                 className={`absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md transition-all z-10 ${
                                   isWishlisted
-                                    ? 'bg-red-50 opacity-100'
-                                    : 'bg-white opacity-0 group-hover:opacity-100'
-                                } ${isLoadingWishlist ? 'cursor-not-allowed' : 'hover:bg-red-50'}`}
+                                    ? "bg-red-50 opacity-100"
+                                    : "bg-white opacity-0 group-hover:opacity-100"
+                                } ${
+                                  isLoadingWishlist
+                                    ? "cursor-not-allowed"
+                                    : "hover:bg-red-50"
+                                }`}
                               >
                                 {isLoadingWishlist ? (
                                   <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
@@ -951,8 +1298,8 @@ export default function AllProductPage() {
                                   <Heart
                                     className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                                       isWishlisted
-                                        ? 'text-red-500 fill-red-500'
-                                        : 'text-gray-700 hover:text-red-500 hover:fill-red-500'
+                                        ? "text-red-500 fill-red-500"
+                                        : "text-gray-700 hover:text-red-500 hover:fill-red-500"
                                     }`}
                                   />
                                 )}
@@ -967,48 +1314,72 @@ export default function AllProductPage() {
                         <div className="flex justify-center mt-8">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setPagination(prev => ({ 
-                                ...prev, 
-                                currentPage: Math.max(1, prev.currentPage - 1) 
-                              }))}
+                              onClick={() =>
+                                setPagination((prev) => ({
+                                  ...prev,
+                                  currentPage: Math.max(
+                                    1,
+                                    prev.currentPage - 1
+                                  ),
+                                }))
+                              }
                               disabled={pagination.currentPage === 1}
                               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                               Previous
                             </button>
-                            
-                            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                              .filter(page => 
-                                page === 1 || 
-                                page === pagination.totalPages || 
-                                Math.abs(page - pagination.currentPage) <= 1
+
+                            {Array.from(
+                              { length: pagination.totalPages },
+                              (_, i) => i + 1
+                            )
+                              .filter(
+                                (page) =>
+                                  page === 1 ||
+                                  page === pagination.totalPages ||
+                                  Math.abs(page - pagination.currentPage) <= 1
                               )
                               .map((page, index, array) => {
-                                const showEllipsis = index < array.length - 1 && array[index + 1] !== page + 1;
+                                const showEllipsis =
+                                  index < array.length - 1 &&
+                                  array[index + 1] !== page + 1;
                                 return (
                                   <div key={page} className="flex items-center">
                                     <button
-                                      onClick={() => setPagination(prev => ({ ...prev, currentPage: page }))}
+                                      onClick={() =>
+                                        setPagination((prev) => ({
+                                          ...prev,
+                                          currentPage: page,
+                                        }))
+                                      }
                                       className={`w-10 h-10 rounded-lg ${
                                         pagination.currentPage === page
-                                          ? 'bg-gray-900 text-white'
-                                          : 'border border-gray-300 hover:bg-gray-50'
+                                          ? "bg-gray-900 text-white"
+                                          : "border border-gray-300 hover:bg-gray-50"
                                       }`}
                                     >
                                       {page}
                                     </button>
-                                    {showEllipsis && <span className="px-2">...</span>}
+                                    {showEllipsis && (
+                                      <span className="px-2">...</span>
+                                    )}
                                   </div>
                                 );
-                              })
-                            }
-                            
+                              })}
+
                             <button
-                              onClick={() => setPagination(prev => ({ 
-                                ...prev, 
-                                currentPage: Math.min(pagination.totalPages, prev.currentPage + 1) 
-                              }))}
-                              disabled={pagination.currentPage === pagination.totalPages}
+                              onClick={() =>
+                                setPagination((prev) => ({
+                                  ...prev,
+                                  currentPage: Math.min(
+                                    pagination.totalPages,
+                                    prev.currentPage + 1
+                                  ),
+                                }))
+                              }
+                              disabled={
+                                pagination.currentPage === pagination.totalPages
+                              }
                               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
                               Next

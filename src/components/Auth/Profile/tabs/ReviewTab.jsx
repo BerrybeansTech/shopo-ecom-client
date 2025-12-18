@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Star, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Star, Upload, X, Image as ImageIcon, ShoppingBag, CheckCircle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { apiService } from "../../../../services/apiservice";
 
 const ratingLabels = {
-  1: "Very Bad",
-  2: "Bad",
-  3: "Good",
-  4: "Very Good",
+  1: "Very Dissatisfied",
+  2: "Dissatisfied",
+  3: "Satisfactory",
+  4: "Very Satisfied",
   5: "Excellent",
 };
 
@@ -26,6 +26,8 @@ export default function ReviewTab() {
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     fetchUserReviews();
@@ -40,7 +42,28 @@ export default function ReviewTab() {
         }
       }, 100);
     }
+    // Fetch user's order history for eligible reviews
+    fetchOrderHistory();
   }, [searchParams]);
+
+  const fetchOrderHistory = async () => {
+    try {
+      setLoadingOrders(true);
+      // Replace with your actual order history API endpoint
+      const response = await apiService.get('/order/user-orders');
+      if (response.success) {
+        // Filter for delivered/completed orders
+        const deliveredOrders = response.data.filter(order => 
+          order.status === 'delivered' || order.status === 'completed'
+        );
+        setOrderHistory(deliveredOrders);
+      }
+    } catch (error) {
+      console.error('Error fetching order history:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const fetchProductDetails = async (productId) => {
     try {
@@ -94,7 +117,7 @@ export default function ReviewTab() {
         return false;
       }
       if (!isValidSize) {
-        alert(`${file.name} is too large. Max size is 5MB`);
+        alert(`${file.name} is too large. Maximum size is 5MB`);
         return false;
       }
       return true;
@@ -136,7 +159,8 @@ export default function ReviewTab() {
           }),
           productName: review.Product?.name || "Unknown Product",
           productImage: getProductImageUrl(review.Product?.thumbnailImage),
-          reviewImages: review.images?.map(img => getProductImageUrl(img)) || []
+          reviewImages: review.images?.map(img => getProductImageUrl(img)) || [],
+          orderId: review.OrderItem?.Order?.orderId || null
         }));
         setReviews(transformedReviews);
       }
@@ -150,7 +174,7 @@ export default function ReviewTab() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!rating || !comment.trim() || !productId.trim()) {
-      alert("Rating, comment, and product ID are required!");
+      alert("Please provide a rating, write your review, and select a product!");
       return;
     }
 
@@ -189,7 +213,7 @@ export default function ReviewTab() {
         // Add new review to the top of the list immediately
         setReviews(prevReviews => [newReview, ...prevReviews]);
 
-        alert("Review submitted successfully!");
+        alert("Thank you! Your review has been submitted successfully.");
         
         // Reset form
         setRating(0);
@@ -220,13 +244,15 @@ export default function ReviewTab() {
       } else {
         if (response.message && response.message.includes("You can only review products you have purchased and received")) {
           alert("You can only review products from orders that have been delivered. Please wait for your order to be delivered before writing a review.");
+        } else if (response.message && response.message.includes("already reviewed")) {
+          alert("You have already reviewed this product. Thank you for your feedback!");
         } else {
-          alert(response.message || "Failed to submit review");
+          alert(response.message || "We were unable to submit your review. Please try again.");
         }
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert(error.message || "Failed to submit review. Please try again.");
+      alert(error);
     } finally {
       setSubmitting(false);
     }
@@ -258,28 +284,65 @@ export default function ReviewTab() {
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-2 mb-6">
-        <h2 className="text-xl font-bold text-gray-900">My Reviews</h2>
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <ShoppingBag className="w-6 h-6 text-blue-600" />
+          <h2 className="text-2xl font-bold text-gray-900">My Reviews & Feedback</h2>
+        </div>
+        <p className="text-gray-600">
+          Share your experiences with products you've purchased. Your reviews help other customers make informed decisions.
+        </p>
+        
         {reviews.length > 0 && (
-          <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
-            {reviews.length}
-          </span>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
+              {reviews.length} review{reviews.length !== 1 ? 's' : ''} submitted
+            </span>
+            {orderHistory.length > 0 && (
+              <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+                {orderHistory.length} eligible product{orderHistory.length !== 1 ? 's' : ''} for review
+              </span>
+            )}
+          </div>
         )}
+      </div>
+
+      {/* Eligibility Notice */}
+      <div className="mb-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+        <div className="flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-1">Review Guidelines</h3>
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li>• You can only review products you have purchased and received</li>
+              <li>• Reviews must be based on your personal experience with the product</li>
+              <li>• Include clear photos to help other customers see the product quality</li>
+              <li>• Be honest and constructive in your feedback</li>
+              <li>• Your reviews will be publicly visible on the product page</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Create Review Form */}
       <form 
         id="review-form"
         onSubmit={handleSubmitReview} 
-        className="bg-white rounded-lg border border-gray-200 p-6 mb-10 shadow-sm"
+        className="bg-white rounded-xl border border-gray-200 p-6 mb-10 shadow-sm"
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Write a Review</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Write Your Review</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Share your honest opinion about this product
+            </p>
+          </div>
           {searchParams.get('productId') && (
             <button
               type="button"
               onClick={handleClearForm}
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
+              className="text-sm text-gray-600 hover:text-gray-900 underline transition-colors"
             >
               Clear Form
             </button>
@@ -295,17 +358,27 @@ export default function ReviewTab() {
             </div>
           </div>
         ) : selectedProduct ? (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <img
-                src={getProductImageUrl(selectedProduct.thumbnailImage)}
-                alt={selectedProduct.name}
-                className="w-16 h-16 border border-gray-300 rounded-lg object-cover"
-              />
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{selectedProduct.name}</h4>
-                <p className="text-sm text-gray-600">Product ID: {selectedProduct.id}</p>
-                <p className="text-xs text-blue-600 mt-1">Ready to review this product</p>
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={getProductImageUrl(selectedProduct.thumbnailImage)}
+                  alt={selectedProduct.name}
+                  className="w-16 h-16 border border-gray-300 rounded-lg object-cover"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-gray-900">{selectedProduct.name}</h4>
+                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                      Eligible for Review
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">Product ID: {selectedProduct.id}</p>
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Ready to review this product
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -315,38 +388,53 @@ export default function ReviewTab() {
               Product ID: {searchParams.get('productId')} - Loading details...
             </p>
           </div>
-        ) : null}
+        ) : (
+          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-sm text-gray-600">
+              <strong>Note:</strong> To write a review, please select a product from your order history or 
+              use a product link that includes review eligibility.
+            </p>
+          </div>
+        )}
 
         {/* Star Rating */}
         <div className="flex flex-col gap-4 mb-6">
-          <label className="block text-sm font-medium text-gray-700">
-            Your Rating <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Product Rating <span className="text-red-500">*</span>
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              How would you rate your overall experience with this product?
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   type="button"
                   onClick={() => setRating(star)}
-                  className="transition-transform hover:scale-110 focus:outline-none"
-                  aria-label={`Rate ${star} stars`}
+                  className="transition-all hover:scale-110 focus:outline-none"
+                  aria-label={`Rate ${star} stars - ${ratingLabels[star]}`}
                 >
                   <Star
-                    className={`w-8 h-8 ${
+                    className={`w-10 h-10 ${
                       rating >= star
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-300"
-                    }`}
+                        ? "fill-yellow-400 text-yellow-400 drop-shadow-sm"
+                        : "text-gray-300 hover:text-yellow-300"
+                    } transition-all duration-200`}
                   />
                 </button>
               ))}
             </div>
 
             {rating > 0 && (
-              <div className="animate-fadeIn">
-                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 font-medium text-xs rounded-full">
+              <div className="animate-fadeIn flex flex-col">
+                <span className="inline-block px-3 py-1.5 bg-blue-100 text-blue-800 font-medium text-sm rounded-lg">
                   {ratingLabels[rating]}
+                </span>
+                <span className="text-xs text-gray-500 mt-1">
+                  {rating} star{rating !== 1 ? 's' : ''} selected
                 </span>
               </div>
             )}
@@ -355,20 +443,28 @@ export default function ReviewTab() {
 
         {/* Comment */}
         <div className="mb-5">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Review Comment <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Your Review <span className="text-red-500">*</span>
+            </label>
+            <span className={`text-xs ${comment.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
+              {comment.length}/500 characters
+            </span>
+          </div>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={4}
             required
-            placeholder="Share your experience with this product..."
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+            maxLength={500}
+            placeholder="Share your detailed experience with this product. Consider mentioning:
+• Product quality and durability
+• Fit and comfort (for clothing)
+• How it compares to your expectations
+• Any issues you encountered
+• Would you recommend this to others?"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            {comment.length} / 500 characters
-          </p>
         </div>
 
         {/* Image Upload Section */}
@@ -377,7 +473,7 @@ export default function ReviewTab() {
             Add Photos (Optional)
           </label>
           <p className="text-xs text-gray-500 mb-3">
-            Upload up to 5 images (Max 5MB each)
+            Upload up to 5 images (5MB max per image) to show product quality, details, or any issues.
           </p>
 
           {/* Image Previews */}
@@ -388,12 +484,13 @@ export default function ReviewTab() {
                   <img
                     src={preview.url}
                     alt={`Preview ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg border-2 border-gray-300"
+                    className="w-full h-24 object-cover rounded-lg border-2 border-gray-300 group-hover:border-blue-500 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+                    aria-label={`Remove image ${index + 1}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -415,11 +512,14 @@ export default function ReviewTab() {
               />
               <label
                 htmlFor="image-upload"
-                className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-6 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                className="flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-8 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
               >
-                <Upload className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-600">
-                  Click to upload images ({5 - imagePreviews.length} remaining)
+                <Upload className="w-8 h-8 text-gray-400" />
+                <span className="text-sm text-gray-600 font-medium">
+                  Click to upload images
+                </span>
+                <span className="text-xs text-gray-500">
+                  ({5 - imagePreviews.length} remaining • JPG, PNG, GIF up to 5MB)
                 </span>
               </label>
             </div>
@@ -427,40 +527,64 @@ export default function ReviewTab() {
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
           {searchParams.get('productId') && (
             <button
               type="button"
               onClick={handleClearForm}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-colors"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium text-sm transition-colors"
             >
-              Cancel
+              Cancel Review
             </button>
           )}
           <button
             type="submit"
             disabled={submitting || !rating || !comment.trim() || !productId.trim()}
-            className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-colors shadow-sm"
+            className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold text-sm transition-colors shadow-sm hover:shadow-md disabled:hover:shadow-sm"
           >
-            {submitting ? "Submitting..." : "Submit Review"}
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Submitting...
+              </span>
+            ) : (
+              "Submit Review"
+            )}
           </button>
         </div>
       </form>
 
       {/* Reviews List */}
       {reviews.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
-          <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-lg text-gray-500 mb-2">No reviews yet.</p>
-          <p className="text-sm text-gray-400">You haven't reviewed any products yet.</p>
+        <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <Star className="w-10 h-10 text-gray-300" />
+          </div>
+          <p className="text-lg text-gray-500 mb-2">No Reviews Yet</p>
+          <p className="text-sm text-gray-400 max-w-md mx-auto mb-6">
+            You haven't reviewed any products yet. Once you purchase and receive products, 
+            you'll be able to share your experiences here.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/orders'}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-sm transition-colors"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            View My Orders
+          </button>
         </div>
       ) : (
         <div id="reviews-list" className="space-y-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Previous Reviews</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Your Review History</h3>
+            <p className="text-sm text-gray-500">
+              {reviews.length} review{reviews.length !== 1 ? 's' : ''} • Sorted by most recent
+            </p>
+          </div>
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow animate-slideIn"
+              className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-sm transition-shadow animate-slideIn"
             >
               {/* Product Info */}
               <div className="flex items-start gap-4 mb-4">
@@ -470,8 +594,17 @@ export default function ReviewTab() {
                   className="w-16 h-16 border border-gray-300 rounded-lg object-cover flex-shrink-0"
                 />
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">{review.productName}</h3>
-                  <p className="text-sm text-gray-500">{review.date}</p>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-gray-900">{review.productName}</h3>
+                    {review.orderId && (
+                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                        Order #{review.orderId}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Reviewed on {review.date}
+                  </p>
                 </div>
               </div>
 
@@ -493,21 +626,28 @@ export default function ReviewTab() {
               </div>
 
               {review.comment && (
-                <p className="text-gray-700 text-sm leading-relaxed mb-4">{review.comment}</p>
+                <div className="mb-4">
+                  <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
+                </div>
               )}
 
               {/* Review Images */}
               {review.reviewImages && review.reviewImages.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-4">
-                  {review.reviewImages.map((img, idx) => (
-                    <img
-                      key={idx}
-                      src={img}
-                      alt={`Review ${idx + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(img, '_blank')}
-                    />
-                  ))}
+                <div className="mt-4">
+                  <p className="text-xs text-gray-500 mb-2">Attached Photos:</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {review.reviewImages.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={img}
+                          alt={`Review photo ${idx + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(img, '_blank')}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -541,6 +681,12 @@ export default function ReviewTab() {
         #reviews-list > .animate-slideIn:first-child {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          background: linear-gradient(to right, rgba(59, 130, 246, 0.02), rgba(59, 130, 246, 0.01));
+        }
+        
+        textarea::placeholder {
+          color: #9ca3af;
+          line-height: 1.5;
         }
       `}</style>
     </div>

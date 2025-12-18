@@ -11,7 +11,7 @@ import {
 } from '../productSlice';
 import { productDataApi, productUtils, categoryApi, reviewApi } from '../productApi';
 
-// Global cache with enhanced error handling
+// Global cache with manual refresh only
 const globalCache = {
   categories: null,
   sizes: null,
@@ -20,7 +20,7 @@ const globalCache = {
   materials: null,
   lastFetched: null,
   error: null,
-  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+  CACHE_DURATION: 0, // Disable auto-refresh
 };
 
 let globalFetchPromise = null;

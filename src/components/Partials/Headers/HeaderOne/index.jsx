@@ -30,6 +30,7 @@ import { productApi } from "../../../AllProductPage/productApi"; // Import your 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSubcategory, setActiveSubcategory] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -594,88 +595,235 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Categories Bar - Desktop */}
-          <div className="hidden lg:block border-t border-gray-200 bg-white">
-            <div className="flex items-center justify-center gap-1 py-2">
-              {navigationCategories.length > 0 ? (
-                navigationCategories.map((category, index) => {
-                  const CategoryIcon = getCategoryIcon(category.name);
-                  return (
-                    <div
-                      key={category.id}
-                      className="relative group"
-                      onMouseEnter={() => setActiveCategory(index)}
-                      onMouseLeave={() => setActiveCategory(null)}
-                    >
-                      <button className="flex flex-col items-center gap-1.5 px-4 py-2.5 text-black hover:text-black transition-all duration-200 group-hover:bg-gray-100 rounded-lg min-w-[100px]">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 group-hover:bg-black transition-all duration-200 group-hover:shadow-md border border-gray-200 group-hover:border-black">
-                          <CategoryIcon className="w-5 h-5 text-black group-hover:text-white group-hover:scale-110 transition-all duration-200" />
+          {/* CATEGORIES BAR - DESKTOP */}
+<div className="hidden lg:block border-t border-gray-200 bg-white shadow-sm">
+  <div className="max-w-7xl mx-auto">
+    <div className="flex items-center justify-center gap-6 px-4 py-4">
+
+      {navigationCategories.length > 0 ? (
+        navigationCategories.map((category, index) => {
+          // Get category-specific image URL with hover state
+          const getCategoryImages = (categoryName) => {
+            const imageMap = {
+              'Topwear': {
+                default: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=128&h=128&fit=crop',
+                hover: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=128&h=128&fit=crop'
+              },
+              'Bottomwear': {
+                default: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=128&h=128&fit=crop',
+                hover: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=128&h=128&fit=crop'
+              },
+              'Activewear': {
+                default: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=128&h=128&fit=crop',
+                hover: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=128&h=128&fit=crop'
+              },
+              'Underwear': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png'
+              },
+              'Loungewear': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png'
+              },
+              'Nightwear': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/c12afc017e6f24cb.png'
+              },
+              'Sportswear': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/dff3f7adcf3a90c6.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/dff3f7adcf3a90c6.png'
+              },
+              'Accessories': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/f15c02bfeb02d15d.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/f15c02bfeb02d15d.png'
+              },
+              'Footwear': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png'
+              },
+              'Fashion': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png'
+              },
+              'Women': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/82b3ca5fb2301045.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/82b3ca5fb2301045.png'
+              },
+              'Men': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/2f30e4f71bc5679a.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/2f30e4f71bc5679a.png'
+              },
+              'Kids': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0612f31c9cde2d68.jpeg',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0612f31c9cde2d68.jpeg'
+              },
+              'Electronics': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png'
+              },
+              'Home': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/ab7e2b022a4587dd.jpg',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/ab7e2b022a4587dd.jpg'
+              },
+              'Beauty': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0139228b2f7eb413.jpg',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0139228b2f7eb413.jpg'
+              },
+              'Mobile': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/22fddf3c7da4c4f4.png',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/22fddf3c7da4c4f4.png'
+              },
+              'Special': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/698ba0cebe456aaf.jpg',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/698ba0cebe456aaf.jpg'
+              },
+              'Seasonal': {
+                default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/698ba0cebe456aaf.jpg',
+                hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/698ba0cebe456aaf.jpg'
+              },
+            };
+            
+            for (const [key, urls] of Object.entries(imageMap)) {
+              if (categoryName.toLowerCase().includes(key.toLowerCase())) {
+                return urls;
+              }
+            }
+            
+            return {
+              default: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png',
+              hover: 'https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png'
+            };
+          };
+
+          const categoryImages = getCategoryImages(category.name);
+          const isActive = activeCategory === index;
+
+          return (
+            <div
+              key={category.id}
+              className="relative group flex-shrink-0"
+              onMouseEnter={() => {
+                setActiveCategory(index);
+                if (category.subcategories.length > 0) {
+                  setActiveSubcategory(0);
+                }
+              }}
+              onMouseLeave={() => {
+                setActiveCategory(null);
+                setActiveSubcategory(null);
+              }}
+            >
+
+              {/* CATEGORY BUTTON */}
+              <button className="flex flex-col items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg transition-all duration-200 relative">
+                <div className="w-14 h-14 flex items-center justify-center relative overflow-hidden rounded-lg">
+                  <img
+                    src={isActive ? categoryImages.hover : categoryImages.default}
+                    alt={category.name}
+                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/56/f0f0f0/000000?text=" + category.name.charAt(0);
+                    }}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-semibold text-center text-gray-800 whitespace-nowrap max-w-[90px] truncate">
+                    {category.name}
+                  </span>
+                  {category.subcategories.length > 0 && (
+                    <ChevronDown className={`w-3 h-3 text-gray-600 transition-transform duration-200 ${
+                      isActive ? 'rotate-180' : ''
+                    }`} />
+                  )}
+                </div>
+              </button>
+
+              {/* MEGA MENU */}
+              {activeCategory === index && category.subcategories.length > 0 && (
+                <div className="absolute top-full left-0 mt-2 bg-white shadow-2xl border border-gray-200 rounded-lg z-50 flex w-auto overflow-hidden animate-fadeIn">
+
+                  {/* LEFT — SUBCATEGORY LIST */}
+                  <div className="min-w-[280px] bg-gray-50 border-r border-gray-200 py-6">
+                    <div className="space-y-1 px-2">
+                      {category.subcategories.map((subcategory, subIndex) => (
+                        <div
+                          key={subcategory.id}
+                          className={`rounded-lg cursor-pointer transition-all duration-200
+                            ${
+                              activeSubcategory === subIndex
+                                ? "bg-white shadow-sm"
+                                : "hover:bg-white/50"
+                            }`}
+                          onMouseEnter={() => setActiveSubcategory(subIndex)}
+                        >
+                          <Link
+                            to={`/category/${category.id}/${subcategory.id}`}
+                            className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium transition-all
+                              ${
+                                activeSubcategory === subIndex
+                                  ? "text-black"
+                                  : "text-gray-700 hover:text-black"
+                              }`}
+                            onClick={() => {
+                              setActiveCategory(null);
+                              setActiveSubcategory(null);
+                            }}
+                          >
+                            <span>{subcategory.name}</span>
+                            {subcategory.childCategories.length > 0 && (
+                              <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-gray-400" />
+                            )}
+                          </Link>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-semibold text-center leading-tight">{category.name}</span>
-                          {category.subcategories.length > 0 && (
-                            <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${
-                              activeCategory === index ? 'rotate-180' : ''
-                            }`} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* RIGHT — CHILD CATEGORY LIST */}
+                  {category.subcategories[activeSubcategory] &&
+                    category.subcategories[activeSubcategory].childCategories.length > 0 && (
+                      <div className="min-w-[350px] bg-white py-6 px-8 max-h-[450px] overflow-y-auto">
+
+                        {/* HEADING */}
+                        <h3 className="text-xs font-bold text-gray-900 mb-4 pb-3 border-b-2 border-gray-200">
+                          {category.subcategories[activeSubcategory].name}
+                        </h3>
+
+                        {/* CHILD CATEGORY ITEMS */}
+                        <div className="space-y-1.5">
+                          {category.subcategories[activeSubcategory].childCategories.map(
+                            (childCategory) => (
+                              <Link
+                                key={childCategory.id}
+                                to={`/category/${category.id}/${category.subcategories[activeSubcategory].id}/${childCategory.id}`}
+                                className="block text-xs text-gray-700 hover:text-black hover:bg-gray-50 transition-all px-3 py-2 rounded-lg font-medium"
+                                onClick={() => {
+                                  setActiveCategory(null);
+                                  setActiveSubcategory(null);
+                                }}
+                              >
+                                {childCategory.name}
+                              </Link>
+                            )
                           )}
                         </div>
-                      </button>
 
-                      {/* Dropdown */}
-                      {activeCategory === index && category.subcategories.length > 0 && (
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-white shadow-2xl border-2 border-gray-200 rounded-xl py-2 z-50">
-                          <div className="px-4 py-2.5 border-b-2 border-gray-200 bg-gray-50">
-                            <div className="flex items-center gap-2">
-                              <CategoryIcon className="w-4 h-4 text-black" />
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">
-                                {category.name}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="px-2 py-2 max-h-96 overflow-y-auto">
-                            {category.subcategories.map((subcategory) => (
-                              <div key={subcategory.id} className="mb-2 last:mb-0">
-                                {/* Subcategory */}
-                                <Link
-                                  to={`/category/${category.id}/${subcategory.id}`}
-                                  className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-black hover:bg-gray-100 rounded-lg transition-all duration-200 group border-b border-gray-100"
-                                  onClick={() => setActiveCategory(null)}
-                                >
-                                  <div className="w-2 h-2 rounded-full bg-black"></div>
-                                  <span className="flex-1">{subcategory.name}</span>
-                                </Link>
-                                
-                                {/* Child Categories */}
-                                {subcategory.childCategories.length > 0 && (
-                                  <div className="ml-4 mt-1 space-y-1">
-                                    {subcategory.childCategories.map((childCategory) => (
-                                      <Link
-                                        key={childCategory.id}
-                                        to={`/category/${category.id}/${subcategory.id}/${childCategory.id}`}
-                                        className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:text-black rounded-lg transition-all duration-200 group"
-                                        onClick={() => setActiveCategory(null)}
-                                      >
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 group-hover:bg-black transition-colors"></div>
-                                        <span className="flex-1">{childCategory.name}</span>
-                                      </Link>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-2 text-gray-500 text-sm">
-                  {loading ? "Loading categories..." : "No categories available"}
+                      </div>
+                    )}
                 </div>
               )}
             </div>
-          </div>
+          );
+        })
+      ) : (
+        <div className="text-gray-500 text-sm py-2">No categories available</div>
+      )}
+    </div>
+  </div>
+</div>
+
+
+
 
           {/* Mobile Search */}
           <div className="lg:hidden pb-4 pt-1">

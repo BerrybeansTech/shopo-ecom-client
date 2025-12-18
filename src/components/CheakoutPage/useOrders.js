@@ -9,6 +9,16 @@ export const useOrders = () => {
   const [error, setError] = useState(null);
   const { user, isAuthenticated } = useAuth();
 
+  // Status mapping for display
+  const statusDisplayMap = {
+    'pending': 'Pending',
+    'shipped': 'Shipped',
+    'delivered': 'Delivered',
+    'cancelled': 'Cancelled',
+    'returned': 'Returned',
+    'complete': 'Complete'
+  };
+
   // Format order data from API response
   const formatOrderFromAPI = useCallback((apiOrder) => {
     if (!apiOrder) return null;
@@ -17,31 +27,41 @@ export const useOrders = () => {
     const deliveryDate = new Date(orderDate);
     deliveryDate.setDate(deliveryDate.getDate() + 3);
 
+    // Get order status for display
+    const displayStatus = statusDisplayMap[apiOrder.status] || apiOrder.status;
+    
+    // Determine if order can be reviewed
+    // Only delivered/complete orders with unreviewed items can be reviewed
+    const canReview = (apiOrder.status === 'delivered' || apiOrder.status === 'complete') && 
+                     apiOrder.OrderItems?.some(item => !item.isReviewed);
+
     return {
       id: apiOrder.id,
+      orderId: apiOrder.orderId, // Use backend orderId if available
       date: orderDate.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       }),
-      status: apiOrder.status || 'pending',
+      status: apiOrder.status,
+      displayStatus: displayStatus,
       amount: `₹${apiOrder.finalAmount || apiOrder.totalAmount || 0}`,
       paymentMode: apiOrder.paymentMethod || 'Unknown',
+      paymentStatus: apiOrder.paymentStatus || 'pending',
       customerName: apiOrder.Customer?.name || 'Customer',
-      // Build fully-qualified thumbnail URLs so images load from the remote host
+      orderNote: apiOrder.orderNote || '',
+      
+      // Build fully-qualified thumbnail URLs
       items: apiOrder.OrderItems?.map(item => {
         const rawThumb = item.Product?.thumbnailImage || '';
         const IMAGE_HOST = import.meta.env.VITE_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501';
 
         let thumbnail = '';
         if (!rawThumb) {
-          // fallback default hosted image (keep host so image resolves)
           thumbnail = `${IMAGE_HOST}/rabbit-and-finch-uploads/default.jpg`;
         } else if (/^https?:\/\//i.test(rawThumb)) {
-          // already absolute URL
           thumbnail = rawThumb;
         } else {
-          // relative path - ensure we don't produce double slashes
           thumbnail = `${IMAGE_HOST}/${rawThumb.replace(/^\/+/, '')}`;
         }
 
@@ -49,13 +69,16 @@ export const useOrders = () => {
           name: item.Product?.name || 'Product',
           price: `₹${item.unitPrice || item.totalPrice || 0}`,
           quantity: item.quantity,
-          color: 'Default',
-          size: 'Standard',
+          color: item.color || 'Default',
+          size: item.size || 'Standard',
           thumbnail,
           productId: item.productId,
-          orderItemId: item.id
+          orderItemId: item.id,
+          isReviewed: item.isReviewed || false,
+          canReview: !item.isReviewed && (apiOrder.status === 'delivered' || apiOrder.status === 'complete')
         };
       }) || [],
+      
       shippingAddress: apiOrder.shippingAddress || 'Address not available',
       deliveryDate: deliveryDate.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -70,11 +93,10 @@ export const useOrders = () => {
       }),
       discounts: `₹${apiOrder.discount || 0}`,
       loyaltyPoints: '0',
-      canReturn: apiOrder.status?.toLowerCase() === 'delivered',
-      isWishlist: false,
-      isReviewed: false,
+      canReturn: apiOrder.status === 'delivered' || apiOrder.status === 'complete',
+      canReview: canReview,
       tracking: {
-        status: apiOrder.status || 'pending',
+        status: apiOrder.status,
         estimatedDate: deliveryDate.toLocaleDateString('en-US', {
           day: 'numeric',
           month: 'short',
@@ -122,7 +144,12 @@ export const useOrders = () => {
         // Update local state to reflect cancelled status
         setOrders(prev => prev.map(order => 
           order.id === orderId 
-            ? { ...order, status: 'cancelled' }
+            ? { 
+                ...order, 
+                status: 'cancelled',
+                displayStatus: 'Cancelled',
+                canCancel: false 
+              }
             : order
         ));
         return { success: true, message: response.message || 'Order cancelled successfully' };
@@ -138,10 +165,10 @@ export const useOrders = () => {
     }
   }, []);
 
-  // Get current orders (not delivered or cancelled)
+  // Get current orders (not delivered, complete, cancelled, or returned)
   const getCurrentOrders = useCallback(() => {
     return orders.filter(order => 
-      !['delivered', 'cancelled'].includes(order.status.toLowerCase())
+      !['delivered', 'complete', 'cancelled', 'returned'].includes(order.status.toLowerCase())
     );
   }, [orders]);
 
