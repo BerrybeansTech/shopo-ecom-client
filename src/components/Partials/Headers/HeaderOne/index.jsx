@@ -4,6 +4,7 @@ import { useProducts } from "../../../AllProductPage/hooks/useProducts";
 import { useAuth } from "../../../Auth/hooks/useAuth";
 import { useCart } from "../../../CartPage/useCart";
 import { productApi } from "../../../AllProductPage/productApi";
+import { getCategoryImages } from "../../../../utils/categoryIconMapping";
 import DesktopNavbar from "./DesktopNavbar";
 import MobileNavbar from "./MobileNavbar";
 
@@ -179,29 +180,6 @@ const Navbar = () => {
     return "My Profile";
   };
 
-  const getCategoryImages = (categoryName) => {
-    const imageMap = {
-      Topwear: {
-        default: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=128&h=128&fit=crop",
-      },
-      Bottomwear: {
-        default: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=128&h=128&fit=crop",
-      },
-      Accessories: {
-        default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/f15c02bfeb02d15d.png",
-      },
-      Footwear: {
-        default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png",
-      },
-    };
-    for (const [key, urls] of Object.entries(imageMap)) {
-      if (categoryName.toLowerCase().includes(key.toLowerCase())) return urls;
-    }
-    return {
-      default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png",
-    };
-  };
-
   // Props for DesktopNavbar
   const desktopNavbarProps = {
     isScrolled,
@@ -235,6 +213,7 @@ const Navbar = () => {
     setActiveCategory,
     setActiveSubcategory,
     setShowAccountDropdown,
+    setShowSearchResults,
   };
 
   // Props for MobileNavbar
@@ -268,6 +247,7 @@ const Navbar = () => {
     setIsMobileMenuOpen,
     setShowMobileSearch,
     setShowAccountDropdown,
+    setSearchQuery,
   };
 
   return (
