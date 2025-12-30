@@ -13,7 +13,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Package
+  Package,
+  Award
 } from "lucide-react";
 import TabNavigation from "./TabNavigation";
 import { useOrders } from "../../../CheakoutPage/useOrders";
@@ -49,18 +50,19 @@ export default function AllOrders() {
       setFilteredOrders([]);
     }
   }, [activeTab, orders, currentOrders]);
-const handleReviewClick = (order) => {
-  const productId = order.items?.[0]?.productId;
 
-  if (productId) {
-    navigate(`/profile?productId=${productId}#review`);
-  }
-};
-
-
-
-
-
+  const handleReviewClick = (order) => {
+    // Find the first unreviewed product
+    const unreviewedItem = order.items.find(item => item.canReview);
+    
+    if (unreviewedItem && unreviewedItem.productId) {
+      // Navigate to review tab with product ID
+      navigate(`/profile?productId=${unreviewedItem.productId}#review`);
+    } else if (order.items.length > 0) {
+      // If all items are reviewed, show message
+      alert('You have already reviewed all products in this order.');
+    }
+  };
 
   const handleViewDetails = (orderId) => {
     navigate(`/orders/${orderId}`);
@@ -68,7 +70,7 @@ const handleReviewClick = (order) => {
 
   const handleTrackOrder = (order) => {
     alert(
-      `Tracking for Order #${order.id}: Status - ${order.tracking?.status || order.status}, Estimated Delivery - ${order.tracking?.estimatedDate || order.estimatedDelivery}`
+      `Tracking for Order #${order.orderId || order.id}: Status - ${order.displayStatus}, Estimated Delivery - ${order.tracking?.estimatedDate || order.estimatedDelivery}`
     );
   };
 
@@ -82,14 +84,17 @@ const handleReviewClick = (order) => {
         SHOPO STORE
         ============
         
-        Order #${order.id}
+        Order #${order.orderId || order.id}
         Date: ${order.date}
-        Status: ${order.status}
+        Status: ${order.displayStatus}
         Payment Method: ${order.paymentMode}
+        Payment Status: ${order.paymentStatus}
         Delivery Date: ${order.deliveryDate}
         
         Shipping Address:
         ${order.shippingAddress}
+        
+        ${order.orderNote ? `Order Note: ${order.orderNote}\n` : ''}
         
         ORDER SUMMARY:
         ${order.items.map((item, index) => 
@@ -98,6 +103,7 @@ const handleReviewClick = (order) => {
            Color: ${item.color}
            Size: ${item.size}
            Price: ${item.price}
+           ${item.isReviewed ? 'Status: Reviewed' : 'Status: Not Reviewed'}
           `
         ).join('\n')}
         
@@ -112,7 +118,7 @@ const handleReviewClick = (order) => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `shopo-invoice-${order.id}.txt`;
+      link.download = `shopo-invoice-${order.orderId || order.id}.txt`;
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -121,79 +127,58 @@ const handleReviewClick = (order) => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
-        return "text-green-600 bg-green-100";
-      case "on the way":
-        return "text-orange-600 bg-orange-100";
-      case "shipped":
-        return "text-blue-600 bg-blue-100";
-      case "processing":
-        return "text-yellow-600 bg-yellow-100";
-      case "pending":
-        return "text-black-900 bg-white-400";
-      case "cancelled":
-        return "text-red-600 bg-red-100";
-      default:
-        return "text-black-300 bg-white-400";
-    }
-  };
-
   const getStatusConfig = (status) => {
     const statusLower = status.toLowerCase();
     const configs = {
-      delivered: {
-        color: "text-green-600 bg-green-100",
-        icon: CheckCircle,
-        label: "Delivered"
+      'pending': {
+        color: "text-yellow-600 bg-yellow-100",
+        icon: Clock,
+        label: "Pending"
       },
-      "on the way": {
-        color: "text-orange-600 bg-orange-100",
-        icon: Truck,
-        label: "On the way"
-      },
-      shipped: {
+      'shipped': {
         color: "text-blue-600 bg-blue-100",
         icon: Truck,
         label: "Shipped"
       },
-      processing: {
-        color: "text-yellow-600 bg-yellow-100",
-        icon: Clock,
-        label: "Processing"
+      'delivered': {
+        color: "text-green-600 bg-green-100",
+        icon: CheckCircle,
+        label: "Delivered"
       },
-      pending: {
-        color: "text-black-900 bg-white-400",
-        icon: Clock,
-        label: "Pending"
-      },
-      cancelled: {
+      'cancelled': {
         color: "text-red-600 bg-red-100",
         icon: XCircle,
         label: "Cancelled"
+      },
+      'returned': {
+        color: "text-purple-600 bg-purple-100",
+        icon: Package,
+        label: "Returned"
+      },
+      'complete': {
+        color: "text-green-700 bg-green-100",
+        icon: Award,
+        label: "Complete"
       }
     };
     
     return configs[statusLower] || {
-      color: "text-black-300 bg-white-400",
+      color: "text-gray-600 bg-gray-100",
       icon: AlertCircle,
       label: status
     };
   };
 
   const canReviewOrder = (order) => {
-    const status = order.status.toLowerCase();
-    return status === "delivered" && !order.isReviewed;
+    return order.canReview;
   };
 
   const canTrackOrder = (order) => {
-    const status = order.status.toLowerCase();
-    return !["delivered", "cancelled"].includes(status);
+    return ['shipped', 'delivered'].includes(order.status);
   };
 
   const canReturnItem = (order) => {
-    return order.canReturn && order.status.toLowerCase() === "delivered";
+    return order.canReturn;
   };
 
   // Loading state
@@ -319,7 +304,7 @@ const handleReviewClick = (order) => {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-black-900 mb-2">My Orders</h2>
+        <h2 className="text-2xl font-bold text-black-900 mb-2">All Orders</h2>
         <p className="text-black-300">
           {filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found
         </p>
@@ -342,24 +327,33 @@ const handleReviewClick = (order) => {
                 <div className="space-y-2 flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <h3 className="font-bold text-xl text-black-900">
-                      Order #{order.id}
+                      Order #{order.orderId || order.id}
                     </h3>
                     <span
-                      className={`text-sm font-medium ${getStatusColor(
-                        order.status
-                      )} px-2 py-1 rounded-full w-fit`}
+                      className={`text-sm font-medium ${statusConfig.color} px-2 py-1 rounded-full w-fit flex items-center gap-1`}
                     >
-                      {order.status}
+                      <StatusIcon className="w-3 h-3" />
+                      {statusConfig.label}
                     </span>
                   </div>
                   <p className="text-sm text-black-300">
-                    By {order.customerName || "Alex John"} | {order.date}
+                    By {order.customerName} | {order.date}
                   </p>
+                  {order.orderNote && (
+                    <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">Note:</span> {order.orderNote}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-right">
                   <p className="text-sm text-black-300">Total Amount</p>
                   <p className="text-xl font-bold text-black-900">{order.amount}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Payment: {order.paymentStatus}
+                  </p>
                 </div>
               </div>
 
@@ -390,6 +384,11 @@ const handleReviewClick = (order) => {
                           Size: {product.size}
                         </p>
                       </div>
+                      {product.isReviewed && (
+                        <p className="text-xs text-green-600 font-medium">
+                          ✓ Reviewed
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -415,25 +414,24 @@ const handleReviewClick = (order) => {
                   )}
 
                   {canReturnItem(order) && (
-                    <button className="text-sm text-red-600 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center">
+                    <button className="text-sm text-purple-600 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center">
                       Return Item
                     </button>
                   )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-            {canReviewOrder(order) && (
-  <button
-    onClick={() => handleReviewClick(order)}
-    className="text-sm text-white-50 bg-black-900 border border-black-900 px-4 py-2 rounded-lg font-medium hover:bg-black-700 hover:border-black-700 transition-all duration-300 flex items-center gap-2"
-  >
-    <Star className="w-4 h-4" />
-    Write Review
-  </button>
-)}
+                  {canReviewOrder(order) && (
+                    <button
+                      onClick={() => handleReviewClick(order)}
+                      className="text-sm text-white-50 bg-black-900 border border-black-900 px-4 py-2 rounded-lg font-medium hover:bg-black-700 hover:border-black-700 transition-all duration-300 flex items-center gap-2"
+                    >
+                      <Star className="w-4 h-4" />
+                      Write Review
+                    </button>
+                  )}
 
-
-                  {order.status.toLowerCase() === "delivered" && (
+                  {['delivered', 'complete'].includes(order.status) && (
                     <button
                       onClick={() => handleReorder(order)}
                       className="text-sm text-black-900 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center"
@@ -464,9 +462,15 @@ const handleReviewClick = (order) => {
                         Share your experience!
                       </p>
                       <p className="text-xs text-amber-600">
-                        Help other customers by reviewing this order
+                        Help other customers by reviewing products from this order
                       </p>
                     </div>
+                    <button
+                      onClick={() => handleReviewClick(order)}
+                      className="text-sm bg-amber-600 text-white px-3 py-1 rounded-lg hover:bg-amber-700 transition-colors"
+                    >
+                      Review Now
+                    </button>
                   </div>
                 </div>
               )}

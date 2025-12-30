@@ -21,6 +21,39 @@ export const apiService = (() => {
     return user?.id || null;
   };
 
+   const submitReview = async (reviewData) => {
+    try {
+      const formData = new FormData();
+      formData.append('productId', reviewData.productId);
+      formData.append('rating', reviewData.rating);
+      formData.append('comment', reviewData.comment);
+      
+      if (reviewData.orderItemId) {
+        formData.append('orderItemId', reviewData.orderItemId);
+      }
+      
+      if (reviewData.images && reviewData.images.length > 0) {
+        reviewData.images.forEach((image, index) => {
+          formData.append('images', image);
+        });
+      }
+      
+      return await post('/product/review/create', formData);
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      throw error;
+    }
+  };
+
+  const checkReviewEligibility = async (productId) => {
+    try {
+      return await get(`/product/review/eligibility/${productId}`);
+    } catch (error) {
+      console.error('Error checking review eligibility:', error);
+      throw error;
+    }
+  };
+
   // Request deduplication helper
   const deduplicateRequest = async (key, requestFn) => {
     const now = Date.now();
@@ -162,6 +195,8 @@ export const apiService = (() => {
     delete: del, 
     getToken,
     getCurrentUserId,
+    submitReview,
+    checkReviewEligibility,
     clearCache,
     clearCacheForKey
   };

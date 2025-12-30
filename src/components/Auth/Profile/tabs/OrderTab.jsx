@@ -10,7 +10,9 @@ import {
   Package,
   Clock,
   X,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import TabNavigation from "./TabNavigation";
 import { useOrders } from "../../../CheakoutPage/useOrders";
@@ -54,7 +56,7 @@ export default function OrderTab() {
 
   const handleTrackOrder = async (order) => {
     alert(
-      `Tracking for Order #${order.id}: Status - ${order.tracking?.status || order.status}, Estimated Delivery - ${order.tracking?.estimatedDate || order.estimatedDelivery}`
+      `Tracking for Order #${order.id}: Status - ${order.displayStatus}, Estimated Delivery - ${order.tracking?.estimatedDate || order.estimatedDelivery}`
     );
   };
 
@@ -78,62 +80,58 @@ export default function OrderTab() {
     setCancellingOrder(null);
   };
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
-        return "text-green-600 bg-green-100";
-      case "on the way":
-        return "text-orange-600 bg-orange-100";
-      case "shipped":
-        return "text-blue-600 bg-blue-100";
-      case "processing":
-        return "text-yellow-600 bg-yellow-100";
-      case "pending":
-        return "text-black-900 bg-white-400";
-      default:
-        return "text-black-300 bg-white-400";
-    }
-  };
-
   const getStatusConfig = (status) => {
     const statusLower = status.toLowerCase();
     const configs = {
-      "on the way": {
-        color: "text-orange-600 bg-orange-100",
-        icon: Truck,
-        label: "On the way"
+      'pending': {
+        color: "text-yellow-600 bg-yellow-100",
+        icon: Clock,
+        label: "Pending"
       },
-      shipped: {
+      'shipped': {
         color: "text-blue-600 bg-blue-100",
         icon: Truck,
         label: "Shipped"
       },
-      processing: {
-        color: "text-yellow-600 bg-yellow-100",
-        icon: Clock,
-        label: "Processing"
+      'delivered': {
+        color: "text-green-600 bg-green-100",
+        icon: CheckCircle,
+        label: "Delivered"
       },
-      pending: {
-        color: "text-black-900 bg-white-400",
-        icon: Clock,
-        label: "Pending"
+      'cancelled': {
+        color: "text-red-600 bg-red-100",
+        icon: XCircle,
+        label: "Cancelled"
+      },
+      'returned': {
+        color: "text-purple-600 bg-purple-100",
+        icon: Package,
+        label: "Returned"
+      },
+      'complete': {
+        color: "text-green-700 bg-green-100",
+        icon: CheckCircle,
+        label: "Complete"
       }
     };
     
     return configs[statusLower] || {
-      color: "text-black-300 bg-white-400",
+      color: "text-gray-600 bg-gray-100",
       icon: AlertCircle,
       label: status
     };
   };
 
   const canCancelOrder = (order) => {
-    const status = order.status.toLowerCase();
-    return ['pending', 'processing'].includes(status);
+    return order.status === 'pending';
+  };
+
+  const canTrackOrder = (order) => {
+    return ['shipped', 'delivered'].includes(order.status);
   };
 
   const canReturnItem = (order) => {
-    return order.canReturn && order.status.toLowerCase() === "delivered";
+    return order.canReturn && ['delivered', 'complete'].includes(order.status);
   };
 
   // Loading state
@@ -243,6 +241,7 @@ export default function OrderTab() {
             No active orders
           </h3>
           <p className="text-black-300 max-w-sm">
+            You don't have any pending, shipped, or processing orders.
           </p>
           <button
             onClick={() => navigate('/all-products')}
@@ -260,7 +259,7 @@ export default function OrderTab() {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-black-900 mb-2">My Orders</h2>
+        <h2 className="text-2xl font-bold text-black-900 mb-2">Current Orders</h2>
         <p className="text-black-300">
           {displayedOrders.length} active {displayedOrders.length === 1 ? "order" : "orders"} in progress
         </p>
@@ -292,11 +291,32 @@ export default function OrderTab() {
                 <div className="space-y-2 flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                     <h3 className="font-bold text-xl text-black-900">
-                      Order #{order.id}
+                      Order #{order.orderId || order.id}
                     </h3>
+                    <span
+                      className={`text-sm font-medium ${statusConfig.color} px-2 py-1 rounded-full w-fit flex items-center gap-1`}
+                    >
+                      <StatusIcon className="w-3 h-3" />
+                      {statusConfig.label}
+                    </span>
                   </div>
                   <p className="text-sm text-black-300">
-                    By Alex John | {order.date}
+                    By {order.customerName} | {order.date}
+                  </p>
+                  {order.orderNote && (
+                    <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">Note:</span> {order.orderNote}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="text-right">
+                  <p className="text-sm text-black-300">Total Amount</p>
+                  <p className="text-xl font-bold text-black-900">{order.amount}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Payment: {order.paymentStatus}
                   </p>
                 </div>
               </div>
@@ -308,12 +328,8 @@ export default function OrderTab() {
                 <div className="space-y-3 flex-1">
                   <div className="flex flex-col xs:flex-row xs:items-start gap-1 xs:gap-2">
                     <span className="text-sm text-black-300 min-w-[120px]">Status:</span>
-                    <span
-                      className={`text-sm font-medium ${getStatusColor(
-                        order.status
-                      )} px-2 py-1 rounded-full w-fit`}
-                    >
-                      {order.status}
+                    <span className={`text-sm font-medium ${statusConfig.color} px-2 py-1 rounded-full w-fit`}>
+                      {statusConfig.label}
                     </span>
                   </div>
 
@@ -334,22 +350,17 @@ export default function OrderTab() {
                       {order.shippingAddress}
                     </span>
                   </div>
-
-                  <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 pt-2">
-                    <span className="text-base text-black-300 min-w-[120px]">Total:</span>
-                    <span className="text-lg font-bold text-black-900">
-                      {order.amount}
-                    </span>
-                  </div>
                 </div>
 
-                <button
-                  className="px-4 py-3 bg-black-900 text-white-50 rounded-lg hover:bg-black-700 flex items-center justify-center space-x-2 text-sm font-semibold transition-all duration-200 w-full lg:w-auto mt-4 lg:mt-0"
-                  onClick={() => handleTrackOrder(order)}
-                >
-                  <Truck className="text-lg" />
-                  <span>Order Tracking</span>
-                </button>
+                {canTrackOrder(order) && (
+                  <button
+                    className="px-4 py-3 bg-black-900 text-white-50 rounded-lg hover:bg-black-700 flex items-center justify-center space-x-2 text-sm font-semibold transition-all duration-200 w-full lg:w-auto mt-4 lg:mt-0"
+                    onClick={() => handleTrackOrder(order)}
+                  >
+                    <Truck className="text-lg" />
+                    <span>Track Order</span>
+                  </button>
+                )}
               </div>
 
               <div className="border-t border-white-500 my-4"></div>
@@ -381,6 +392,11 @@ export default function OrderTab() {
                           Size: {product.size}
                         </p>
                       </div>
+                      {product.isReviewed && (
+                        <p className="text-xs text-green-600 font-medium">
+                          ✓ Reviewed
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -395,21 +411,6 @@ export default function OrderTab() {
                   View Order Details
                 </button>
 
-                {order.status.toLowerCase() === "delivered" && (
-                  <button 
-                    onClick={() => handleReorder(order)}
-                    className="text-sm text-black-900 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center"
-                  >
-                    Buy Again
-                  </button>
-                )}
-
-                {canReturnItem(order) && (
-                  <button className="text-sm text-red-600 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center">
-                    Return Item
-                  </button>
-                )}
-
                 {canCancelOrder(order) && (
                   <button
                     onClick={() => handleCancelOrder(order.id)}
@@ -421,6 +422,12 @@ export default function OrderTab() {
                     }`}
                   >
                     {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                  </button>
+                )}
+
+                {canReturnItem(order) && (
+                  <button className="text-sm text-purple-600 bg-white-50 border border-white-500 px-4 py-2 rounded-lg font-medium hover:bg-white-400 transition-colors text-center">
+                    Return Item
                   </button>
                 )}
               </div>

@@ -20,48 +20,120 @@ export default function AddressesTab() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const { user, updateProfile, accessToken } = useAuth();
 
-  // Convert customer profile to addresses format (prevent duplicates)
+  // FIXED: Properly convert customer profile to addresses format
   const customerToAddresses = (customer) => {
     if (!customer) return [];
     
     const addressMap = new Map();
-
-    // Additional addresses stored in remarks
+    
+    // FIXED: Always add main profile address first
+    if (customer.address && customer.city && customer.state && customer.postalCode) {
+      const mainAddressId = 'main_address';
+      addressMap.set(mainAddressId, {
+        id: mainAddressId,
+        name: "Default Address",
+        fullName: customer.name || "",
+        phone: customer.phone || "",
+        address: customer.address || "",
+        city: customer.city || "",
+        state: customer.state || "",
+        pincode: customer.postalCode || "",
+        country: customer.country || "India",
+        type: "billing",
+        isDefault: true, // Main address is always default
+        isMainAddress: true
+      });
+    }
+    
+    // FIXED: Parse additional addresses from remarks
     if (customer.remarks) {
       try {
-        const additionalAddresses = JSON.parse(customer.remarks);
-        if (Array.isArray(additionalAddresses)) {
-          additionalAddresses.forEach((addr) => {
-            const addressId = addr.id || `addr_${Date.now()}_${Math.random()}`;
-            if (!addressMap.has(addressId) ) {
-              addressMap.set(addressId, {
-                ...addr,
-                id: addressId,
-                isDefault: addr.isDefault || false
-              });
+        const remarksData = JSON.parse(customer.remarks);
+        
+        // Check if remarks is an array of addresses
+        if (Array.isArray(remarksData)) {
+          remarksData.forEach((addr, index) => {
+            if (addr && typeof addr === 'object') {
+              const addressId = addr.id || `addr_${Date.now()}_${index}`;
+              // Only add if not duplicate of main address
+              if (!addressMap.has(addressId)) {
+                addressMap.set(addressId, {
+                  ...addr,
+                  id: addressId,
+                  isDefault: addr.isDefault || false,
+                  isMainAddress: false
+                });
+              }
             }
           });
         }
+        // FIXED: Handle if remarks is a single address object
+        else if (typeof remarksData === 'object' && remarksData.address) {
+          const addressId = remarksData.id || `addr_${Date.now()}_single`;
+          if (!addressMap.has(addressId)) {
+            addressMap.set(addressId, {
+              ...remarksData,
+              id: addressId,
+              isDefault: remarksData.isDefault || false,
+              isMainAddress: false
+            });
+          }
+        }
       } catch (e) {
         console.error('Error parsing remarks:', e);
+        // If parsing fails, try to use remarks as a string address
+        if (typeof customer.remarks === 'string' && customer.remarks.length > 10) {
+          const addressId = 'additional_address';
+          if (!addressMap.has(addressId)) {
+            addressMap.set(addressId, {
+              id: addressId,
+              name: "Additional Address",
+              fullName: customer.name || "",
+              phone: customer.phone || "",
+              address: customer.remarks,
+              city: customer.city || "",
+              state: customer.state || "",
+              pincode: customer.postalCode || "",
+              country: customer.country || "India",
+              type: "billing",
+              isDefault: false,
+              isMainAddress: false
+            });
+          }
+        }
       }
     }
-
+    
     return Array.from(addressMap.values());
   };
 
-  // Load addresses from user profile
+  // FIXED: Load addresses from user profile with proper initialization
+  useEffect(() => {
+    if (user && !isInitialized) {
+      console.log('Loading addresses from user:', user);
+      const userAddresses = customerToAddresses(user);
+      console.log('Parsed addresses:', userAddresses);
+      setAddresses(userAddresses);
+      setIsInitialized(true);
+    }
+  }, [user, isInitialized]);
+
+  // FIXED: Update addresses when user changes
   useEffect(() => {
     if (user) {
+      console.log('User updated, reloading addresses');
       const userAddresses = customerToAddresses(user);
+      console.log('Updated addresses:', userAddresses);
       setAddresses(userAddresses);
     }
   }, [user]);
 
   const openEditPopup = (address) => {
+    console.log('Editing address:', address);
     setEditAddress(address);
     setFormData({ 
       name: address.name || "",
@@ -79,6 +151,7 @@ export default function AddressesTab() {
   };
 
   const openAddPopup = () => {
+    console.log('Opening add address popup');
     setEditAddress(null);
     setFormData({
       name: "",
@@ -137,7 +210,7 @@ export default function AddressesTab() {
     return true;
   };
 
-  // Save address with proper duplicate prevention
+  // FIXED: Save address with proper handling
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -146,70 +219,77 @@ export default function AddressesTab() {
 
     try {
       const currentAddresses = customerToAddresses(user);
-      let updatedAddresses;
-      let shouldUpdateProfile = false;
+      let updatedAddresses = [...currentAddresses];
+      
+      // FIXED: Check for duplicates (excluding current edit address)
+      const isDuplicate = currentAddresses.some(addr => 
+        addr.id !== (editAddress?.id || '') &&
+        addr.address.toLowerCase().trim() === formData.address.toLowerCase().trim() &&
+        addr.city.toLowerCase().trim() === formData.city.toLowerCase().trim() &&
+        addr.pincode === formData.pincode
+      );
 
-      if (editAddress) {
-        // Update existing address
-        updatedAddresses = currentAddresses.map(addr =>
-          addr.id === editAddress.id 
-            ? { ...formData, id: editAddress.id, isDefault: addr.isDefault }
-            : addr
-        );
-        shouldUpdateProfile = true;
-      } else {
-        // Check for duplicates before adding
-        const isDuplicate = currentAddresses.some(addr => 
-          addr.address.toLowerCase().trim() === formData.address.toLowerCase().trim() &&
-          addr.city.toLowerCase().trim() === formData.city.toLowerCase().trim() &&
-          addr.pincode === formData.pincode
-        );
-
-        if (isDuplicate) {
-          setError('This address already exists');
-          setLoading(false);
-          return;
-        }
-
-        // Add new address with unique ID
-        const newAddress = {
-          ...formData,
-          id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          isDefault: currentAddresses.length === 0 // First address is default
-        };
-        updatedAddresses = [...currentAddresses, newAddress];
-        shouldUpdateProfile = true;
-      }
-
-      if (!shouldUpdateProfile) {
+      if (isDuplicate) {
+        setError('This address already exists');
         setLoading(false);
         return;
       }
 
-      // Get default address for main profile fields
-      const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || updatedAddresses[0];
-      
-      // Store only non-main addresses in remarks
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id );
+      if (editAddress) {
+        // Update existing address
+        updatedAddresses = updatedAddresses.map(addr =>
+          addr.id === editAddress.id 
+            ? { 
+                ...formData, 
+                id: editAddress.id, 
+                isDefault: addr.isDefault,
+                isMainAddress: addr.isMainAddress 
+              }
+            : addr
+        );
+      } else {
+        // Add new address
+        const newAddress = {
+          ...formData,
+          id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          isDefault: false, // New addresses are not default by default
+          isMainAddress: false
+        };
+        updatedAddresses.push(newAddress);
+      }
 
+      // FIXED: Separate main address from additional addresses
+      const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
+      const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
+      
+      // Get all additional addresses (excluding main address)
+      const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
+
+      // FIXED: Prepare updated customer data
       const updatedCustomer = {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
-        address: defaultAddress.address,
-        city: defaultAddress.city,
-        state: defaultAddress.state,
-        country: defaultAddress.country,
-        postalCode: defaultAddress.pincode,
+        // Always update main profile fields from default address
+        address: defaultAddress?.address || "",
+        city: defaultAddress?.city || "",
+        state: defaultAddress?.state || "",
+        country: defaultAddress?.country || "India",
+        postalCode: defaultAddress?.pincode || "",
+        // Store additional addresses in remarks
         remarks: additionalAddresses.length > 0 ? JSON.stringify(additionalAddresses) : null
       };
 
-      console.log('Saving address - Single API call:', updatedCustomer);
+      console.log('Saving address - Updated customer:', updatedCustomer);
       const result = await updateProfile(updatedCustomer, accessToken);
       
       if (result.success) {
+        console.log('Address saved successfully');
         closePopup();
+        // Refresh addresses after successful save
+        const refreshedAddresses = customerToAddresses(result.data?.data || updatedCustomer);
+        setAddresses(refreshedAddresses);
       } else {
         setError(result.error || 'Failed to save address');
       }
@@ -230,10 +310,18 @@ export default function AddressesTab() {
     try {
       const currentAddresses = customerToAddresses(user);
       const addressToDelete = currentAddresses.find(addr => addr.id === addressId);
+      
+      // Don't allow deletion of main address
+      if (addressToDelete?.isMainAddress) {
+        setError('Cannot delete the main address. Please update your profile instead.');
+        setLoading(false);
+        return;
+      }
+
       const updatedAddresses = currentAddresses.filter(addr => addr.id !== addressId);
       
+      // If we're deleting the last address, clear everything
       if (updatedAddresses.length === 0) {
-        // No addresses left
         const updatedCustomer = {
           id: user.id,
           name: user.name,
@@ -249,15 +337,12 @@ export default function AddressesTab() {
 
         await updateProfile(updatedCustomer, accessToken);
       } else {
-        // If deleting default address, set first remaining as default
-        let newDefaultId = null;
-        if (addressToDelete?.isDefault) {
-          newDefaultId = updatedAddresses[0].id;
-          updatedAddresses[0].isDefault = true;
-        }
-
-        const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || updatedAddresses[0];
-        const additionalAddresses = updatedAddresses.filter(addr => addr.id );
+        // Get main address (always exists)
+        const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
+        const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
+        
+        // Get additional addresses (excluding main)
+        const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
 
         const updatedCustomer = {
           id: user.id,
@@ -274,6 +359,10 @@ export default function AddressesTab() {
 
         await updateProfile(updatedCustomer, accessToken);
       }
+      
+      // Refresh addresses
+      const refreshedAddresses = customerToAddresses(user);
+      setAddresses(refreshedAddresses);
     } catch (error) {
       console.error('Delete address error:', error);
       setError('Failed to delete address. Please try again.');
@@ -296,32 +385,40 @@ export default function AddressesTab() {
         return;
       }
 
-      // Update isDefault flags - only selected address is default
+      // FIXED: Update isDefault flags - only selected address is default
       const updatedAddresses = currentAddresses.map(addr => ({
         ...addr,
         isDefault: addr.id === addressId
       }));
 
-      // Update main profile with new default address
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id );
+      // Get main address
+      const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
+      const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
+      
+      // Get additional addresses (excluding main)
+      const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
 
       const updatedCustomer = {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
-        address: selectedAddress.address,
-        city: selectedAddress.city,
-        state: selectedAddress.state,
-        country: selectedAddress.country,
-        postalCode: selectedAddress.pincode,
+        address: defaultAddress.address,
+        city: defaultAddress.city,
+        state: defaultAddress.state,
+        country: defaultAddress.country,
+        postalCode: defaultAddress.pincode,
         remarks: additionalAddresses.length > 0 ? JSON.stringify(additionalAddresses) : null
       };
 
-      console.log('Setting default address - Single API call:', updatedCustomer);
+      console.log('Setting default address:', updatedCustomer);
       const result = await updateProfile(updatedCustomer, accessToken);
       
-      if (!result.success) {
+      if (result.success) {
+        // Refresh addresses after successful update
+        const refreshedAddresses = customerToAddresses(result.data?.data || updatedCustomer);
+        setAddresses(refreshedAddresses);
+      } else {
         setError(result.error || 'Failed to set default address');
       }
     } catch (error) {
@@ -374,20 +471,36 @@ export default function AddressesTab() {
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-black-900">{address.name}</h3>
-                    {address.isDefault && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-black-900 text-white-50">
-                        Default Address
-                      </span>
-                    )}
+                    <div className="flex gap-1 mt-1">
+                      {address.isDefault && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-black-900 text-white-50">
+                          Default
+                        </span>
+                      )}
+                      {address.isMainAddress && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-blue-500 text-white-50">
+                          Main
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleDelete(address.id)}
-                  className="w-8 h-8 rounded-full border border-white-700 bg-white-50 hover:bg-red-600 hover:border-red-600 flex items-center justify-center transition-all duration-300 group"
+                  disabled={address.isMainAddress}
+                  className={`w-8 h-8 rounded-full border ${
+                    address.isMainAddress 
+                      ? 'border-white-500 bg-white-50 cursor-not-allowed' 
+                      : 'border-white-700 bg-white-50 hover:bg-red-600 hover:border-red-600'
+                  } flex items-center justify-center transition-all duration-300 group`}
                   aria-label="Delete address"
                 >
-                  <Trash2 className="w-4 h-4 text-black-50 group-hover:text-white-50 transition-colors" />
+                  <Trash2 className={`w-4 h-4 ${
+                    address.isMainAddress 
+                      ? 'text-white-500' 
+                      : 'text-black-50 group-hover:text-white-50'
+                  } transition-colors`} />
                 </button>
               </div>
             </div>
@@ -469,6 +582,7 @@ export default function AddressesTab() {
         <div className="text-center py-8 border-2 border-dashed border-white-700 rounded-lg mb-6">
           <MapPin className="w-12 h-12 text-black-50 mx-auto mb-3" />
           <p className="text-black-50 mb-4">No addresses saved yet</p>
+          <p className="text-sm text-black-50">Add your first address to get started</p>
         </div>
       )}
 

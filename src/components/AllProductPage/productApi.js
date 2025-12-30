@@ -2,23 +2,24 @@ import { apiService } from '../../services/apiservice';
 
 // Request Cache
 const requestCache = new Map();
-const CACHE_DURATION = 30000;
+const CACHE_DURATION = 0;
 
 const deduplicateRequest = async (key, requestFn) => {
   const now = Date.now();
   const cached = requestCache.get(key);
 
-  if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+  if (cached && (CACHE_DURATION === 0 || (now - cached.timestamp < CACHE_DURATION))) {
     return cached.promise;
   }
 
   const promise = requestFn();
   requestCache.set(key, { promise, timestamp: now });
 
-  // Clean up old cache entries
-  setTimeout(() => {
-    requestCache.delete(key);
-  }, CACHE_DURATION);
+  if (CACHE_DURATION > 0) {
+    setTimeout(() => {
+      requestCache.delete(key);
+    }, CACHE_DURATION);
+  }
 
   return promise;
 };
@@ -73,10 +74,37 @@ export const colorApi = {
 
 // OCCASION API
 export const occasionApi = {
+  getAll: async (filters = {}) => {
+    try {
+      const queryParams = {};
+      
+      if (filters.material) {
+        if (Array.isArray(filters.material)) {
+          queryParams.material = filters.material.join(',');
+        } else {
+          queryParams.material = filters.material;
+        }
+      }
+
+      const queryString = buildQueryString(queryParams);
+      const key = `occasion-getAll-${queryString}`;
+      
+      return deduplicateRequest(key, async () => {
+        return await apiService.get(`/product/occasion/get-all${queryString}`);
+      });
+    } catch (error) {
+      console.error("Error fetching occasions:", error);
+      throw error;
+    }
+  },
+};
+
+// MATERIAL API
+export const materialApi = {
   getAll: async () => {
-    const key = 'occasion-getAll';
+    const key = 'material-getAll';
     return deduplicateRequest(key, async () => {
-      return await apiService.get("/product/occasion/get-all");
+      return await apiService.get("/product/material/get-all");
     });
   },
 };
@@ -92,19 +120,76 @@ export const productApi = {
         ...(filters.subCategory && { subCategory: filters.subCategory }),
         ...(filters.childCategory && { childCategory: filters.childCategory }),
         ...(filters.occasion && { occasion: filters.occasion }),
+        ...(filters.material && { material: filters.material }),
         ...(filters.minPrice !== undefined && { minPrice: filters.minPrice }),
         ...(filters.maxPrice !== undefined && { maxPrice: filters.maxPrice }),
         ...(filters.productColor && { productColor: filters.productColor }),
         ...(filters.productSize && { productSize: filters.productSize }),
-        ...(filters.brand && { brand: filters.brand }),
         ...(filters.newArrival && { newArrival: true }),
       };
+
+      // Handle multiple colors
+      if (filters.productColor) {
+        if (Array.isArray(filters.productColor)) {
+          const standardizedColors = filters.productColor.map(color => {
+            if (!color) return '';
+            return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+          });
+          queryParams.productColor = standardizedColors.join(',');
+        } else {
+          const colors = filters.productColor.split(',').map(color => {
+            if (!color) return '';
+            return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+          });
+          queryParams.productColor = colors.join(',');
+        }
+      }
+
+      // Handle multiple sizes
+      if (filters.productSize && Array.isArray(filters.productSize)) {
+        queryParams.productSize = filters.productSize.join(',');
+      }
+
+      // Handle multiple subcategories
+      if (filters.subCategory && Array.isArray(filters.subCategory)) {
+        queryParams.subCategory = filters.subCategory.join(',');
+      }
+
+      // Handle multiple child categories
+      if (filters.childCategory && Array.isArray(filters.childCategory)) {
+        queryParams.childCategory = filters.childCategory.join(',');
+      }
+
+      // Handle multiple occasions
+      if (filters.occasion && Array.isArray(filters.occasion)) {
+        queryParams.occasion = filters.occasion.join(',');
+      }
+
+      // Handle multiple materials
+      if (filters.material && Array.isArray(filters.material)) {
+        queryParams.material = filters.material.join(',');
+      }
+
+      // Handle multiple categories
+      if (filters.category && Array.isArray(filters.category)) {
+        queryParams.category = filters.category.join(',');
+      }
+
+      // FIXED: Handle rating filter - Send MINIMUM threshold only
+      if (filters.rating && Array.isArray(filters.rating) && filters.rating.length > 0) {
+        // Get the MINIMUM rating threshold (lowest value selected)
+        // This ensures we show products >= minimum (includes all higher ratings too)
+        const minRating = Math.min(...filters.rating.map(r => parseFloat(r)));
+        queryParams.minAvgRating = minRating;
+        console.log('Rating filter - Selected thresholds:', filters.rating, 'Sending minimum to API as minAvgRating:', queryParams.minAvgRating);
+      }
 
       const queryString = buildQueryString(queryParams);
       const cacheKey = `product-getAll-${queryString}`;
 
       return deduplicateRequest(cacheKey, async () => {
         console.log('Making API call with params:', queryParams);
+        console.log('Query string:', queryString);
         const response = await apiService.get(`/product/get-all-product${queryString}`);
         console.log('API response received:', response);
         return response;
@@ -168,11 +253,12 @@ export const productDataApi = {
     try {
       const key = 'productData-getAll';
       return deduplicateRequest(key, async () => {
-        const [categories, sizes, colors, occasions] = await Promise.all([
+        const [categories, sizes, colors, occasions, materials] = await Promise.all([
           categoryApi.getAll(),
           sizeApi.getAll(),
           colorApi.getAll(),
           occasionApi.getAll(),
+          materialApi.getAll(),
         ]);
 
         return {
@@ -180,6 +266,7 @@ export const productDataApi = {
           sizes: sizes.data || sizes,
           colors: colors.data || colors,
           occasions: occasions.data || occasions,
+          materials: materials.data || materials,
         };
       });
     } catch (error) {
@@ -214,6 +301,11 @@ export const productUtils = {
     return [...new Set(colors.map((c) => c.color).filter(Boolean))].sort();
   },
 
+  getUniqueMaterials: (materials) => {
+    if (!materials || !Array.isArray(materials)) return [];
+    return [...new Set(materials.map((m) => m.name).filter(Boolean))].sort();
+  },
+
   flattenCategories: (categories) => {
     if (!categories || !Array.isArray(categories)) return [];
 
@@ -233,7 +325,7 @@ export const productUtils = {
     return flattened;
   },
 
-  transformFiltersToQueryParams: (filters, categories = []) => {
+  transformFiltersToQueryParams: (filters, categories = [], occasions = [], materials = []) => {
     const {
       selectedSubCategories = [],
       selectedDetails = [],
@@ -241,7 +333,10 @@ export const productUtils = {
       selectedColors = [],
       selectedSizes = [],
       selectedOccasions = [],
-      selectedBrands = [],
+      selectedMaterials = [],
+      selectedReviewThresholds = [],
+      newArrival = false, 
+      selectedAvailability = [],
       sortOption,
       searchQuery,
       pagination = { currentPage: 1, itemsPerPage: 50 }
@@ -260,21 +355,27 @@ export const productUtils = {
     // Subcategories - convert names to IDs
     if (selectedSubCategories.length > 0) {
       const subCategoryIds = [];
+      const categoryIds = new Set();
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
           if (selectedSubCategories.includes(subCategory.name)) {
             subCategoryIds.push(subCategory.id);
+            if (category.id) categoryIds.add(category.id);
           }
         });
       });
       if (subCategoryIds.length > 0) {
         queryParams.subCategory = subCategoryIds;
       }
+      if (categoryIds.size > 0) {
+        queryParams.category = Array.from(categoryIds);
+      }
     }
 
     // Child categories - convert names to IDs
     if (selectedDetails.length > 0) {
       const childCategoryIds = [];
+      const categoryIds = new Set(queryParams.category || []);
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
           subCategory.ProductChildCategories?.forEach(childCategory => {
@@ -282,6 +383,7 @@ export const productUtils = {
               const [, detailName] = detailKey.split("||");
               if (childCategory.name === detailName) {
                 childCategoryIds.push(childCategory.id);
+                if (category.id) categoryIds.add(category.id);
               }
             });
           });
@@ -289,6 +391,9 @@ export const productUtils = {
       });
       if (childCategoryIds.length > 0) {
         queryParams.childCategory = childCategoryIds;
+      }
+      if (categoryIds.size > 0) {
+        queryParams.category = Array.from(categoryIds);
       }
     }
 
@@ -298,24 +403,61 @@ export const productUtils = {
       queryParams.maxPrice = priceRange.max;
     }
 
-    // Colors
+    // Colors - Pass array directly
     if (selectedColors.length > 0) {
       queryParams.productColor = selectedColors;
     }
 
-    // Sizes
+    // Sizes - Pass array directly
     if (selectedSizes.length > 0) {
       queryParams.productSize = selectedSizes;
     }
 
-    // Occasions
-    if (selectedOccasions.length > 0) {
-      queryParams.occasion = selectedOccasions;
+    // Materials - convert selected names to IDs
+    if (selectedMaterials.length > 0 && materials && materials.length > 0) {
+      const materialIds = [];
+      materials.forEach(material => {
+        if (selectedMaterials.includes(material.name)) {
+          materialIds.push(material.id);
+        }
+      });
+      if (materialIds.length > 0) {
+        queryParams.material = materialIds;
+      }
     }
 
-    // Brands
-    if (selectedBrands.length > 0) {
-      queryParams.brand = selectedBrands;
+    // Occasions - convert selected names to IDs
+    if (selectedOccasions.length > 0 && occasions && occasions.length > 0) {
+      const occasionIds = [];
+      occasions.forEach(occ => {
+        if (selectedOccasions.includes(occ.name)) {
+          occasionIds.push(occ.id);
+        }
+      });
+      if (occasionIds.length > 0) {
+        queryParams.occasion = occasionIds;
+      }
+    }
+
+    // FIXED: Rating filter - Use MINIMUM threshold to show all products above it
+    if (selectedReviewThresholds.length > 0) {
+      // Get the minimum threshold - this will include all products at or above this rating
+      // Example: If user selects [3, 4], use 3 to show 3★, 4★, and 5★ products
+      const minThreshold = Math.min(...selectedReviewThresholds.map(r => parseFloat(r)));
+      queryParams.minAvgRating = minThreshold;
+      console.log('Rating filter applied - Selected thresholds:', selectedReviewThresholds, 'Using minimum as minAvgRating:', queryParams.minAvgRating);
+    }
+
+    // Availability (In Stock / Out of Stock)
+    if (selectedAvailability.length > 0) {
+      const hasIn = selectedAvailability.includes('in');
+      const hasOut = selectedAvailability.includes('out');
+
+      if (hasIn && !hasOut) {
+        queryParams.inStock = true;
+      } else if (hasOut && !hasIn) {
+        queryParams.inStock = false;
+      }
     }
 
     // New Arrival mode based on sort option
@@ -338,13 +480,17 @@ export const productUtils = {
       selectedColors = [],
       selectedSizes = [],
       selectedOccasions = [],
-      selectedBrands = [],
+      selectedMaterials = [],
+      selectedReviewThresholds = [],
+      selectedAvailability = [],
     } = filters;
 
     // Category filters
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(product => 
-        selectedSubCategories.includes(product.subCategory?.name)
+        selectedSubCategories.some(subCat => 
+          product.subCategory?.name?.toLowerCase().includes(subCat.toLowerCase())
+        )
       );
     }
 
@@ -354,8 +500,8 @@ export const productUtils = {
         return selectedDetails.some(detailKey => {
           const [subCategory, detail] = detailKey.split("||");
           return (
-            product.subCategory?.name === subCategory && 
-            product.childCategory?.name === detail
+            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) && 
+            product.childCategory?.name?.toLowerCase().includes(detail.toLowerCase())
           );
         });
       });
@@ -374,10 +520,12 @@ export const productUtils = {
       filtered = filtered.filter(product => {
         const productColors = product.inventories
           ?.map(inv => inv.productColor?.color)
-          .filter(Boolean) || [];
+          .filter(Boolean)
+          .map(color => color.toLowerCase()) || [];
+        
         return selectedColors.some(selectedColor => 
           productColors.some(productColor => 
-            productColor.toLowerCase().includes(selectedColor.toLowerCase())
+            productColor.includes(selectedColor.toLowerCase())
           )
         );
       });
@@ -388,27 +536,73 @@ export const productUtils = {
       filtered = filtered.filter(product => {
         const productSizes = product.inventories
           ?.flatMap(inv => inv.productSize?.size || [])
-          .filter(Boolean) || [];
+          .filter(Boolean)
+          .map(size => size.toLowerCase()) || [];
+        
         return selectedSizes.some(selectedSize => 
           productSizes.some(productSize => 
-            productSize.toLowerCase().includes(selectedSize.toLowerCase())
+            productSize.includes(selectedSize.toLowerCase())
           )
         );
       });
     }
 
-    // Occasion filter
-    if (selectedOccasions.length > 0) {
+    // Material filter
+    if (selectedMaterials.length > 0) {
       filtered = filtered.filter(product => 
-        selectedOccasions.includes(product.occasion?.name)
+        selectedMaterials.some(material => {
+          const productMaterial = product.material?.name;
+          if (!productMaterial) return false;
+          return productMaterial.toLowerCase().includes(material.toLowerCase());
+        })
       );
     }
 
-    // Brand filter
-    if (selectedBrands.length > 0) {
+    // Occasion filter
+    if (selectedOccasions.length > 0) {
       filtered = filtered.filter(product => 
-        selectedBrands.includes(product.brand)
+        selectedOccasions.some(occasion => 
+          product.occasion?.name?.toLowerCase().includes(occasion.toLowerCase())
+        )
       );
+    }
+
+    // Availability filter
+    if (selectedAvailability.length > 0) {
+      const hasIn = selectedAvailability.includes('in');
+      const hasOut = selectedAvailability.includes('out');
+
+      if (hasIn && !hasOut) {
+        filtered = filtered.filter(product => {
+          const totalStock =
+            product.inventories?.reduce(
+              (sum, inv) => sum + (inv.availableQuantity || 0),
+              0
+            ) || 0;
+          return totalStock > 0;
+        });
+      } else if (hasOut && !hasIn) {
+        filtered = filtered.filter(product => {
+          const totalStock =
+            product.inventories?.reduce(
+              (sum, inv) => sum + (inv.availableQuantity || 0),
+              0
+            ) || 0;
+          return totalStock === 0;
+        });
+      }
+    }
+
+    // FIXED: Rating filter - Use MINIMUM threshold to show all products >= that rating
+    if (selectedReviewThresholds.length > 0) {
+      // Get the minimum threshold to include all products at or above this rating
+      // Example: Select [3, 4] → use 3 → shows products with 3★, 4★, 5★
+      const minThreshold = Math.min(...selectedReviewThresholds.map(r => parseFloat(r)));
+      filtered = filtered.filter(product => {
+        const avgRating = parseFloat(product.averageRating || 0);
+        return avgRating >= minThreshold;
+      });
+      console.log('Client-side rating filter - Selected thresholds:', selectedReviewThresholds, 'Using minimum:', minThreshold, 'Filtered count:', filtered.length);
     }
 
     return filtered;
@@ -420,6 +614,7 @@ export default {
   sizeApi,
   colorApi,
   occasionApi,
+  materialApi,
   productApi,
   reviewApi,
   productDataApi,
