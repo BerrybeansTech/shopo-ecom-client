@@ -56,11 +56,9 @@ export default function Banner({ className }) {
   };
 
   return (
-    <div className={`w-full bg-white-50 ${className || ''}`}>
-      {/* Main Slider Section */}
-      <div className="relative w-full border-b border-white-700">
-        <div className="relative w-full h-[320px] sm:h-[420px] lg:h-[500px] overflow-hidden bg-white-200">
-          {/* Slides */}
+    <div className={`w-full bg-white ${className || ''}`}>
+      <div className="relative w-full border-b border-gray-200">
+        <div className="relative w-full h-[320px] sm:h-[420px] lg:h-[500px] overflow-hidden bg-gray-200">
           {slides.map((slide, index) => (
             <div
               key={slide.id}
@@ -69,35 +67,32 @@ export default function Banner({ className }) {
               }`}
             >
               <div className="relative w-full h-full group">
-                {/* Image with grayscale filter */}
                 <div className="relative w-full h-full overflow-hidden">
                   <img
                     src={slide.image}
                     alt={slide.alt}
                     className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:scale-105"
                   />
-                  {/* Dark overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black-200/90 via-black-200/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent"></div>
                 </div>
 
-                {/* Content Overlay */}
                 <div className="absolute inset-0 flex items-center">
                   <div className="container mx-auto px-6 lg:px-12 max-w-7xl">
                     <div className={`max-w-xl transition-all duration-700 ${
                       index === currentSlide ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                     }`}>
                       <div className="inline-block mb-4">
-                        <span className="text-[10px] tracking-[0.2em] font-semibold text-white-50 bg-black-900 px-4 py-1.5 uppercase">
+                        <span className="text-[10px] tracking-[0.2em] font-semibold text-white bg-black px-4 py-1.5 uppercase">
                           {slide.tag}
                         </span>
                       </div>
-                      <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white-50 mb-4 tracking-tight leading-tight">
+                      <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">
                         {slide.title}
                       </h2>
-                      <p className="text-base lg:text-lg text-white-300 mb-8 font-light">
+                      <p className="text-base lg:text-lg text-gray-300 mb-8 font-light">
                         {slide.subtitle}
                       </p>
-                      <button className="bg-white-50 text-black-900 px-10 py-3.5 text-sm font-semibold uppercase tracking-wider hover:bg-black-900 hover:text-white-50 transition-all duration-300 border border-white-50 hover:border-black-900">
+                      <button className="bg-white text-black px-10 py-3.5 text-sm font-semibold uppercase tracking-wider hover:bg-black hover:text-white transition-all duration-300 border border-white hover:border-black">
                         Explore Now
                       </button>
                     </div>
@@ -107,9 +102,7 @@ export default function Banner({ className }) {
             </div>
           ))}
 
-          {/* Navigation Controls - Both on Right Side */}
           <div className="absolute bottom-8 right-6 lg:right-12 flex items-center gap-4 z-10">
-            {/* Minimalist Dots Indicator */}
             <div className="flex gap-2">
               {slides.map((_, index) => (
                 <button
@@ -117,19 +110,18 @@ export default function Banner({ className }) {
                   onClick={() => goToSlide(index)}
                   className={`transition-all duration-400 ${
                     index === currentSlide
-                      ? 'bg-white-50 w-10 h-0.5'
-                      : 'bg-white-50/40 hover:bg-white-50/70 w-6 h-0.5'
+                      ? 'bg-white w-10 h-0.5'
+                      : 'bg-white/40 hover:bg-white/70 w-6 h-0.5'
                   }`}
                   aria-label={`Go to slide ${index + 1}`}
                 />
               ))}
             </div>
 
-            {/* Slide Counter */}
-            <div className="text-white-50 text-sm font-light tracking-wider">
+            <div className="text-white text-sm font-light tracking-wider">
               <span className="text-base font-medium">{String(currentSlide + 1).padStart(2, '0')}</span>
-              <span className="text-white-400 mx-1">/</span>
-              <span className="text-white-400">{String(slides.length).padStart(2, '0')}</span>
+              <span className="text-gray-400 mx-1">/</span>
+              <span className="text-gray-400">{String(slides.length).padStart(2, '0')}</span>
             </div>
           </div>
         </div>
