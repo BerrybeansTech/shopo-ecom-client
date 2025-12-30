@@ -378,8 +378,6 @@
 
 
 
-
-
 import React from "react";
 import { Link } from "react-router-dom";
 import {
@@ -393,10 +391,8 @@ import {
   LogOut,
   Store,
   X,
-  Menu,
-  Bell,
-  Heart,
 } from "lucide-react";
+import { getCategoryIcon, getCategoryImages, getProfileIcon } from "../../../../utils/categoryIconMapping";
 
 const DesktopNavbar = ({
   isScrolled,
@@ -417,7 +413,6 @@ const DesktopNavbar = ({
   activeSubcategory,
   activeCategory,
   profileMenuItems,
-  getCategoryImages,
   getProductUrl,
   getProductImage,
   getProductCategoryInfo,
@@ -432,21 +427,6 @@ const DesktopNavbar = ({
   setShowAccountDropdown,
   setShowSearchResults,
 }) => {
-  const getIconComponent = (iconName) => {
-    const iconMap = {
-      Home: Home,
-      ShoppingBag: ShoppingBag,
-      Settings: Package,
-      MapPin: Package,
-      Star: Heart,
-      Heart: Heart,
-      Award: Package,
-      Gift: Package,
-      Zap: Bell,
-    };
-    return iconMap[iconName] || Home;
-  };
-
   const clearSearch = () => {
     handleSearch("");
     setShowSearchResults(false);
@@ -519,7 +499,9 @@ const DesktopNavbar = ({
                         onClick={() => setShowSearchResults(false)}
                       >
                         <Search className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
-                        <span className="flex-1 font-medium">{product.name}</span>
+                        <span className="flex-1 font-medium">
+                          {product.name}
+                        </span>
                         <span className="text-xs text-gray-400">Enter</span>
                       </Link>
                     ))}
@@ -527,17 +509,20 @@ const DesktopNavbar = ({
                 </div>
               )}
 
-              {showSearchResults && searchQuery && searchResults.length === 0 && !searchLoading && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 px-4 py-6 text-center">
-                  <div className="text-sm text-gray-600">
-                    No results found for "{searchQuery}"
+              {showSearchResults &&
+                searchQuery &&
+                searchResults.length === 0 &&
+                !searchLoading && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 px-4 py-6 text-center">
+                    <div className="text-sm text-gray-600">
+                      No results found for "{searchQuery}"
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
 
-          {/* Navigation Items - Professional Layout */}
+          {/* Navigation Items */}
           <div className="flex items-center gap-2">
             {/* Home */}
             <Link
@@ -567,7 +552,7 @@ const DesktopNavbar = ({
               <span className="text-sm font-medium">Shop</span>
             </Link>
 
-            {/* Cart - No Price Display */}
+            {/* Cart */}
             <Link
               to="/cart"
               className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 relative group ${
@@ -634,7 +619,9 @@ const DesktopNavbar = ({
                   <UserCircle className="w-5 h-5" />
                 </div>
                 <span className="text-sm font-medium">
-                  {isAuthenticated ? getUserDisplayName()?.split(" ")[0] : "Account"}
+                  {isAuthenticated
+                    ? getUserDisplayName()?.split(" ")[0]
+                    : "Account"}
                 </span>
                 <ChevronDown
                   className={`w-4 h-4 transition-transform duration-200 ${
@@ -664,9 +651,9 @@ const DesktopNavbar = ({
                       </div>
 
                       {/* Menu Items */}
-                      <div className="py-2 max-h-[400px] overflow-y-auto">
+                      <div className="py-2 max-h-[400px] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         {profileMenuItems.map((item) => {
-                          const Icon = getIconComponent(item.icon);
+                          const IconComponent = getProfileIcon(item.icon);
                           return (
                             <button
                               key={item.id}
@@ -674,7 +661,7 @@ const DesktopNavbar = ({
                               onClick={() => navigateToProfile(item.hash)}
                               className="flex items-center gap-3 w-full px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all group"
                             >
-                              <Icon className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
+                              <IconComponent className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
                               <span>{item.label}</span>
                             </button>
                           );
@@ -698,7 +685,9 @@ const DesktopNavbar = ({
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <UserCircle className="w-6 h-6 text-gray-400" />
                       </div>
-                      <div className="font-bold text-base text-gray-900 mb-1">Welcome!</div>
+                      <div className="font-bold text-base text-gray-900 mb-1">
+                        Welcome!
+                      </div>
                       <div className="text-xs text-gray-600 mb-5">
                         Sign in to access your account
                       </div>
@@ -723,7 +712,9 @@ const DesktopNavbar = ({
             {navigationCategories.length > 0 ? (
               navigationCategories.map((category, index) => {
                 const categoryImages = getCategoryImages(category.name);
+                const CategoryIcon = getCategoryIcon(category.name);
                 const isActive = activeCategory === index;
+                
                 return (
                   <div
                     key={category.id}
@@ -739,12 +730,16 @@ const DesktopNavbar = ({
                     }}
                   >
                     <button className="flex flex-col items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg transition-all">
-                      <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-lg bg-gray-100">
-                        <img
-                          src={categoryImages.default}
-                          alt={category.name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                        />
+                      <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                        {categoryImages.default ? (
+                          <img
+                            src={categoryImages.default}
+                            alt={category.name}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                          />
+                        ) : (
+                          <CategoryIcon className="w-6 h-6 text-gray-600" />
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-semibold text-gray-700 whitespace-nowrap max-w-[80px] truncate">
@@ -766,35 +761,39 @@ const DesktopNavbar = ({
                         {/* Subcategories */}
                         <div className="min-w-[240px] bg-gray-50 border-r border-gray-200 py-4">
                           <div className="space-y-1 px-2">
-                            {category.subcategories.map((subcategory, subIndex) => (
-                              <div
-                                key={subcategory.id}
-                                className={`rounded-lg cursor-pointer transition-all ${
-                                  activeSubcategory === subIndex
-                                    ? "bg-white shadow-sm"
-                                    : "hover:bg-white/50"
-                                }`}
-                                onMouseEnter={() => setActiveSubcategory(subIndex)}
-                              >
-                                <Link
-                                  to={`/category/${category.id}/${subcategory.id}`}
-                                  className={`flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors ${
+                            {category.subcategories.map(
+                              (subcategory, subIndex) => (
+                                <div
+                                  key={subcategory.id}
+                                  className={`rounded-lg cursor-pointer transition-all ${
                                     activeSubcategory === subIndex
-                                      ? "text-gray-900"
-                                      : "text-gray-700 hover:text-gray-900"
+                                      ? "bg-white shadow-sm"
+                                      : "hover:bg-white/50"
                                   }`}
-                                  onClick={() => {
-                                    setActiveCategory(null);
-                                    setActiveSubcategory(null);
-                                  }}
+                                  onMouseEnter={() =>
+                                    setActiveSubcategory(subIndex)
+                                  }
                                 >
-                                  <span>{subcategory.name}</span>
-                                  {subcategory.childCategories.length > 0 && (
-                                    <ChevronDown className="w-3 h-3 -rotate-90 text-gray-400" />
-                                  )}
-                                </Link>
-                              </div>
-                            ))}
+                                  <Link
+                                    to={`/category/${category.id}/${subcategory.id}`}
+                                    className={`flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors ${
+                                      activeSubcategory === subIndex
+                                        ? "text-gray-900"
+                                        : "text-gray-700 hover:text-gray-900"
+                                    }`}
+                                    onClick={() => {
+                                      setActiveCategory(null);
+                                      setActiveSubcategory(null);
+                                    }}
+                                  >
+                                    <span>{subcategory.name}</span>
+                                    {subcategory.childCategories.length > 0 && (
+                                      <ChevronDown className="w-3 h-3 -rotate-90 text-gray-400" />
+                                    )}
+                                  </Link>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
 
@@ -811,9 +810,7 @@ const DesktopNavbar = ({
                               ].childCategories.map((childCategory) => (
                                 <Link
                                   key={childCategory.id}
-                                  to={`/category/${category.id}/${
-                                    category.subcategories[activeSubcategory].id
-                                  }/${childCategory.id}`}
+                                  to={`/category/${category.id}/${category.subcategories[activeSubcategory].id}/${childCategory.id}`}
                                   className="block text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
                                   onClick={() => {
                                     setActiveCategory(null);
