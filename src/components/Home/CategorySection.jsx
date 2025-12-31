@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProducts } from "../AllProductPage/hooks/useProducts";
+import { getCategoryImage } from "../../utils/imageUtils";
 
 export default function CategorySection({ className, sectionTitle = "Shop by Category" }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -29,33 +30,15 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
     loadCategories();
   }, [hasCategories, productCategories.length, fetchCategoriesOnly]);
 
-  // Construct proper image URL
-  const getImageUrl = (imagePath) => {
-    if (!imagePath || imagePath === 'null' || imagePath === null) {
-      return null;
-    }
-
-    // If it's already a full URL, return it as is
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-
-    // Clean up the path - remove leading slash if present
-    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    
-    // Use your hosted server URL with the proper path
-    return `http://luxcycs.com:5501/${cleanPath}`;
-  };
-
   // Transform categories for display
   const displayCategories = (productCategories || [])
     .filter(category => category && category.name)
     .map(category => ({
       id: category.id,
       name: category.name.replace(/\.+$/, '').trim(),
-      image: getImageUrl(category.image),
+      image: getCategoryImage(category),
       hasImage: !!(category.image && category.image !== 'null' && category.image !== null),
-      link: `/category/${category.name.toLowerCase().replace(/\s+/g, '-')}-${category.id}`,
+      link: `/all-products?categoryId=${category.id}`,
     }))
     .slice(0, 6);
 

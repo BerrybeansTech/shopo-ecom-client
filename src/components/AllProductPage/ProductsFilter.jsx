@@ -643,6 +643,34 @@ const ProductsFilter = React.memo(
       Pink: "#EC4899",
     };
 
+    // Automatically expand the accordion when a category is selected via URL
+    useEffect(() => {
+      if (Object.keys(categoryTree).length === 0) return;
+
+      // Check if any selected subcategory belongs to a main category
+      if (selectedSubCategories.length > 0) {
+        for (const [mainCat, subCats] of Object.entries(categoryTree)) {
+          if (Object.keys(subCats).some(sc => selectedSubCategories.includes(sc))) {
+            setOpenAccordion(mainCat);
+            break;
+          }
+        }
+      }
+
+      // Check if any selected detail belongs to a main category
+      if (selectedDetails.length > 0) {
+        for (const [mainCat, subCats] of Object.entries(categoryTree)) {
+          for (const [subCat, details] of Object.entries(subCats)) {
+            if (details.some(d => selectedDetails.includes(`${subCat}||${d}`))) {
+              setOpenAccordion(mainCat);
+              setOpenSubAccordions((prev) => ({ ...prev, [subCat]: true }));
+              break;
+            }
+          }
+        }
+      }
+    }, [categoryTree, selectedSubCategories, selectedDetails]);
+
     return (
       <>
         {/* Mobile Overlay */}
@@ -988,7 +1016,9 @@ const ProductsFilter = React.memo(
                         {/* Main Category */}
                         <button
                           onClick={() => toggleAccordion(mainCategory)}
-                          className="w-full flex justify-between items-center py-2.5 px-3 text-gray-900 font-semibold text-sm hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                          className="w-full flex justify-between items-start sm:items-center
+             text-left py-2.5 px-3 text-gray-900 font-semibold text-sm
+             hover:bg-gray-50 rounded-lg transition-colors duration-200"
                         >
                           <span>{mainCategory}</span>
                           {openAccordion === mainCategory ? (

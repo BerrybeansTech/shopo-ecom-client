@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check, Truck, Home, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getProductImage } from '../../utils/imageUtils';
 import Layout from '../Partials/Layout';
 import ThankYouPopup from './ThankYouPopup';
 import { ordersApi } from './ordersApi';
@@ -1229,23 +1230,22 @@ export default function Checkout() {
                         <p className="text-sm text-gray-600">3-5 business days</p>
                       </div>
                     </div>
-
                     {cartItems.map(item => {
                       const product = item.product || {};
-                      const productName = product.name || "Product";
-                      const thumbnail = product.thumbnailImage || "https://via.placeholder.com/80";
                       const sellingPrice = product.sellingPrice || item.price || 0;
                       const mrp = product.mrp || sellingPrice;
 
                       return (
                         <div key={item.id} className="flex space-x-3 pb-4 border-b border-gray-200 last:border-0">
                           <img 
-                            src={thumbnail} 
-                            alt={productName}
+                            src={getProductImage(product)} 
+                            alt={product?.name || "Product"}
                             className="w-16 h-16 rounded-lg object-cover border border-gray-200" 
                           />
                           <div className="flex-1">
-                            <h4 className="text-sm font-medium text-black">{productName}</h4>
+                            <h4 className="text-sm font-medium text-black">
+                              {product?.name || "Product"}
+                            </h4>
                             <p className="text-xs text-gray-600 mt-1">
                               {item.productColorVariationId ? `Color: ${item.productColorVariationId}` : ''} 
                               {item.productSizeVariationId ? ` | Size: ${item.productSizeVariationId}` : ''}

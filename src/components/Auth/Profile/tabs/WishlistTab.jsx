@@ -4,6 +4,7 @@ import { X, Heart } from "lucide-react";
 import TabNavigation from "./TabNavigation";
 import { getWishlist, updateWishlist, clearWishlist, wishlistEvents } from "../../../../services/wishlistApi";
 import { apiService } from "../../../../services/apiservice";
+import { getProductImage } from "../../../../utils/imageUtils";
 
 export default function WishlistTab({ className }) {
   const [activeTab, setActiveTab] = useState("Wishlist");
@@ -16,8 +17,6 @@ export default function WishlistTab({ className }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Placeholder image data URL to avoid network requests
-  const PLACEHOLDER_IMAGE = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==";
 
   // Subscribe to wishlist changes from other components
   useEffect(() => {
@@ -150,18 +149,6 @@ export default function WishlistTab({ className }) {
     navigate("/all-products");
   };
 
-  const getProductImage = (product) => {
-    if (product.thumbnailImage) {
-      return product.thumbnailImage;
-    }
-    if (product.galleryImage && product.galleryImage.length > 0) {
-      return product.galleryImage[0];
-    }
-    if (product.images && product.images.length > 0) {
-      return product.images[0];
-    }
-    return PLACEHOLDER_IMAGE;
-  };
 
   const getProductName = (product) => {
     return product.name || 'Product Name';
@@ -250,12 +237,9 @@ export default function WishlistTab({ className }) {
                           {/* Product Image */}
                           <div className="w-full sm:w-24 h-24 flex-shrink-0 rounded-lg border border-white-500 overflow-hidden bg-white-400 mx-auto sm:mx-0">
                             <img
-                              src={productImage}
+                              src={getProductImage(item)}
                               alt={productName}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = PLACEHOLDER_IMAGE;
-                              }}
                             />
                           </div>
 

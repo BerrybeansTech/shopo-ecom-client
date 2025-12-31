@@ -93,9 +93,9 @@ export default function AllProductPage() {
     if (inStockParam === "false") return ["out"];
     return [];
   });
-  const [searchQuery, setSearchQuery] = useState(
-    searchParams.get("name") || ""
-  );
+  
+  // Derive searchQuery directly from URL to avoid race conditions
+  const searchQuery = useMemo(() => searchParams.get("name") || "", [searchParams]);
 
   // FIXED: Initialize newArrival from URL
   const [newArrival, setNewArrival] = useState(
@@ -220,6 +220,64 @@ export default function AllProductPage() {
       initializeData();
     }
   }, [fetchAllProductData, filtersError, categories.length]);
+
+  // Handle category parameters from URL
+  useEffect(() => {
+    // Only run after categories are loaded
+    if (categories.length === 0) return;
+
+    const categoryId = searchParams.get("categoryId");
+    const subcategoryId = searchParams.get("subcategoryId");
+    const childCategoryId = searchParams.get("childCategoryId");
+
+    // If no category params, nothing to do
+    if (!categoryId && !subcategoryId && !childCategoryId) return;
+
+    console.log("📍 Category navigation detected:", { categoryId, subcategoryId, childCategoryId });
+
+    // Find the category data
+    const category = categories.find(c => c.id === parseInt(categoryId));
+    if (!category) {
+      console.warn("Category not found:", categoryId);
+      return;
+    }
+
+    // If only categoryId is provided, selecting its subcategories to filter by it
+    if (categoryId && !subcategoryId && !childCategoryId) {
+      console.log("📍 Setting filters for category:", category.name);
+      
+      const subCategoryNames = category.ProductSubCategories?.map(sc => sc.name) || [];
+      if (subCategoryNames.length > 0) {
+        setSelectedSubCategories(subCategoryNames);
+      }
+      
+    }
+
+    // If subcategoryId is provided, set it as filter
+    if (subcategoryId) {
+      const subcategory = category.ProductSubCategories?.find(
+        sc => sc.id === parseInt(subcategoryId)
+      );
+      
+      if (subcategory) {
+        console.log("📍 Setting subcategory filter:", subcategory.name);
+        setSelectedSubCategories([subcategory.name]);
+        
+        // If childCategoryId is provided, set it as detail filter
+        if (childCategoryId) {
+          const childCategory = subcategory.ProductChildCategories?.find(
+            cc => cc.id === parseInt(childCategoryId)
+          );
+          
+          if (childCategory) {
+            console.log("📍 Setting child category filter:", childCategory.name);
+            // Use the same format as ProductsFilter: "subcategoryName||childCategoryName"
+            setSelectedDetails([`${subcategory.name}||${childCategory.name}`]);
+          }
+        }
+      }
+    }
+  }, [categories, searchParams]);
 
   // Fetch user's wishlist on mount and auth change
   useEffect(() => {
@@ -396,9 +454,15 @@ export default function AllProductPage() {
     setSelectedMaterials([]);
     setSelectedReviewThresholds([]);
     setSelectedAvailability([]);
-    setSearchQuery("");
-    setSortOption("default"); // FIXED: Reset to default
-    setNewArrival(false); // FIXED: Clear newArrival
+    
+    // Update URL to clear search query
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("name");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
+    
+    setSortOption("default");
+    setNewArrival(false);
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
@@ -413,6 +477,15 @@ export default function AllProductPage() {
       document.body.style.overflow = "unset";
     };
   }, [filterToggle]);
+
+  // Handle external events (from MobileNavbar)
+  useEffect(() => {
+    const handleToggle = () => setFilterToggle(true);
+    window.addEventListener("toggle-product-filters", handleToggle);
+    return () => {
+      window.removeEventListener("toggle-product-filters", handleToggle);
+    };
+  }, []);
 
   const breadcrumb = useMemo(() => {
     const base = [
@@ -431,7 +504,11 @@ export default function AllProductPage() {
     };
 
     if (searchQuery) {
-      pushFilter(`Search: "${searchQuery}"`, () => setSearchQuery(""));
+      pushFilter(`Search: "${searchQuery}"`, () => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("name");
+        setSearchParams(newParams);
+      });
     }
 
     selectedDetails.forEach((detailKey) => {
@@ -775,6 +852,24 @@ export default function AllProductPage() {
     newArrival,
   ]);
 
+  // Sync active filters count and search query with MobileNavbar
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("active-filters-count-changed", {
+        detail: { count: activeFiltersCount, query: searchQuery },
+      })
+    );
+  }, [activeFiltersCount, searchQuery]);
+
+  // Initial sync on mount
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("active-filters-count-changed", {
+        detail: { count: activeFiltersCount, query: searchQuery },
+      })
+    );
+  }, []);
+
   const handleWishlistToggle = async (e, productId) => {
     e.stopPropagation();
     e.preventDefault();
@@ -1018,18 +1113,7 @@ export default function AllProductPage() {
                         </button>
                       )}
 
-                      <button
-                        className="lg:hidden flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-xs sm:text-sm"
-                        onClick={() => setFilterToggle(!filterToggle)}
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span>Filters</span>
-                        {activeFiltersCount > 0 && (
-                          <span className="bg-white text-gray-900 text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-bold">
-                            {activeFiltersCount}
-                          </span>
-                        )}
-                      </button>
+
                     </div>
                   </div>
 

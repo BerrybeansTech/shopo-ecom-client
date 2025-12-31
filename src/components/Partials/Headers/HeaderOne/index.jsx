@@ -5,6 +5,7 @@ import { useAuth } from "../../../Auth/hooks/useAuth";
 import { useCart } from "../../../CartPage/useCart";
 import { productApi } from "../../../AllProductPage/productApi";
 import { getCategoryImages } from "../../../../utils/categoryIconMapping";
+import { getProductImage } from "../../../../utils/imageUtils";
 import DesktopNavbar from "./DesktopNavbar";
 import MobileNavbar from "./MobileNavbar";
 
@@ -107,6 +108,7 @@ const Navbar = () => {
     }));
   }, [categories]);
 
+  // Handle search - fetch suggestions for dropdown
   const handleSearch = async (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
@@ -118,7 +120,7 @@ const Navbar = () => {
       setSearchLoading(true);
       const response = await productApi.getAll({ name: query, limit: 8 });
       const products = response.data || response;
-      setSearchResults(products);
+      setSearchResults(Array.isArray(products) ? products : []);
       setShowSearchResults(true);
     } catch (error) {
       console.error("Search failed:", error);
@@ -128,27 +130,27 @@ const Navbar = () => {
     }
   };
 
+  // Navigate to single product page
   const getProductUrl = (product) => {
     if (!product) return "/";
-    return `/product/${product.name.toLowerCase().replace(/\s+/g, "-")}-${product.id}`;
+    const id = product.id || product._id;
+    return `/single-product/${id}`;
+  };
+
+  // Navigate to product and clear search state
+  const navigateToProduct = (product) => {
+    try {
+      const url = getProductUrl(product);
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      navigate(url);
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
   };
 
   const getProductPrice = (product) => product.sellingPrice || product.mrp || 0;
-
-  const getProductImage = (product) => {
-    if (product.thumbnailImage) {
-      return product.thumbnailImage.startsWith("http")
-        ? product.thumbnailImage
-        : `http://luxcycs.com:5501/${product.thumbnailImage}`;
-    }
-    if (product.galleryImage && product.galleryImage.length > 0) {
-      const firstImage = product.galleryImage[0];
-      return firstImage.startsWith("http")
-        ? firstImage
-        : `http://luxcycs.com:5501/${firstImage}`;
-    }
-    return `https://placehold.co/400x400/ffffff/000000?text=${encodeURIComponent(product.name)}`;
-  };
 
   const getProductCategoryInfo = (product) => {
     const category = product.category?.name || "Uncategorized";
@@ -202,6 +204,7 @@ const Navbar = () => {
     profileMenuItems,
     getCategoryImages,
     getProductUrl,
+    navigateToProduct,
     getProductImage,
     getProductCategoryInfo,
     getProductPrice,
@@ -236,6 +239,7 @@ const Navbar = () => {
     formatINR,
     profileMenuItems,
     getProductUrl,
+    navigateToProduct,
     getProductImage,
     getProductCategoryInfo,
     getProductPrice,
@@ -248,6 +252,8 @@ const Navbar = () => {
     setShowMobileSearch,
     setShowAccountDropdown,
     setSearchQuery,
+    showSearchResults,
+    setShowSearchResults,
   };
 
   return (

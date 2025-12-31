@@ -1,5 +1,5 @@
-// src/components/Helpers/Cards/BlogCard.jsx
 import { Link } from "react-router-dom";
+import { getBlogImage } from "../../../utils/imageUtils";
 
 export default function BlogCard({ className = "", datas }) {
   const formatDate = (isoString) => {
@@ -11,9 +11,6 @@ export default function BlogCard({ className = "", datas }) {
     });
   };
 
-  // Use featuredImage from API response, fallback to bannerImage
-  const imageUrl = datas.featuredImage || datas.bannerImage;
-
   return (
     <div
       className={`blog-card-wrapper w-full border border-[#D3D3D3] ${className}`}
@@ -21,7 +18,7 @@ export default function BlogCard({ className = "", datas }) {
       <div className="img w-full h-[340px] overflow-hidden">
         <Link to={`/blogs/${datas.slug}`}>
           <img
-            src={imageUrl}
+            src={getBlogImage(datas)}
             alt={datas.title}
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
           />

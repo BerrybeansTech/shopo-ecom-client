@@ -3,6 +3,7 @@ import InputQuantityCom from "../Helpers/InputQuantityCom";
 import { updateWishlist } from "../../services/wishlistApi";
 import { apiService } from "../../services/apiservice";
 import { useCart } from "../CartPage/useCart";
+import { getProductImage } from "../../utils/imageUtils";
 
 export default function ProductsTable({ className, wishlistData, onWishlistUpdate }) {
   const [products, setProducts] = useState([]);
@@ -48,20 +49,6 @@ export default function ProductsTable({ className, wishlistData, onWishlistUpdat
     } finally {
       setLoading(false);
     }
-  };
-
-  // Get product image - prioritize thumbnailImage, fallback to first gallery image or placeholder
-  const getProductImage = (product) => {
-    if (product.thumbnailImage) {
-      return product.thumbnailImage;
-    }
-    if (product.galleryImage && product.galleryImage.length > 0) {
-      return product.galleryImage[0];
-    }
-    if (product.images && product.images.length > 0) {
-      return product.images[0];
-    }
-    return `${import.meta.env.VITE_PUBLIC_URL || ''}/assets/images/product-img-1.jpg`;
   };
 
   // Get product name
@@ -232,12 +219,9 @@ export default function ProductsTable({ className, wishlistData, onWishlistUpdat
                     <div className="flex space-x-6 items-center">
                       <div className="w-[80px] h-[80px] overflow-hidden flex justify-center items-center border border-[#EDEDED]">
                         <img
-                          src={productImage}
+                          src={getProductImage(product)}
                           alt={productName}
                           className="w-full h-full object-contain"
-                          onError={(e) => {
-                            e.target.src = `${import.meta.env.VITE_PUBLIC_URL || ''}/assets/images/product-img-1.jpg`;
-                          }}
                         />
                       </div>
                       <div className="flex-1 flex flex-col">

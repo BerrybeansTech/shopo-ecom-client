@@ -67,6 +67,7 @@ export default function SingleProductPage() {
     };
 
     fetchProductData();
+    window.scrollTo(0, 0);
   }, [id]);
 
   useEffect(() => {

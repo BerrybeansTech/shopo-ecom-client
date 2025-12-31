@@ -1,4 +1,5 @@
 // src/utils/categoryIconMapping.js
+import { getImageUrl, getPlaceholderImage } from "./imageUtils";
 import {
   Shirt,
   TrendingUp,
@@ -39,7 +40,7 @@ export const categoryIconMap = {
   kids: Gift,
   women: Sparkles,
   men: Box,
-  
+
   // Accessories subcategories
   watches: Watch,
   jewelry: Gem,
@@ -47,7 +48,7 @@ export const categoryIconMap = {
   belts: Scissors,
   sunglasses: Award,
   scarves: Palette,
-  
+
   // Default fallback
   default: Store,
 };
@@ -59,21 +60,21 @@ export const categoryIconMap = {
  */
 export const getCategoryIcon = (categoryName = '') => {
   if (!categoryName) return categoryIconMap.default;
-  
+
   const normalized = categoryName.toLowerCase().trim();
-  
+
   // Direct match
   if (categoryIconMap[normalized]) {
     return categoryIconMap[normalized];
   }
-  
+
   // Partial match
   for (const [key, icon] of Object.entries(categoryIconMap)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return icon;
     }
   }
-  
+
   return categoryIconMap.default;
 };
 
@@ -119,21 +120,21 @@ export const categoryImageMap = {
  */
 export const getCategoryImages = (categoryName = '') => {
   if (!categoryName) return categoryImageMap.default;
-  
+
   const normalized = categoryName.toLowerCase().trim();
-  
+
   // Direct match
   if (categoryImageMap[normalized]) {
     return categoryImageMap[normalized];
   }
-  
+
   // Partial match
   for (const [key, images] of Object.entries(categoryImageMap)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return images;
     }
   }
-  
+
   return categoryImageMap.default;
 };
 
@@ -160,7 +161,7 @@ export const profileIconMap = {
  */
 export const getProfileIcon = (iconName = '') => {
   if (!iconName) return Store;
-  
+
   const normalized = iconName.toLowerCase().replace(/\s+/g, '');
   return profileIconMap[normalized] || Store;
 };
@@ -192,17 +193,17 @@ export const categoryUtils = {
    */
   getCategoryBreadcrumb: (categories, categoryId, subCategoryId = null, childCategoryId = null) => {
     const breadcrumb = [];
-    
+
     const category = categories.find(c => c.id === categoryId);
     if (!category) return breadcrumb;
-    
+
     breadcrumb.push({ id: category.id, name: category.name, type: 'category' });
-    
+
     if (subCategoryId) {
       const subCategory = category.ProductSubCategories?.find(s => s.id === subCategoryId);
       if (subCategory) {
         breadcrumb.push({ id: subCategory.id, name: subCategory.name, type: 'subcategory' });
-        
+
         if (childCategoryId) {
           const childCategory = subCategory.ProductChildCategories?.find(c => c.id === childCategoryId);
           if (childCategory) {
@@ -211,7 +212,7 @@ export const categoryUtils = {
         }
       }
     }
-    
+
     return breadcrumb;
   },
 

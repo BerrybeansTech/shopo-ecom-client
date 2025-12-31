@@ -26,7 +26,7 @@ const deduplicateRequest = async (key, requestFn) => {
 
 const buildQueryString = (params) => {
   const queryParams = new URLSearchParams();
-  
+
   Object.keys(params).forEach(key => {
     const value = params[key];
     if (value !== null && value !== undefined && value !== '') {
@@ -37,7 +37,7 @@ const buildQueryString = (params) => {
       }
     }
   });
-  
+
   const queryString = queryParams.toString();
   return queryString ? `?${queryString}` : '';
 };
@@ -77,7 +77,7 @@ export const occasionApi = {
   getAll: async (filters = {}) => {
     try {
       const queryParams = {};
-      
+
       if (filters.material) {
         if (Array.isArray(filters.material)) {
           queryParams.material = filters.material.join(',');
@@ -88,7 +88,7 @@ export const occasionApi = {
 
       const queryString = buildQueryString(queryParams);
       const key = `occasion-getAll-${queryString}`;
-      
+
       return deduplicateRequest(key, async () => {
         return await apiService.get(`/product/occasion/get-all${queryString}`);
       });
@@ -312,10 +312,10 @@ export const productUtils = {
     const flattened = [];
     categories.forEach((cat) => {
       flattened.push({ id: cat.id, name: cat.name, type: "category", level: 0 });
-      
+
       cat.ProductSubCategories?.forEach((sub) => {
         flattened.push({ id: sub.id, name: sub.name, parentId: cat.id, type: "subcategory", level: 1 });
-        
+
         sub.ProductChildCategories?.forEach((child) => {
           flattened.push({ id: child.id, name: child.name, parentId: sub.id, type: "childcategory", level: 2 });
         });
@@ -335,7 +335,7 @@ export const productUtils = {
       selectedOccasions = [],
       selectedMaterials = [],
       selectedReviewThresholds = [],
-      newArrival = false, 
+      newArrival = false,
       selectedAvailability = [],
       sortOption,
       searchQuery,
@@ -471,7 +471,7 @@ export const productUtils = {
 
   filterProductsClientSide: (products, filters) => {
     if (!products || !Array.isArray(products)) return [];
-    
+
     let filtered = [...products];
     const {
       selectedSubCategories = [],
@@ -487,8 +487,8 @@ export const productUtils = {
 
     // Category filters
     if (selectedSubCategories.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedSubCategories.some(subCat => 
+      filtered = filtered.filter(product =>
+        selectedSubCategories.some(subCat =>
           product.subCategory?.name?.toLowerCase().includes(subCat.toLowerCase())
         )
       );
@@ -500,7 +500,7 @@ export const productUtils = {
         return selectedDetails.some(detailKey => {
           const [subCategory, detail] = detailKey.split("||");
           return (
-            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) && 
+            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) &&
             product.childCategory?.name?.toLowerCase().includes(detail.toLowerCase())
           );
         });
@@ -522,9 +522,9 @@ export const productUtils = {
           ?.map(inv => inv.productColor?.color)
           .filter(Boolean)
           .map(color => color.toLowerCase()) || [];
-        
-        return selectedColors.some(selectedColor => 
-          productColors.some(productColor => 
+
+        return selectedColors.some(selectedColor =>
+          productColors.some(productColor =>
             productColor.includes(selectedColor.toLowerCase())
           )
         );
@@ -538,9 +538,9 @@ export const productUtils = {
           ?.flatMap(inv => inv.productSize?.size || [])
           .filter(Boolean)
           .map(size => size.toLowerCase()) || [];
-        
-        return selectedSizes.some(selectedSize => 
-          productSizes.some(productSize => 
+
+        return selectedSizes.some(selectedSize =>
+          productSizes.some(productSize =>
             productSize.includes(selectedSize.toLowerCase())
           )
         );
@@ -549,7 +549,7 @@ export const productUtils = {
 
     // Material filter
     if (selectedMaterials.length > 0) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         selectedMaterials.some(material => {
           const productMaterial = product.material?.name;
           if (!productMaterial) return false;
@@ -560,8 +560,8 @@ export const productUtils = {
 
     // Occasion filter
     if (selectedOccasions.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedOccasions.some(occasion => 
+      filtered = filtered.filter(product =>
+        selectedOccasions.some(occasion =>
           product.occasion?.name?.toLowerCase().includes(occasion.toLowerCase())
         )
       );

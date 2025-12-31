@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
+import { normalizeProductImages } from "../../utils/imageUtils";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
@@ -26,11 +27,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
       : 0;
 
     // Get images
-    const images = product.galleryImage && product.galleryImage.length > 0
-      ? product.galleryImage
-      : product.thumbnailImage
-      ? [product.thumbnailImage]
-      : [];
+    const images = normalizeProductImages(product);
 
     // Process available colors and sizes from inventories
     const colorMap = new Map();
