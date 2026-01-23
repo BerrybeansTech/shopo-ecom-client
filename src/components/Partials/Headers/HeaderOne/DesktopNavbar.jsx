@@ -429,18 +429,24 @@ const DesktopNavbar = ({
 }) => {
   const navigate = useNavigate();
 
+  // Check if we're on the shop/all-products page
+  const isShopPage = isActiveRoute("/all-products") || isActiveRoute("/category");
+
   const clearSearch = () => {
     handleSearch("");
     setShowSearchResults(false);
+    // If we're on shop page, navigate to clear URL
+    if (isShopPage) {
+      navigate("/all-products");
+    }
   };
 
   // Handle search submit (Enter key or Search button click)
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.trim();
-      // Clear search UI first
+      // Close dropdown first
       setShowSearchResults(false);
-      handleSearch("");
       // Then navigate
       navigate(`/all-products?name=${encodeURIComponent(query)}`);
     }
@@ -495,7 +501,7 @@ const DesktopNavbar = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value, { showDropdown: true })}
                   onFocus={() => setShowSearchResults(true)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -534,12 +540,10 @@ const DesktopNavbar = ({
                         onMouseDown={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          const productName = product.name || "";
-                          console.log('Navigating to:', productName);
-                          // Close dropdown
+                          // Navigate to single product page
+                          const productUrl = getProductUrl(product);
                           setShowSearchResults(false);
-                          // Navigate immediately - don't clear search before navigating
-                          navigate(`/all-products?name=${encodeURIComponent(productName)}`);
+                          navigate(productUrl);
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors group text-left cursor-pointer"
                       >
@@ -557,7 +561,7 @@ const DesktopNavbar = ({
                         e.stopPropagation();
                         handleSearchSubmit();
                       }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-gray-200 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 border-t border-gray-200 transition-colors cursor-pointer"
                     >
                       <Search className="w-4 h-4" />
                       View all results for "{searchQuery}"

@@ -27,6 +27,7 @@ const ProductsFilter = React.memo(
     setSelectedDiscountRanges,
     selectedOccasions,
     setSelectedOccasions,
+    selectedCategoryId,
     className,
     filterToggle,
     filterToggleHandler,
@@ -280,10 +281,16 @@ const ProductsFilter = React.memo(
 
     const toggleSubAccordion = useCallback((subCategory, e) => {
       e?.stopPropagation();
-      setOpenSubAccordions((prev) => ({
-        ...prev,
-        [subCategory]: !prev[subCategory],
-      }));
+      setOpenSubAccordions((prev) => {
+        const isCurrentlyOpen = !!prev[subCategory];
+        if (!isCurrentlyOpen) {
+          // If opening, close all other sub-accordions
+          return { [subCategory]: true };
+        } else {
+          // If closing, just close this one
+          return { ...prev, [subCategory]: false };
+        }
+      });
     }, []);
 
     const handleDetailChange = useCallback(
@@ -647,7 +654,18 @@ const ProductsFilter = React.memo(
     useEffect(() => {
       if (Object.keys(categoryTree).length === 0) return;
 
-      // Check if any selected subcategory belongs to a main category
+      // 1. Check if selectedCategoryId is provided from URL
+      if (selectedCategoryId) {
+        // Find category name from ID
+        const categoryData = categories?.find(c => c.id === parseInt(selectedCategoryId));
+        if (categoryData && categoryTree[categoryData.name]) {
+          console.log("📍 Auto-expanding accordion for categoryId:", selectedCategoryId, categoryData.name);
+          setOpenAccordion(categoryData.name);
+          return; // Priority given to explicit category selection
+        }
+      }
+
+      // 2. Fallback: Check if any selected subcategory belongs to a main category
       if (selectedSubCategories.length > 0) {
         for (const [mainCat, subCats] of Object.entries(categoryTree)) {
           if (Object.keys(subCats).some(sc => selectedSubCategories.includes(sc))) {
@@ -657,7 +675,7 @@ const ProductsFilter = React.memo(
         }
       }
 
-      // Check if any selected detail belongs to a main category
+      // 3. Fallback: Check if any selected detail belongs to a main category
       if (selectedDetails.length > 0) {
         for (const [mainCat, subCats] of Object.entries(categoryTree)) {
           for (const [subCat, details] of Object.entries(subCats)) {
@@ -669,7 +687,7 @@ const ProductsFilter = React.memo(
           }
         }
       }
-    }, [categoryTree, selectedSubCategories, selectedDetails]);
+    }, [categoryTree, selectedSubCategories, selectedDetails, selectedCategoryId, categories]);
 
     return (
       <>

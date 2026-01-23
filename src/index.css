@@ -8,41 +8,49 @@
   src: url("/public/assets/fonts/Inter-Black.ttf");
   font-weight: 900;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-Bold.ttf");
   font-weight: 700;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-ExtraBold.ttf");
   font-weight: 800;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-ExtraLight.ttf");
   font-weight: 200;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-Light.ttf");
   font-weight: 300;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-Medium.ttf");
   font-weight: 500;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-Regular.ttf");
   font-weight: 400;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-SemiBold.ttf");
   font-weight: 600;
 }
+
 @font-face {
   font-family: "Inter";
   src: url("/public/assets/fonts/Inter-Thin.ttf");
@@ -100,15 +108,41 @@ body {
 }
 
 /* ========== FONT WEIGHT UTILITIES ========== */
-.font-100 { font-weight: 100; }
-.font-200 { font-weight: 200; }
-.font-300 { font-weight: 300; }
-.font-400 { font-weight: 400; }
-.font-500 { font-weight: 500; }
-.font-600 { font-weight: 600; }
-.font-700 { font-weight: 700; }
-.font-800 { font-weight: 800; }
-.font-900 { font-weight: 900; }
+.font-100 {
+  font-weight: 100;
+}
+
+.font-200 {
+  font-weight: 200;
+}
+
+.font-300 {
+  font-weight: 300;
+}
+
+.font-400 {
+  font-weight: 400;
+}
+
+.font-500 {
+  font-weight: 500;
+}
+
+.font-600 {
+  font-weight: 600;
+}
+
+.font-700 {
+  font-weight: 700;
+}
+
+.font-800 {
+  font-weight: 800;
+}
+
+.font-900 {
+  font-weight: 900;
+}
 
 /* ========== LAYOUT UTILITIES ========== */
 .container-x {
@@ -214,17 +248,32 @@ body {
   scrollbar-width: none;
 }
 
+/* Filter Sidebar - Hide Scrollbar */
+.filter-sidebar-hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.filter-sidebar-hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+
 /* ========== ANIMATIONS ========== */
 .animate-right-dir {
   animation: rightDir 1s infinite;
 }
 
 @keyframes rightDir {
+
   0%,
   100% {
     transform: translatex(-25%);
     animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
   }
+
   50% {
     transform: none;
     animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
@@ -239,6 +288,7 @@ body {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -291,13 +341,14 @@ body {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
-  
+
   .mobile-hidden {
     display: none;
   }
 }
 
 @media (max-width: 768px) {
+
   .category-products .products-section .item:nth-child(3),
   .best-sallers-section .section-content .item:nth-child(3),
   .best-sallers-section .section-content .item:nth-child(4),
@@ -307,13 +358,14 @@ body {
 }
 
 @media (max-width: 1024px) {
+
   .best-sallers-section .section-content .item:nth-child(6),
   .single-product-wrapper .saller-product .item:nth-child(8),
   .single-product-wrapper .saller-product .item:nth-child(7),
   .single-product-wrapper .related-product .item:nth-child(4) {
     display: none;
   }
-  
+
   .tablet-hidden {
     display: none;
   }
@@ -379,7 +431,7 @@ body {
   border-top: 1px solid var(--white-100);
 }
 
-.nav-widget-wrapper .nav ul.nav-wrapper > li {
+.nav-widget-wrapper .nav ul.nav-wrapper>li {
   padding: 20px 0;
 }
 
@@ -429,10 +481,7 @@ body {
 }
 
 /* ========== COMPARE TABLE STYLES ========== */
-.products-compaire-wrapper
-  .table-wrapper
-  .table-row-wrapper
-  .product:last-child {
+.products-compaire-wrapper .table-wrapper .table-row-wrapper .product:last-child {
   border-right: none;
 }
 
@@ -440,12 +489,12 @@ body {
   padding-top: 26px;
 }
 
-.products-compaire-wrapper .table-wrapper .table-row-wrapper:last-child > td {
+.products-compaire-wrapper .table-wrapper .table-row-wrapper:last-child>td {
   padding-bottom: 45px;
 }
 
 /* ========== FEEDBACK SLIDER STYLES ========== */
-.about-page-wrapper .feedback-slider-wrapper .slick-slide > div {
+.about-page-wrapper .feedback-slider-wrapper .slick-slide>div {
   margin: 0 15px;
 }
 
@@ -453,5 +502,3 @@ body {
 .items-wrapper-bank-payment .items li:last-child {
   border-bottom: none;
 }
-
-

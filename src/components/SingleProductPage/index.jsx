@@ -3,22 +3,18 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import BreadcrumbCom from "../BreadcrumbCom";
 import Layout from "../Partials/Layout";
 import ProductView from "./ProductView";
-import { useCart } from "../CartPage/useCart";
 import { productApi } from "../AllProductPage/productApi";
-import { Heart, ShoppingCart, Eye } from "lucide-react";
+import { Heart } from "lucide-react";
 
 export default function SingleProductPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const writeReview = searchParams.get('writeReview') === 'true';
-  const { addItemToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
-  const [addToCartLoading, setAddToCartLoading] = useState({});
-  const [cartNotification, setCartNotification] = useState(null);
 
   const PLACEHOLDER_IMAGE = "/images/placeholder-product.jpg"; 
 
@@ -109,76 +105,7 @@ export default function SingleProductPage() {
   }, [product]);
 
 
-  const handleAddToCart = async (e, prod) => {
-    // Prevent the click event from bubbling up to the parent navigation
-    e.stopPropagation();
-    e.preventDefault();
 
-    // Prevent multiple rapid clicks
-    if (addToCartLoading[prod.id]) {
-      return;
-    }
-
-    setAddToCartLoading(prev => ({ ...prev, [prod.id]: true }));
-
-    try {
-      const cartData = {
-        cartId: 1,
-        productId: prod.id,
-        productColorVariationId: 1,
-        productSizeVariationId: 1,
-        quantity: 1,
-      };
-
-      console.log("Adding related product to cart:", cartData);
-      
-      const result = await addItemToCart(cartData);
-
-      if (result.success) {
-        console.log("Product added to cart successfully", result);
-        
-        // Show success notification
-        setCartNotification({
-          type: 'success',
-          message: `${prod.name} added to cart!`,
-          productId: prod.id
-        });
-
-        // Auto-dismiss notification after 3 seconds
-        setTimeout(() => {
-          setCartNotification(null);
-        }, 3000);
-      } else {
-        console.error("Failed to add product to cart:", result.error);
-        
-        // Show error notification
-        setCartNotification({
-          type: 'error',
-          message: result.error || 'Failed to add item to cart. Please try again.',
-          productId: prod.id
-        });
-
-        setTimeout(() => {
-          setCartNotification(null);
-        }, 3000);
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      
-      // Show error notification
-      setCartNotification({
-        type: 'error',
-        message: 'An error occurred. Please try again.',
-        productId: prod.id
-      });
-
-      setTimeout(() => {
-        setCartNotification(null);
-      }, 3000);
-    } finally {
-      setAddToCartLoading(prev => ({ ...prev, [prod.id]: false }));
-    }
-  };
 
   if (loading) {
     return (
@@ -240,47 +167,7 @@ export default function SingleProductPage() {
   return (
     <Layout childrenClasses="pt-0 pb-0">
       <div className="single-product-wrapper w-full">
-        {/* Cart Notification */}
-        {cartNotification && (
-          <div className={`${
-            cartNotification.type === 'success' 
-              ? 'bg-green-50 border-green-200' 
-              : 'bg-red-50 border-red-200'
-          } fixed top-4 right-4 z-50 p-4 rounded-lg border flex items-center justify-between max-w-sm`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                cartNotification.type === 'success'
-                  ? 'bg-green-100'
-                  : 'bg-red-100'
-              }`}>
-                <span className={`text-sm font-bold ${
-                  cartNotification.type === 'success'
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }`}>
-                  {cartNotification.type === 'success' ? '✓' : '!'}
-                </span>
-              </div>
-              <p className={`text-sm font-medium ${
-                cartNotification.type === 'success'
-                  ? 'text-green-800'
-                  : 'text-red-800'
-              }`}>
-                {cartNotification.message}
-              </p>
-            </div>
-            <button
-              onClick={() => setCartNotification(null)}
-              className={`${
-                cartNotification.type === 'success'
-                  ? 'text-green-800 hover:text-green-900'
-                  : 'text-red-800 hover:text-red-900'
-              }`}
-            >
-              ×
-            </button>
-          </div>
-        )}
+
 
         <div className="product-view-main-wrapper bg-white pt-[30px] w-full">
           <div className="breadcrumb-wrapper w-full">
@@ -304,58 +191,65 @@ export default function SingleProductPage() {
           </div>
         </div>
 
-        {/* Related Products Section - Using your main product card UI */}
+        {/* Related Products Section - Professional E-commerce Design */}
         {relatedProducts.length > 0 && (
-          <div className="related-product w-full bg-white py-8">
+          <div className="related-product w-full bg-gradient-to-b from-gray-50 to-white py-12 sm:py-16">
             <div className="container-x mx-auto">
               <div className="w-full">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-8">
-                  Related Products
-                </h1>
+                {/* Section Header */}
+                <div className="flex items-center justify-between mb-8 sm:mb-10">
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                      You May Also Like
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Similar products from the same category
+                    </p>
+                  </div>
+                </div>
 
                 {relatedLoading ? (
-                  <div className="flex items-center justify-center py-16">
+                  <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-4">
-                      <div className="w-10 h-10 border-4 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-12 h-12 border-4 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
                       <p className="text-gray-600 font-medium">
                         Loading related products...
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 xl:gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {relatedProducts.map((relatedProduct) => (
-                      <div
+                      <Link
                         key={relatedProduct.id}
-                        className="bg-white rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col"
+                        to={`/single-product/${relatedProduct.id}`}
+                        className="group"
                       >
-                        {/* Image Section */}
-                        <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-                          <img
-                            src={relatedProduct.image || PLACEHOLDER_IMAGE}
-                            alt={relatedProduct.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            onError={handleImageError}
-                          />
+                        <div className="bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col h-full">
+                          {/* Image Section */}
+                          <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+                            <img
+                              src={relatedProduct.thumbnailImage ? (relatedProduct.thumbnailImage.startsWith('http') ? relatedProduct.thumbnailImage : `http://luxcycs.com/rabbit-and-finch-uploads/${relatedProduct.thumbnailImage.startsWith('/') ? relatedProduct.thumbnailImage.substring(1) : relatedProduct.thumbnailImage}`) : (relatedProduct.image ? (relatedProduct.image.startsWith('http') ? relatedProduct.image : `http://luxcycs.com/rabbit-and-finch-uploads/${relatedProduct.image.startsWith('/') ? relatedProduct.image.substring(1) : relatedProduct.image}`) : PLACEHOLDER_IMAGE)}
+                              alt={relatedProduct.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              onError={handleImageError}
+                            />
 
-                          <button className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 z-10">
-                            <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 hover:text-red-500 hover:fill-red-500 transition-colors" />
-                          </button>
+                            {/* Discount Badge */}
+                            {relatedProduct.discount > 0 && (
+                              <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg">
+                                {relatedProduct.discount}% OFF
+                              </div>
+                            )}
 
-                          {relatedProduct.discount > 0 && (
-                            <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg">
-                              {relatedProduct.discount}% OFF
-                            </div>
-                          )}
-
-                          {relatedProduct.product_type &&
-                            relatedProduct.discount === 0 && (
-                              <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+                            {/* Product Type Badge */}
+                            {relatedProduct.product_type && relatedProduct.discount === 0 && (
+                              <div className="absolute top-3 left-3">
                                 <span
-                                  className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-lg uppercase text-white shadow-lg ${
                                     relatedProduct.product_type === "popular"
-                                      ? "bg-orange-500"
-                                      : "bg-red-600"
+                                      ? "bg-gradient-to-r from-orange-500 to-orange-600"
+                                      : "bg-gradient-to-r from-blue-500 to-blue-600"
                                   }`}
                                 >
                                   {relatedProduct.product_type}
@@ -363,130 +257,97 @@ export default function SingleProductPage() {
                               </div>
                             )}
 
-                          <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <button
-                                onClick={(e) => handleAddToCart(e, relatedProduct)}
-                                disabled={addToCartLoading[relatedProduct.id]}
-                                className={`flex-1 font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
-                                  addToCartLoading[relatedProduct.id]
-                                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                                    : 'bg-white hover:bg-gray-900 text-gray-800 hover:text-white'
-                                }`}
-                              >
-                                {addToCartLoading[relatedProduct.id] ? (
-                                  <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="hidden sm:inline">Adding...</span>
-                                    <span className="sm:hidden">...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    <span className="hidden sm:inline">
-                                      Add to Cart
-                                    </span>
-                                    <span className="sm:hidden">Add</span>
-                                  </>
-                                )}
-                              </button>
-                              <Link to={`/single-product/${relatedProduct.id}`}>
-                                <button className="bg-white hover:bg-blue-600 text-gray-800 hover:text-white p-2 sm:p-2.5 rounded-lg shadow-lg transition-all duration-300">
-                                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </button>
-                              </Link>
+                            {/* Wishlist Button */}
+                            <button 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Add wishlist logic here
+                              }}
+                              className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Heart className="w-4 h-4 text-gray-700 hover:text-red-500 hover:fill-red-500 transition-colors" />
+                            </button>
+
+                            {/* Quick View Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                              <div className="bg-white text-gray-900 px-6 py-2.5 rounded-full font-semibold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                                View Details →
+                              </div>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Details Section */}
-                        <div className="p-3 sm:p-4 flex flex-col flex-grow">
-                          {/* Category */}
-                          <p className="text-xs text-gray-500 font-medium mb-1 sm:mb-1.5 uppercase">
-                            {String(
-                              relatedProduct.subCategory?.name ||
-                                relatedProduct.category?.name ||
-                                "Category"
-                            )}
-                          </p>
+                          {/* Details Section */}
+                          <div className="p-4 flex flex-col flex-grow">
+                            {/* Category */}
+                            <p className="text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wide">
+                              {String(
+                                relatedProduct.subCategory?.name ||
+                                  relatedProduct.category?.name ||
+                                  "Category"
+                              )}
+                            </p>
 
-                          {/* Product Title */}
-                          <Link to={`/single-product/${relatedProduct.id}`}>
-                            <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1.5 sm:mb-2 group-hover:text-blue-600 transition-colors leading-tight">
+                            {/* Product Title */}
+                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors leading-tight min-h-[2.5rem]">
                               {relatedProduct.name || relatedProduct.title}
                             </h3>
-                          </Link>
 
-                          {/* Rating Section */}
-                          <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-2.5">
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <svg
-                                  key={star}
-                                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                                    star <=
-                                    Math.floor(relatedProduct.review || 0)
-                                      ? "text-yellow-400 fill-current"
-                                      : (relatedProduct.review || 0) % 1 >=
-                                          0.5 &&
-                                        star ===
-                                          Math.ceil(relatedProduct.review || 0)
-                                      ? "text-yellow-400 fill-current"
-                                      : "text-gray-300 fill-current"
-                                  }`}
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
+                            {/* Rating Section */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg
+                                    key={star}
+                                    className={`w-3.5 h-3.5 ${
+                                      star <= Math.floor(relatedProduct.averageRating || 0)
+                                        ? "text-yellow-400 fill-current"
+                                        : "text-gray-300 fill-current"
+                                    }`}
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="text-xs text-gray-600 font-medium">
+                                ({relatedProduct.reviewCount || 0})
+                              </span>
                             </div>
 
-                            <span className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold transition-colors">
-                              {(relatedProduct.review || 0).toFixed(1)}
-                            </span>
-
-                            <span className="text-xs text-gray-600 font-medium">
-                              (
-                              {relatedProduct.reviewCount
-                                ? relatedProduct.reviewCount.toLocaleString()
-                                : "0"}
-                              )
-                            </span>
-                          </div>
-
-                          {/* Price Section */}
-                          <div className="flex items-baseline gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                            <span className="text-lg sm:text-xl font-bold text-gray-900">
-                              {relatedProduct.offer_price ||
-                                relatedProduct.sellingPrice ||
-                                relatedProduct.price}
-                            </span>
-                            {relatedProduct.discount > 0 &&
-                              relatedProduct.price && (
+                            {/* Price Section */}
+                            <div className="flex items-baseline gap-2 mb-2 mt-auto">
+                              <span className="text-xl font-bold text-gray-900">
+                                ₹{relatedProduct.sellingPrice || relatedProduct.offer_price || relatedProduct.price}
+                              </span>
+                              {relatedProduct.discount > 0 && relatedProduct.mrp && (
                                 <>
-                                  <span className="text-xs sm:text-sm text-gray-400 line-through">
-                                    {relatedProduct.price}
+                                  <span className="text-sm text-gray-400 line-through">
+                                    ₹{relatedProduct.mrp}
                                   </span>
                                   <span className="text-xs text-green-600 font-bold">
-                                    {relatedProduct.discount}% off
+                                    Save ₹{relatedProduct.mrp - relatedProduct.sellingPrice}
                                   </span>
                                 </>
                               )}
-                          </div>
+                            </div>
 
-                          {/* Stock Info */}
-                          {relatedProduct.stock > 0 &&
-                            relatedProduct.stock < 30 && (
-                              <p className="text-xs text-orange-600 font-semibold mt-auto">
-                                Only {relatedProduct.stock} left in stock
+                            {/* Stock Info */}
+                            {relatedProduct.stock > 0 && relatedProduct.stock < 10 && (
+                              <p className="text-xs text-orange-600 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse"></span>
+                                Only {relatedProduct.stock} left
                               </p>
                             )}
 
-                          {relatedProduct.stock === 0 && (
-                            <p className="text-xs text-red-600 font-semibold mt-auto">
-                              Out of Stock
-                            </p>
-                          )}
+                            {relatedProduct.stock === 0 && (
+                              <p className="text-xs text-red-600 font-semibold">
+                                Out of Stock
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}

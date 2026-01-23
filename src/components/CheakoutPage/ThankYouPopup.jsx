@@ -68,8 +68,9 @@ export default function ThankYouPopup({
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-black text-sm truncate">{item.product?.name || item.name}</h4>
                       <p className="text-gray-600 text-xs">
-                        {item.productColorVariationId ? `Color: ${item.productColorVariationId}` : ''}
-                        {item.productSizeVariationId ? ` • Size: ${item.productSizeVariationId}` : ''}
+                        {item.colorName || item.productColorId || item.productColorVariationId ? `Color: ${item.colorName || item.productColorId || item.productColorVariationId}` : ''}
+                        {(item.colorName || item.productColorId || item.productColorVariationId) && (item.sizeName || item.productSizeId || item.productSizeVariationId) ? ' • ' : ''}
+                        {item.sizeName || item.productSizeId || item.productSizeVariationId ? `Size: ${item.sizeName || item.productSizeId || item.productSizeVariationId}` : ''}
                       </p>
                       <p className="font-semibold text-black text-sm">
                         ₹{(item.product?.sellingPrice || item.price) * item.quantity}

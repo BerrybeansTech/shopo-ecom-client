@@ -10,12 +10,7 @@ export default function Signup() {
     phone: "",
     fname: "",
     password: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "India",
-    postalCode: ""
+    email: ""
   });
   const [errors, setErrors] = useState({
     phone: "",
@@ -106,12 +101,7 @@ export default function Signup() {
           phone: `+91${formData.phone}`,
           name: formData.fname,
           email: formData.email,
-          password: formData.password,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          country: formData.country,
-          postalCode: formData.postalCode
+          password: formData.password
         };
 
         // Store in sessionStorage for use in VerifyOTP component

@@ -11,7 +11,7 @@ export const API_CONFIG = {
   
   // Public URL for assets (images, etc.)
   // Priority: VITE_PUBLIC_URL env variable > same as BASE_URL
-  PUBLIC_URL: import.meta.env.VITE_PUBLIC_URL || import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501',
+  PUBLIC_URL: 'http://luxcycs.com',
   
   // Request timeout in milliseconds
   TIMEOUT: 30000,

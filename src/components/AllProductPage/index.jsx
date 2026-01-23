@@ -21,6 +21,7 @@ import {
   wishlistEvents,
 } from "../../services/wishlistApi";
 import { useAuth } from "../../components/Auth/hooks/useAuth";
+import { getProductImage } from "../../utils/imageUtils";
 
 export default function AllProductPage() {
   const { isAuthenticated } = useAuth();
@@ -36,6 +37,11 @@ export default function AllProductPage() {
   
   const [wishlistItems, setWishlistItems] = useState(new Set());
   const [wishlistLoading, setWishlistLoading] = useState({});
+  
+  // Product selection state for color and size - INVENTORY-BASED
+  const [productSelections, setProductSelections] = useState({});
+  const [addToCartLoading, setAddToCartLoading] = useState({});
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   // API Products State
   const [apiProducts, setApiProducts] = useState([]);
@@ -48,6 +54,89 @@ export default function AllProductPage() {
     totalPages: 0,
   });
 
+  // ============================================================================
+  // INVENTORY-BASED HELPER FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Extract unique colors from product inventories
+   * Returns array of { id, name, hex } objects
+   */
+  const getUniqueColorsFromInventory = (product) => {
+    if (!product?.inventories || product.inventories.length === 0) {
+      return [];
+    }
+
+    const colorMap = new Map();
+    product.inventories.forEach(inv => {
+      if (inv.productColor && inv.productColor.id) {
+        const colorId = inv.productColor.id;
+        if (!colorMap.has(colorId)) {
+          colorMap.set(colorId, {
+            id: colorId,
+            name: inv.productColor.color,
+            // Normalize color name for display
+            displayName: inv.productColor.color.charAt(0).toUpperCase() + 
+                        inv.productColor.color.slice(1).toLowerCase()
+          });
+        }
+      }
+    });
+
+    return Array.from(colorMap.values());
+  };
+
+  /**
+   * Get available sizes for a specific color
+   * Returns array of size strings that are valid for the selected color
+   */
+  const getAvailableSizesForColor = (product, colorId) => {
+    if (!product?.inventories || !colorId) {
+      return [];
+    }
+
+    const sizes = new Set();
+    product.inventories.forEach(inv => {
+      if (inv.productColor?.id === colorId && inv.productSize?.size) {
+        // Handle size as array or single value
+        const sizeArray = Array.isArray(inv.productSize.size) 
+          ? inv.productSize.size 
+          : [inv.productSize.size];
+        
+        sizeArray.forEach(size => {
+          if (size) sizes.add(size.toString());
+        });
+      }
+    });
+
+    return Array.from(sizes);
+  };
+
+  /**
+   * Find exact inventory row matching color ID and size
+   * Returns the inventory object with all IDs needed for add-to-cart
+   */
+  const findInventoryByColorAndSize = (product, colorId, size) => {
+    if (!product?.inventories || !colorId || !size) {
+      return null;
+    }
+
+    return product.inventories.find(inv => {
+      const colorMatch = inv.productColor?.id === colorId;
+      
+      // Handle size as array or single value
+      const sizeArray = Array.isArray(inv.productSize?.size) 
+        ? inv.productSize.size 
+        : [inv.productSize?.size];
+      
+      const sizeMatch = sizeArray.some(s => 
+        s?.toString().toLowerCase() === size.toLowerCase()
+      );
+
+      return colorMatch && sizeMatch;
+    });
+  };
+
   // Fetch guard to prevent duplicate requests
   const fetchGuardRef = useRef({
     inFlight: false,
@@ -56,6 +145,9 @@ export default function AllProductPage() {
   });
 
   // Filter States - Initialize from URL
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    searchParams.get("categoryId") || null
+  );
   const [selectedSubCategories, setSelectedSubCategories] = useState(
     searchParams.getAll("subCategory") || []
   );
@@ -127,9 +219,11 @@ export default function AllProductPage() {
     console.log('🔧 buildQueryParams called with selectedReviewThresholds:', selectedReviewThresholds);
     console.log('🔧 sortOption:', sortOption);
     console.log('🔧 newArrival:', newArrival);
+    console.log('🔧 selectedCategoryId:', selectedCategoryId);
     
     const params = productUtils.transformFiltersToQueryParams(
       {
+        selectedCategoryId,
         selectedSubCategories,
         selectedDetails,
         priceRange,
@@ -152,6 +246,7 @@ export default function AllProductPage() {
     console.log('🔧 buildQueryParams result:', params);
     return params;
   }, [
+    selectedCategoryId,
     selectedSubCategories,
     selectedDetails,
     priceRange,
@@ -192,6 +287,13 @@ export default function AllProductPage() {
       }
     });
     
+    // CRITICAL FIX: Preserve categoryId from URL if it exists
+    const currentCategoryId = searchParams.get("categoryId");
+    if (currentCategoryId && !newSearchParams.has("categoryId")) {
+      newSearchParams.set("categoryId", currentCategoryId);
+      console.log('🌐 Preserving categoryId in URL:', currentCategoryId);
+    }
+    
     // FIXED: Add sort to URL
     if (sortOption && sortOption !== "default") {
       newSearchParams.set("sort", sortOption);
@@ -204,7 +306,7 @@ export default function AllProductPage() {
     
     console.log('🌐 Final URL search params:', newSearchParams.toString());
     setSearchParams(newSearchParams, { replace: true });
-  }, [buildQueryParams, setSearchParams, sortOption, newArrival]);
+  }, [buildQueryParams, setSearchParams, sortOption, newArrival, searchParams]);
 
   // Initialize product data
   useEffect(() => {
@@ -230,6 +332,14 @@ export default function AllProductPage() {
     const subcategoryId = searchParams.get("subcategoryId");
     const childCategoryId = searchParams.get("childCategoryId");
 
+    // Update selectedCategoryId state only if categoryId exists
+    if (categoryId) {
+      setSelectedCategoryId(categoryId);
+    } else if (!subcategoryId && !childCategoryId) {
+      // Only clear if there are no category-related params at all
+      setSelectedCategoryId(null);
+    }
+
     // If no category params, nothing to do
     if (!categoryId && !subcategoryId && !childCategoryId) return;
 
@@ -242,15 +352,12 @@ export default function AllProductPage() {
       return;
     }
 
-    // If only categoryId is provided, selecting its subcategories to filter by it
+    // If only categoryId is provided, don't auto-select subcategories
+    // The backend API will filter by categoryId, and subcategories will show as available options
     if (categoryId && !subcategoryId && !childCategoryId) {
-      console.log("📍 Setting filters for category:", category.name);
-      
-      const subCategoryNames = category.ProductSubCategories?.map(sc => sc.name) || [];
-      if (subCategoryNames.length > 0) {
-        setSelectedSubCategories(subCategoryNames);
-      }
-      
+      console.log("📍 Category navigation for:", category.name, "- showing all subcategories as filter options");
+      // Don't set any filters - let the backend handle categoryId filtering
+      // and show all subcategories as available (not selected) filter options
     }
 
     // If subcategoryId is provided, set it as filter
@@ -445,6 +552,7 @@ export default function AllProductPage() {
   };
 
   const clearAllFilters = () => {
+    setSelectedCategoryId(null);
     setSelectedSubCategories([]);
     setSelectedDetails([]);
     setPriceRange({ min: 0, max: 10000 });
@@ -455,9 +563,10 @@ export default function AllProductPage() {
     setSelectedReviewThresholds([]);
     setSelectedAvailability([]);
     
-    // Update URL to clear search query
+    // Update URL to clear search query and category
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("name");
+    newParams.delete("categoryId");
     newParams.set("page", "1");
     setSearchParams(newParams);
     
@@ -615,7 +724,7 @@ export default function AllProductPage() {
           ? Math.round(((mrp - sellingPrice) / mrp) * 100)
           : 0;
 
-      const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
+      const productImage = getProductImage(product);
 
       const totalStock =
         product.inventories?.reduce(
@@ -710,7 +819,7 @@ export default function AllProductPage() {
             ? Math.round(((mrp - sellingPrice) / mrp) * 100)
             : 0;
 
-        const productImage = product.thumbnailImage || PLACEHOLDER_IMAGE;
+        const productImage = getProductImage(product);
 
         const totalStock =
           product.inventories?.reduce(
@@ -915,6 +1024,145 @@ export default function AllProductPage() {
   };
 
   const isInWishlist = (productId) => wishlistItems.has(productId);
+  
+  const handleColorSelect = (productId, colorId, colorName) => {
+    // Find the product from API data to access full inventory
+    const product = apiProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    // Get available sizes for this color
+    const availableSizes = getAvailableSizesForColor(product, colorId);
+
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        selectedColorId: colorId,
+        selectedColorName: colorName,
+        selectedSize: null, // Reset size when color changes
+        availableSizes: availableSizes,
+        selectedInventory: null // Reset inventory
+      }
+    }));
+  };
+
+  /**
+   * Handle size selection - finds exact inventory row
+   */
+  const handleSizeSelect = (productId, size) => {
+    const product = apiProducts.find(p => p.id === productId);
+    const currentSelection = productSelections[productId];
+    
+    if (!product || !currentSelection?.selectedColorId) return;
+
+    // Find the exact inventory row for this color+size combination
+    const inventory = findInventoryByColorAndSize(
+      product, 
+      currentSelection.selectedColorId, 
+      size
+    );
+
+    setProductSelections(prev => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        selectedSize: size,
+        selectedInventory: inventory // Store complete inventory object
+      }
+    }));
+  };
+
+  /**
+   * Handle add to cart - uses inventory IDs from selected inventory
+   */
+  const handleAddToCart = async (e, product) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const selections = productSelections[product.id];
+    
+    // Validate that we have a valid inventory selection
+    if (!selections?.selectedInventory) {
+      setCartNotification({
+        type: "error",
+        message: "Please select both color and size"
+      });
+      setTimeout(() => setCartNotification(null), 3000);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    setAddToCartLoading(prev => ({ ...prev, [product.id]: true }));
+
+    try {
+      const inventory = selections.selectedInventory;
+
+      // Validate inventory has required IDs
+      if (!inventory.productColor?.id || !inventory.productSize?.id) {
+        throw new Error("Invalid inventory data");
+      }
+
+      // Use IDs from the selected inventory - NOT color/size names!
+      const result = await addItemToCart({
+        productId: product.id,
+        productColorVariationId: inventory.productColor.id,
+        productSizeVariationId: inventory.productSize.id,
+        quantity: 1
+      });
+
+      if (result.success) {
+        setCartNotification({
+          type: "success",
+          message: `Added ${selections.selectedColorName} ${selections.selectedSize} to cart!`
+        });
+        
+        setTimeout(() => setCartNotification(null), 3000);
+
+        // Refresh cart count if needed
+        if (typeof refreshCart === 'function') {
+          await refreshCart();
+        }
+        
+        // Clear selections after successful add
+        setProductSelections(prev => ({
+          ...prev,
+          [product.id]: {
+            selectedColorId: null,
+            selectedColorName: null,
+            selectedSize: null,
+            availableSizes: [],
+            selectedInventory: null
+          }
+        }));
+
+        // Close quick view modal after successful add
+        if (quickViewProduct?.id === product.id) {
+          setTimeout(() => setQuickViewProduct(null), 1500);
+        }
+      } else {
+        setCartNotification({
+          type: "error",
+          message: result.error || "Failed to add to cart"
+        });
+        setTimeout(() => setCartNotification(null), 3000);
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      setCartNotification({
+        type: "error",
+        message: "Failed to add to cart. Please try again."
+      });
+      setTimeout(() => setCartNotification(null), 3000);
+    } finally {
+      setAddToCartLoading(prev => ({ ...prev, [product.id]: false }));
+    }
+  };
+
+  const { addItemToCart } = useCart();
+  
   const isLoading =
     (productsLoading || filtersLoading) && !productsError && !filtersError;
 
@@ -1010,6 +1258,7 @@ export default function AllProductPage() {
                   setSelectedOccasions={wrappedSetSelectedOccasions}
                   selectedAvailability={selectedAvailability}
                   setSelectedAvailability={wrappedSetSelectedAvailability}
+                  selectedCategoryId={selectedCategoryId}
                   searchQuery={searchQuery}
                   setSearchQuery={handleSearchChange}
                   filterToggle={filterToggle}
@@ -1041,6 +1290,7 @@ export default function AllProductPage() {
                   setSelectedOccasions={wrappedSetSelectedOccasions}
                   selectedAvailability={selectedAvailability}
                   setSelectedAvailability={wrappedSetSelectedAvailability}
+                  selectedCategoryId={selectedCategoryId}
                   searchQuery={searchQuery}
                   setSearchQuery={handleSearchChange}
                   filterToggle={filterToggle}
@@ -1203,14 +1453,11 @@ export default function AllProductPage() {
                           return (
                             <div
                               key={product.id}
-                              className="bg-white rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col relative"
+                              className="bg-white rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col relative"
                             >
-                              <Link
-                                to={`/single-product/${product.id}`}
-                                className="block flex flex-col flex-grow"
-                              >
-                                {/* Image Section */}
-                                <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+                              {/* Image Section */}
+                              <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+                                <Link to={`/single-product/${product.id}`}>
                                   <img
                                     src={product.image}
                                     alt={product.name}
@@ -1219,145 +1466,156 @@ export default function AllProductPage() {
                                       e.target.src = PLACEHOLDER_IMAGE;
                                     }}
                                   />
+                                </Link>
 
-                                  {product.discount > 0 && (
-                                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg">
-                                      {product.discount}% OFF
-                                    </div>
-                                  )}
+                                {product.discount > 0 && (
+                                  <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-green-600 text-white px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-bold shadow-lg z-10">
+                                    {product.discount}% OFF
+                                  </div>
+                                )}
 
-                                  {product.product_type &&
-                                    product.discount === 0 && (
-                                      <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
-                                        <span
-                                          className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
-                                            product.product_type === "popular"
-                                              ? "bg-orange-500"
-                                              : "bg-red-600"
-                                          }`}
-                                        >
-                                          {product.product_type}
-                                        </span>
-                                      </div>
-                                    )}
-                                </div>
-
-                                {/* Details Section */}
-                                <div className="p-3 sm:p-4 flex flex-col flex-grow">
-                                  <p className="text-xs text-gray-500 font-medium mb-1 sm:mb-1.5 uppercase">
-                                    {product.subCategory}
-                                  </p>
-
-                                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1.5 sm:mb-2 group-hover:text-blue-600 transition-colors leading-tight">
-                                    {product.name}
-                                  </h3>
-
-                                  {/* Material Badge */}
-                                  {product.material && (
-                                    <div className="mb-2">
-                                      <span className="inline-block bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded-full border border-gray-300">
-                                        {product.material}
+                                {product.product_type &&
+                                  product.discount === 0 && (
+                                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
+                                      <span
+                                        className={`text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded uppercase text-white shadow-lg ${
+                                          product.product_type === "popular"
+                                            ? "bg-orange-500"
+                                            : "bg-red-600"
+                                        }`}
+                                      >
+                                        {product.product_type}
                                       </span>
                                     </div>
                                   )}
+                              </div>
 
-                                  {/* Rating Section */}
-                                  <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-2.5">
-                                    <div className="flex items-center gap-0.5">
-                                      {[1, 2, 3, 4, 5].map((star) => (
-                                        <svg
-                                          key={star}
-                                          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                                            star <= Math.floor(product.review)
-                                              ? "text-yellow-400 fill-current"
-                                              : product.review % 1 >= 0.5 &&
-                                                star ===
-                                                  Math.ceil(product.review)
-                                              ? "text-yellow-400 fill-current"
-                                              : "text-gray-300 fill-current"
-                                          }`}
-                                          viewBox="0 0 20 20"
-                                        >
-                                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                      ))}
-                                    </div>
+                              {/* Details Section */}
+                              <Link
+                                to={`/single-product/${product.id}`}
+                                className="p-3 sm:p-4 flex flex-col flex-grow"
+                              >
+                                <p className="text-xs text-gray-500 font-medium mb-1 sm:mb-1.5 uppercase">
+                                  {product.subCategory}
+                                </p>
 
-                                    <span className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold transition-colors">
-                                      {product.review.toFixed(1)}
-                                    </span>
+                                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1.5 sm:mb-2 group-hover:text-blue-600 transition-colors leading-tight">
+                                  {product.name}
+                                </h3>
 
-                                    <span className="text-xs text-gray-600 font-medium">
-                                      (
-                                      {product.reviewCount
-                                        ? product.reviewCount.toLocaleString()
-                                        : "0"}
-                                      )
+                                {/* Material Badge */}
+                                {product.material && (
+                                  <div className="mb-2">
+                                    <span className="inline-block bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded-full border border-gray-300">
+                                      {product.material}
                                     </span>
                                   </div>
+                                )}
 
-                                  {/* Price Section */}
-                                  <div className="flex items-baseline gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                                    <span className="text-lg sm:text-xl font-bold text-gray-900">
-                                      {product.offer_price}
-                                    </span>
-                                    {product.discount > 0 && (
-                                      <>
-                                        <span className="text-xs sm:text-sm text-gray-400 line-through">
-                                          {product.price}
-                                        </span>
-                                        <span className="text-xs text-green-600 font-bold">
-                                          {product.discount}% off
-                                        </span>
-                                      </>
-                                    )}
+                                {/* Rating Section */}
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-2.5">
+                                  <div className="flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <svg
+                                        key={star}
+                                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                                          star <= Math.floor(product.review)
+                                            ? "text-yellow-400 fill-current"
+                                            : product.review % 1 >= 0.5 &&
+                                              star ===
+                                                Math.ceil(product.review)
+                                            ? "text-yellow-400 fill-current"
+                                            : "text-gray-300 fill-current"
+                                        }`}
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                      </svg>
+                                    ))}
                                   </div>
 
-                                  {/* Color Indicators */}
-                                  {product.colors && product.colors.length > 0 && (
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                      <span className="text-xs text-gray-500">Colors:</span>
-                                      <div className="flex items-center gap-1">
-                                        {product.colors.slice(0, 3).map((color, idx) => (
+                                  <span className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold transition-colors">
+                                    {product.review.toFixed(1)}
+                                  </span>
+
+                                  <span className="text-xs text-gray-600 font-medium">
+                                    (
+                                    {product.reviewCount
+                                      ? product.reviewCount.toLocaleString()
+                                      : "0"}
+                                    )
+                                  </span>
+                                </div>
+
+                                {/* Price Section */}
+                                <div className="flex items-baseline gap-1.5 sm:gap-2 mb-2">
+                                  <span className="text-lg sm:text-xl font-bold text-gray-900">
+                                    {product.offer_price}
+                                  </span>
+                                  {product.discount > 0 && (
+                                    <>
+                                      <span className="text-xs sm:text-sm text-gray-400 line-through">
+                                        {product.price}
+                                      </span>
+                                      <span className="text-xs text-green-600 font-bold">
+                                        {product.discount}% off
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* Color Indicators (Small Preview) */}
+                                {product.colors && product.colors.length > 0 && (
+                                  <div className="flex items-center gap-1.5 mb-2">
+                                    <span className="text-xs text-gray-500">Colors:</span>
+                                    <div className="flex items-center gap-1">
+                                      {product.colors.slice(0, 4).map((color, idx) => {
+                                        const colorMap = {
+                                          'Red': '#EF4444',
+                                          'Blue': '#3B82F6',
+                                          'Yellow': '#FBBF24',
+                                          'Green': '#10B981',
+                                          'Black': '#000000',
+                                          'White': '#FFFFFF',
+                                          'Grey': '#9CA3AF',
+                                          'Gray': '#9CA3AF',
+                                          'Pink': '#EC4899',
+                                          'Purple': '#A855F7',
+                                          'Orange': '#F97316',
+                                          'Brown': '#92400E'
+                                        };
+                                        return (
                                           <div
                                             key={idx}
                                             className="w-3 h-3 rounded-full border border-gray-300"
                                             style={{
-                                              backgroundColor: 
-                                                color === 'Red' ? '#EF4444' :
-                                                color === 'Blue' ? '#3B82F6' :
-                                                color === 'Yellow' ? '#FBBF24' :
-                                                color === 'Green' ? '#10B981' :
-                                                color === 'Black' ? '#000000' :
-                                                color === 'White' ? '#FFFFFF' :
-                                                color === 'Grey' || color === 'Gray' ? '#9CA3AF' :
-                                                '#E5E7EB'
+                                              backgroundColor: colorMap[color] || '#E5E7EB'
                                             }}
                                             title={color}
                                           />
-                                        ))}
-                                        {product.colors.length > 3 && (
-                                          <span className="text-xs text-gray-400">
-                                            +{product.colors.length - 3} more
-                                          </span>
-                                        )}
-                                      </div>
+                                        );
+                                      })}
+                                      {product.colors.length > 4 && (
+                                        <span className="text-xs text-gray-400">
+                                          +{product.colors.length - 4}
+                                        </span>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
+                                )}
 
-                                  {/* Stock Info */}
-                                  {product.stock > 0 && product.stock < 30 && (
-                                    <p className="text-xs text-orange-600 font-semibold mt-auto">
-                                      Only {product.stock} left in stock
-                                    </p>
-                                  )}
+                                {/* Stock Info */}
+                                {product.stock > 0 && product.stock < 30 && (
+                                  <p className="text-xs text-orange-600 font-semibold mt-auto">
+                                    Only {product.stock} left in stock
+                                  </p>
+                                )}
 
-                                  {product.stock === 0 && (
-                                    <p className="text-xs text-red-600 font-semibold mt-auto">
-                                      Out of Stock
-                                    </p>
-                                  )}
-                                </div>
+                                {product.stock === 0 && (
+                                  <p className="text-xs text-red-600 font-semibold mt-auto">
+                                    Out of Stock
+                                  </p>
+                                )}
                               </Link>
 
                               {/* Wishlist Button */}
@@ -1366,7 +1624,7 @@ export default function AllProductPage() {
                                   handleWishlistToggle(e, product.id)
                                 }
                                 disabled={isLoadingWishlist}
-                                className={`absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md transition-all z-10 ${
+                                className={`absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md transition-all z-30 ${
                                   isWishlisted
                                     ? "bg-red-50 opacity-100"
                                     : "bg-white opacity-0 group-hover:opacity-100"

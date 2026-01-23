@@ -109,7 +109,7 @@ const Navbar = () => {
   }, [categories]);
 
   // Handle search - fetch suggestions for dropdown
-  const handleSearch = async (query) => {
+  const handleSearch = async (query, options = { showDropdown: true }) => {
     setSearchQuery(query);
     if (query.trim() === "") {
       setSearchResults([]);
@@ -121,7 +121,9 @@ const Navbar = () => {
       const response = await productApi.getAll({ name: query, limit: 8 });
       const products = response.data || response;
       setSearchResults(Array.isArray(products) ? products : []);
-      setShowSearchResults(true);
+      if (options.showDropdown) {
+        setShowSearchResults(true);
+      }
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);

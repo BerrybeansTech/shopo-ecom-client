@@ -19,7 +19,10 @@ import {
   Award,
   Package,
   Store,
-  Grid
+  Grid,
+  ShieldCheck,
+  MapPin,
+  Home
 } from "lucide-react";
 
 /**
@@ -142,10 +145,10 @@ export const getCategoryImages = (categoryName = '') => {
  * Profile menu icon mapping
  */
 export const profileIconMap = {
-  dashboard: Grid,
-  home: Store,
-  settings: Package,
-  mappin: Package,
+  dashboard: Home,
+  home: Home,
+  settings: ShieldCheck,
+  mappin: MapPin,
   star: Star,
   heart: Heart,
   award: Award,

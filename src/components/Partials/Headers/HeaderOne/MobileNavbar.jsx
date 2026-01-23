@@ -561,7 +561,7 @@
 
 
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -621,6 +621,9 @@ const MobileNavbar = ({
   const [expandedSubcategory, setExpandedSubcategory] = useState(null);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
+  
+  // Ref for inline search input to handle auto-focus
+  const inlineSearchInputRef = useRef(null);
 
   const isShopPage =
     location.pathname.startsWith("/all-products") ||
@@ -636,7 +639,7 @@ const MobileNavbar = ({
         if (typeof e.detail.query === "string" && isShopPage) {
           setLocalSearchQuery(e.detail.query);
           if (e.detail.query.trim() !== "") {
-            handleSearch(e.detail.query);
+            handleSearch(e.detail.query, { showDropdown: false });
           }
         }
       }
@@ -646,6 +649,16 @@ const MobileNavbar = ({
       window.removeEventListener("active-filters-count-changed", handleSync);
   }, [isShopPage, handleSearch]);
 
+  // Auto-focus inline search input when it opens
+  useEffect(() => {
+    if (showInlineSearch && inlineSearchInputRef.current) {
+      // Small delay to ensure the animation completes
+      setTimeout(() => {
+        inlineSearchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showInlineSearch]);
+
   // Handle filter toggle
   const handleFilterToggle = () => {
     window.dispatchEvent(new CustomEvent("toggle-product-filters"));
@@ -654,15 +667,16 @@ const MobileNavbar = ({
   // Handle shop page search
   const handleShopSearch = (val) => {
     setLocalSearchQuery(val);
-    handleSearch(val);
-    setShowSearchResults(true);
+    handleSearch(val, { showDropdown: true });
   };
 
   // Handle shop search submit (Enter key or button click)
   const handleShopSearchSubmit = () => {
     if (localSearchQuery.trim()) {
-      navigate(`/all-products?name=${encodeURIComponent(localSearchQuery.trim())}`);
+      // Close dropdown first
       setShowSearchResults(false);
+      // Then navigate
+      navigate(`/all-products?name=${encodeURIComponent(localSearchQuery.trim())}`);
     }
   };
 
@@ -678,8 +692,10 @@ const MobileNavbar = ({
   // Handle inline search submit (Enter key)
   const handleInlineSearchSubmit = () => {
     if (searchQuery.trim()) {
+      // Close dropdowns first
       setShowInlineSearch(false);
       setShowSearchResults(false);
+      // Then navigate
       navigate(`/all-products?name=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
     }
@@ -830,8 +846,14 @@ const MobileNavbar = ({
                 {localSearchQuery && (
                   <button
                     onClick={() => {
-                      handleShopSearch("");
+                      // Clear local state
+                      setLocalSearchQuery("");
+                      handleSearch("");
                       setShowSearchResults(false);
+                      // If we're on shop page,navigate to clear URL
+                      if (isShopPage) {
+                        navigate("/all-products");
+                      }
                     }}
                     className="p-1.5 text-gray-400 hover:text-gray-600 active:scale-90 transition-all"
                   >
@@ -866,9 +888,10 @@ const MobileNavbar = ({
                       onMouseDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        const productName = product.name || "";
+                        // Navigate to single product page
+                        const productUrl = getProductUrl(product);
                         setShowSearchResults(false);
-                        navigate(`/all-products?name=${encodeURIComponent(productName)}`);
+                        navigate(productUrl);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 group text-left cursor-pointer"
                     >
@@ -889,7 +912,7 @@ const MobileNavbar = ({
                       e.stopPropagation();
                       handleShopSearchSubmit();
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-gray-200 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 border-t border-gray-200 transition-colors cursor-pointer"
                   >
                     <Search className="w-4 h-4" />
                     View all results for "{localSearchQuery}"
@@ -923,18 +946,19 @@ const MobileNavbar = ({
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="relative">
               <input
+                ref={inlineSearchInputRef}
                 type="text"
                 value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value, { showDropdown: true })}
                 onFocus={() => setShowSearchResults(true)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    e.preventDefault();
                     handleInlineSearchSubmit();
                   }
                 }}
                 placeholder="Search for products..."
                 className="w-full h-11 pl-4 pr-20 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-black transition-all"
-                autoFocus={showInlineSearch}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <button
@@ -975,10 +999,11 @@ const MobileNavbar = ({
                       onMouseDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        const productName = product.name || "";
+                        // Navigate to single product page
+                        const productUrl = getProductUrl(product);
                         setShowInlineSearch(false);
                         setShowSearchResults(false);
-                        navigate(`/all-products?name=${encodeURIComponent(productName)}`);
+                        navigate(productUrl);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 group text-left cursor-pointer"
                     >
@@ -999,7 +1024,7 @@ const MobileNavbar = ({
                       e.stopPropagation();
                       handleInlineSearchSubmit();
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-gray-200 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 border-t border-gray-200 transition-colors cursor-pointer"
                   >
                     <Search className="w-4 h-4" />
                     View all results for "{searchQuery}"

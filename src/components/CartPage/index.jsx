@@ -213,12 +213,6 @@ export default function CartPage() {
                                     {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                   </span>
                                 </p>
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                                  <span>Size: <strong>{product.size || 'S'}</strong></span>
-                                  {/* <span className="text-lg font-semibold text-gray-900">
-                                    Price: {formatINR(sellingPrice)}
-                                  </span> */}
-                                </div>
 
                                 <div className="flex items-center gap-2 mb-4">
                                   <span className="text-2xl font-bold text-gray-900">

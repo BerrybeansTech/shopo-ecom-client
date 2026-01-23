@@ -8,6 +8,8 @@ import ThankYouPopup from './ThankYouPopup';
 import { ordersApi } from './ordersApi';
 import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
+import { addressApi } from '../Auth/addressApi';
+import { colorApi, sizeApi } from '../AllProductPage/productApi';
 
 export default function Checkout() {
   const [step, setStep] = useState(1);
@@ -48,6 +50,8 @@ export default function Checkout() {
   const [apiError, setApiError] = useState(null);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
+  const [allColors, setAllColors] = useState([]);
+  const [allSizes, setAllSizes] = useState([]);
 
   const { 
     items: cartItems, 
@@ -59,43 +63,57 @@ export default function Checkout() {
     isAuthenticated 
   } = useCart();
   
-  const { user, updateProfile, accessToken } = useAuth();
+  const { user, accessToken } = useAuth();
 
-  // Convert customer profile to addresses format
-  const customerToAddresses = (customer) => {
-    if (!customer) return [];
-    
-    const addressMap = new Map();
-
-    // Additional addresses stored in remarks
-    if (customer.remarks) {
-      try {
-        const additionalAddresses = JSON.parse(customer.remarks);
-        if (Array.isArray(additionalAddresses)) {
-          additionalAddresses.forEach((addr) => {
-            const addressId = addr.id || `additional_${Date.now()}_${Math.random()}`;
-            if (!addressMap.has(addressId)) {
-              addressMap.set(addressId, {
-                ...addr,
-                id: addressId,
-                isDefault: addr.isDefault || false
-              });
-            }
-          });
+  // Fetch addresses from API
+  const fetchAddresses = async () => {
+    try {
+      setIsUpdatingAddress(true);
+      const response = await addressApi.getAllAddresses();
+      
+      if (response.success && response.data) {
+        setSavedAddresses(response.data);
+        
+        // Set default addresses if not already set
+        if (!selectedBillingAddress && response.data.length > 0) {
+          // Select first address as default billing
+          setSelectedBillingAddress(response.data[0].id);
         }
-      } catch (e) {
-        console.error('Error parsing remarks:', e);
+        
+        if (!selectedShippingAddress && response.data.length > 0 && !useSameAddress) {
+          // Select first address as default shipping if not using same as billing
+          setSelectedShippingAddress(response.data[0].id);
+        }
+      } else {
+        setSavedAddresses([]);
       }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      setApiError('Failed to load addresses. Please try again.');
+      setSavedAddresses([]);
+    } finally {
+      setIsUpdatingAddress(false);
     }
-
-    return Array.from(addressMap.values());
   };
 
-  // Load addresses from user profile
   useEffect(() => {
     if (user) {
-      const addresses = customerToAddresses(user);
-      setSavedAddresses(addresses);
+      fetchAddresses();
+      
+      // Fetch variations
+      const fetchVariations = async () => {
+        try {
+          const [colorRes, sizeRes] = await Promise.all([
+            colorApi.getAll(),
+            sizeApi.getAll()
+          ]);
+          if (colorRes.success) setAllColors(colorRes.data);
+          if (sizeRes.success) setAllSizes(sizeRes.data);
+        } catch (error) {
+          console.error('Error fetching color/size variations:', error);
+        }
+      };
+      fetchVariations();
       
       // Pre-fill new address forms with user data
       setNewBillingAddress(prev => ({
@@ -109,23 +127,20 @@ export default function Checkout() {
         fullName: user.name || '',
         phone: user.phone || ''
       }));
-      
-      // Set default addresses only if not already set
-      if (!selectedBillingAddress && addresses.length > 0) {
-        const defaultBilling = addresses.find(addr => addr.type === 'billing' && addr.isDefault) || 
-                              addresses.find(addr => addr.type === 'billing') || 
-                              addresses[0];
-        if (defaultBilling) setSelectedBillingAddress(defaultBilling.id);
-      }
-      
-      if (!selectedShippingAddress && addresses.length > 0) {
-        const defaultShipping = addresses.find(addr => addr.type === 'shipping' && addr.isDefault) || 
-                               addresses.find(addr => addr.type === 'shipping') || 
-                               addresses[0];
-        if (defaultShipping) setSelectedShippingAddress(defaultShipping.id);
-      }
     }
   }, [user]);
+
+  const getColorName = (id) => {
+    if (!id) return '';
+    const color = allColors.find(c => c.id === parseInt(id));
+    return color ? color.color : id;
+  };
+
+  const getSizeName = (id) => {
+    if (!id) return '';
+    const size = allSizes.find(s => s.id === parseInt(id));
+    return size ? (Array.isArray(size.size) ? size.size[0] : size.size) : id;
+  };
 
   // Auto-update shipping address when useSameAddress is true
   useEffect(() => {
@@ -150,10 +165,12 @@ export default function Checkout() {
   const formatCartItemsForAPI = () => {
     return cartItems.map(item => ({
       productId: item.productId || item.id,
+      productName: item.product?.name || item.name,
       quantity: item.quantity,
-      price: item.product?.sellingPrice || item.price,
-      productColorVariationId: item.productColorVariationId || null,
-      productSizeVariationId: item.productSizeVariationId || null
+      unitPrice: item.product?.sellingPrice || item.price,
+      totalPrice: (item.product?.sellingPrice || item.price) * item.quantity,
+      productColorId: item.productColorVariationId || null,
+      productSizeId: item.productSizeVariationId || null
     }));
   };
 
@@ -188,70 +205,29 @@ export default function Checkout() {
     setApiError(null);
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      
-      const isDuplicate = currentAddresses.some(addr => 
-        addr.address === newAddress.address &&
-        addr.city === newAddress.city &&
-        addr.pincode === newAddress.pincode &&
-        addr.type === type
-      );
-
-      if (isDuplicate) {
-        setApiError('This address already exists');
-        setIsUpdatingAddress(false);
-        return;
-      }
-
-      const newAddressId = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const newAddressObj = {
-        id: newAddressId,
-        name: newAddress.name || `${type === 'billing' ? 'Billing' : 'Shipping'} Address`,
-        fullName: newAddress.fullName,
-        phone: newAddress.phone,
-        address: newAddress.address,
-        city: newAddress.city,
-        state: newAddress.state,
-        pincode: newAddress.pincode,
-        country: newAddress.country,
-        type: type,
-        isDefault: false
-      };
-
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
-
-      const hasBillingAddress = currentAddresses.some(addr => addr.type === 'billing');
-      if (type === 'billing' && !hasBillingAddress) {
-        updatedCustomer = {
-          ...updatedCustomer,
-          address: newAddressObj.address,
-          city: newAddressObj.city,
-          state: newAddressObj.state,
-          country: newAddressObj.country,
-          postalCode: newAddressObj.pincode
+      // For billing addresses, save to database via API
+      if (type === 'billing') {
+        const createData = {
+          customerId: user.id,
+          address: newAddress.address,
+          city: newAddress.city,
+          state: newAddress.state,
+          country: newAddress.country,
+          postalCode: newAddress.pincode
         };
-        newAddressObj.isDefault = true;
-      }
-
-      const allAddresses = [...currentAddresses, newAddressObj];
-      const additionalAddresses = allAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : user.remarks;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      
-      if (result.success) {
-        const updatedAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(updatedAddresses);
         
-        if (type === 'billing') {
-          setSelectedBillingAddress(newAddressObj.id);
+        const response = await addressApi.createAddress(createData);
+        
+        if (response.success) {
+          // Refresh addresses from API
+          await fetchAddresses();
+          
+          // Select the newly created address
+          if (response.data && response.data.id) {
+            setSelectedBillingAddress(response.data.id);
+          }
+          
+          // Reset form
           setNewBillingAddress({
             name: '',
             fullName: user.name || '',
@@ -264,29 +240,49 @@ export default function Checkout() {
             type: 'billing'
           });
           setShowAddBillingAddress(false);
+          setApiError(null);
         } else {
-          setSelectedShippingAddress(newAddressObj.id);
-          setNewShippingAddress({
-            name: '',
-            fullName: user.name || '',
-            phone: user.phone || '',
-            address: '',
-            city: '',
-            state: '',
-            pincode: '',
-            country: 'India',
-            type: 'shipping'
-          });
-          setShowAddShippingAddress(false);
+          setApiError(response.message || 'Failed to save address');
         }
-        
-        setApiError(null);
       } else {
-        setApiError(result.error || 'Failed to save address');
+        // For shipping addresses, keep as temporary (not saved to database)
+        // Create a temporary address object
+        const tempShippingId = `temp_shipping_${Date.now()}`;
+        const tempShippingAddress = {
+          id: tempShippingId,
+          name: newAddress.name || 'Shipping Address',
+          fullName: newAddress.fullName,
+          phone: newAddress.phone,
+          address: newAddress.address,
+          city: newAddress.city,
+          state: newAddress.state,
+          postalCode: newAddress.pincode,
+          country: newAddress.country,
+          isTemporary: true
+        };
+        
+        // Add to local state only (not saved to database)
+        setSavedAddresses(prev => [...prev, tempShippingAddress]);
+        setSelectedShippingAddress(tempShippingId);
+        
+        // Reset form
+        setNewShippingAddress({
+          name: '',
+          fullName: user.name || '',
+          phone: user.phone || '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+          country: 'India',
+          type: 'shipping'
+        });
+        setShowAddShippingAddress(false);
+        setApiError(null);
       }
     } catch (error) {
       console.error('Save address error:', error);
-      setApiError('Failed to save address. Please try again.');
+      setApiError(error.message || 'Failed to save address. Please try again.');
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -299,114 +295,38 @@ export default function Checkout() {
     setApiError(null);
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      const addressToDelete = currentAddresses.find(addr => addr.id === addressId);
-      const updatedAddresses = currentAddresses.filter(addr => addr.id !== addressId);
+      const addressToDelete = savedAddresses.find(addr => addr.id === addressId);
       
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
-
-      if (addressToDelete?.type === 'billing' && addressToDelete?.isDefault) {
-        const newDefaultBilling = updatedAddresses.find(addr => addr.type === 'billing');
-        if (newDefaultBilling) {
-          updatedCustomer = {
-            ...updatedCustomer,
-            address: newDefaultBilling.address,
-            city: newDefaultBilling.city,
-            state: newDefaultBilling.state,
-            country: newDefaultBilling.country,
-            postalCode: newDefaultBilling.pincode
-          };
-        } else {
-          updatedCustomer = {
-            ...updatedCustomer,
-            address: '',
-            city: '',
-            state: '',
-            country: '',
-            postalCode: ''
-          };
-        }
-      }
-
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : null;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      if (result.success) {
-        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(newAddresses);
+      // Check if it's a temporary shipping address
+      if (addressToDelete?.isTemporary) {
+        // Just remove from local state
+        setSavedAddresses(prev => prev.filter(addr => addr.id !== addressId));
         
-        if (selectedBillingAddress === addressId) {
-          const newBillingAddr = newAddresses.find(addr => addr.type === 'billing');
-          setSelectedBillingAddress(newBillingAddr?.id || null);
-        }
         if (selectedShippingAddress === addressId) {
-          const newShippingAddr = newAddresses.find(addr => addr.type === 'shipping') || 
-                                 newAddresses.find(addr => addr.type === 'billing');
-          setSelectedShippingAddress(newShippingAddr?.id || null);
+          setSelectedShippingAddress(null);
+        }
+      } else {
+        // Delete from database via API
+        const response = await addressApi.deleteAddress(addressId);
+        
+        if (response.success) {
+          // Refresh addresses from API
+          await fetchAddresses();
+          
+          // Clear selection if deleted address was selected
+          if (selectedBillingAddress === addressId) {
+            setSelectedBillingAddress(null);
+          }
+          if (selectedShippingAddress === addressId) {
+            setSelectedShippingAddress(null);
+          }
+        } else {
+          setApiError(response.message || 'Failed to delete address');
         }
       }
     } catch (error) {
       console.error('Delete address error:', error);
-      setApiError('Failed to delete address. Please try again.');
-    } finally {
-      setIsUpdatingAddress(false);
-    }
-  };
-
-  const handleSetDefaultAddress = async (addressId, type) => {
-    const address = savedAddresses.find(addr => addr.id === addressId);
-    if (!address) return;
-
-    setIsUpdatingAddress(true);
-    setApiError(null);
-
-    try {
-      const currentAddresses = customerToAddresses(user);
-      
-      const updatedAddresses = currentAddresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId && addr.type === type
-      }));
-
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
-
-      if (type === 'billing') {
-        updatedCustomer = {
-          ...updatedCustomer,
-          address: address.address,
-          city: address.city,
-          state: address.state,
-          country: address.country,
-          postalCode: address.pincode
-        };
-      }
-
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : null;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      if (result.success) {
-        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(newAddresses);
-      }
-    } catch (error) {
-      console.error('Set default address error:', error);
-      setApiError('Failed to set default address. Please try again.');
+      setApiError(error.message || 'Failed to delete address. Please try again.');
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -456,11 +376,18 @@ export default function Checkout() {
     setApiError(null);
 
     try {
+      // Format addresses for order API
+      const formatAddressForOrder = (addr) => {
+        const customerName = addr.customer?.name || addr.fullName || user.name;
+        const postalCode = addr.postalCode || addr.pincode;
+        return `${customerName}, ${addr.address}, ${addr.city}, ${addr.state} - ${postalCode}`;
+      };
+
       const orderData = {
         customerId: user.id,
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-        billingAddress: `${billingAddressData.fullName}, ${billingAddressData.address}, ${billingAddressData.city}, ${billingAddressData.state} - ${billingAddressData.pincode}`,
-        shippingAddress: `${shippingAddressData.fullName}, ${shippingAddressData.address}, ${shippingAddressData.city}, ${shippingAddressData.state} - ${shippingAddressData.pincode}`,
+        billingAddress: formatAddressForOrder(billingAddressData),
+        shippingAddress: formatAddressForOrder(shippingAddressData),
         subTotal: subtotal,
         tax: Math.round(subtotal * 0.18),
         shippingCharge: shipping,
@@ -478,14 +405,18 @@ export default function Checkout() {
 
         const orderDetailsData = {
           orderId: response.data.id,
-          items: cartItems,
+          items: cartItems.map(item => ({
+            ...item,
+            colorName: getColorName(item.productColorVariationId),
+            sizeName: getSizeName(item.productSizeVariationId)
+          })),
           billingAddress: billingAddressData,
           shippingAddress: shippingAddressData,
           paymentMethod: selectedPayment,
           totalAmount: finalTotal,
           savings: discount + couponDiscount,
           apiResponse: response.data,
-          useSameAddress: useSameAddress // Add this flag for ThankYouPopup
+          useSameAddress: useSameAddress
         };
 
         setOrderDetails(orderDetailsData);
@@ -651,7 +582,7 @@ export default function Checkout() {
                     <div className="p-4 sm:p-6">
                       {step === 1 ? (
                         <div className="space-y-3">
-                          {getAddressesByType('billing').map(addr => (
+                          {savedAddresses.filter(addr => !addr.isTemporary).map(addr => (
                             <div
                               key={addr.id}
                               className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
@@ -666,30 +597,16 @@ export default function Checkout() {
                                   onClick={() => setSelectedBillingAddress(addr.id)}
                                 >
                                   <div className="flex items-center space-x-2 mb-2">
-                                    <span className="font-semibold text-black">{addr.name}</span>
-                                    {addr.isDefault && (
-                                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded">Default Billing</span>
-                                    )}
-                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                                    <span className="font-semibold text-black">
+                                      {addr.customer?.name || user.name}'s Address
+                                    </span>
                                   </div>
-                                  <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                  <p className="text-sm text-black font-medium">{addr.customer?.name || user.name}</p>
                                   <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                                  <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postalCode || addr.pincode}</p>
+                                  <p className="text-sm text-gray-600 mt-1">Mobile: {addr.customer?.email || user.email}</p>
                                 </div>
                                 <div className="flex space-x-2">
-                                  {!addr.isDefault && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSetDefaultAddress(addr.id, 'billing');
-                                      }}
-                                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                                      title="Set as default billing"
-                                    >
-                                      <Check className="w-4 h-4 text-gray-600" />
-                                    </button>
-                                  )}
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -797,28 +714,31 @@ export default function Checkout() {
                         </div>
                       ) : (
                         <div className="p-4 bg-gray-50 rounded-lg">
-                          {savedAddresses.find(a => a.id === selectedBillingAddress) && (
-                            <div>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="font-semibold text-black">
-                                  {savedAddresses.find(a => a.id === selectedBillingAddress).name}
-                                </span>
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                          {savedAddresses.find(a => a.id === selectedBillingAddress) && (() => {
+                            const addr = savedAddresses.find(a => a.id === selectedBillingAddress);
+                            return (
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-semibold text-black">
+                                    {addr.customer?.name || addr.fullName || 'Billing'}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                                </div>
+                                <p className="text-sm font-medium text-black">
+                                  {addr.customer?.name || addr.fullName || user.name}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {addr.address}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Mobile: {addr.customer?.phone || addr.phone || user.phone}
+                                </p>
                               </div>
-                              <p className="text-sm font-medium text-black">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
-                              </p>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -873,7 +793,7 @@ export default function Checkout() {
                             </div>
                           ) : (
                             <>
-                              {getAddressesByType('shipping').map(addr => (
+                              {savedAddresses.map(addr => (
                                 <div
                                   key={addr.id}
                                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
@@ -888,30 +808,21 @@ export default function Checkout() {
                                       onClick={() => setSelectedShippingAddress(addr.id)}
                                     >
                                       <div className="flex items-center space-x-2 mb-2">
-                                        <span className="font-semibold text-black">{addr.name}</span>
-                                        {addr.isDefault && (
-                                          <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded">Default Shipping</span>
+                                        <span className="font-semibold text-black">
+                                          {addr.customer?.name || addr.fullName || user.name}'s Address
+                                        </span>
+                                        {addr.isTemporary && (
+                                          <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded">Temporary</span>
                                         )}
-                                        <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
                                       </div>
-                                      <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                      <p className="text-sm text-black font-medium">{addr.customer?.name || addr.fullName || user.name}</p>
                                       <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                                      <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                                      <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                      <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postalCode || addr.pincode}</p>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {addr.isTemporary ? `Mobile: ${addr.phone}` : `Email: ${addr.customer?.email || user.email}`}
+                                      </p>
                                     </div>
                                     <div className="flex space-x-2">
-                                      {!addr.isDefault && (
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSetDefaultAddress(addr.id, 'shipping');
-                                          }}
-                                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                                          title="Set as default shipping"
-                                        >
-                                          <Check className="w-4 h-4 text-gray-600" />
-                                        </button>
-                                      )}
                                       <button 
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1030,45 +941,53 @@ export default function Checkout() {
                                   Copied from Billing
                                 </span>
                               </div>
-                              {savedAddresses.find(a => a.id === selectedBillingAddress) && (
-                                <div>
-                                  <p className="text-sm font-medium text-black">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
-                                  </p>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
-                                  </p>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
-                                  </p>
+                              {savedAddresses.find(a => a.id === selectedBillingAddress) && (() => {
+                                const addr = savedAddresses.find(a => a.id === selectedBillingAddress);
+                                return (
+                                  <div>
+                                    <p className="text-sm font-medium text-black">
+                                      {addr.customer?.name || addr.fullName || user.name}
+                                    </p>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      {addr.address}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                      {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                    </p>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      Mobile: {addr.customer?.phone || addr.phone || user.phone}
+                                    </p>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (() => {
+                            const addr = savedAddresses.find(a => a.id === selectedShippingAddress);
+                            return (
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-semibold text-black">
+                                    {addr.customer?.name || addr.fullName || user.name}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">
+                                    {addr.isTemporary ? 'Temporary Shipping' : 'Shipping'}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (
-                            <div>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="font-semibold text-black">
-                                  {savedAddresses.find(a => a.id === selectedShippingAddress).name}
-                                </span>
-                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
+                                <p className="text-sm font-medium text-black">
+                                  {addr.customer?.name || addr.fullName || user.name}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {addr.address}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Mobile: {addr.isTemporary ? addr.phone : (addr.customer?.phone || addr.phone || user.phone)}
+                                </p>
                               </div>
-                              <p className="text-sm font-medium text-black">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).fullName}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).address}, {savedAddresses.find(a => a.id === selectedShippingAddress).city}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).state} - {savedAddresses.find(a => a.id === selectedShippingAddress).pincode}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Mobile: {savedAddresses.find(a => a.id === selectedShippingAddress).phone}
-                              </p>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -1247,8 +1166,9 @@ export default function Checkout() {
                               {product?.name || "Product"}
                             </h4>
                             <p className="text-xs text-gray-600 mt-1">
-                              {item.productColorVariationId ? `Color: ${item.productColorVariationId}` : ''} 
-                              {item.productSizeVariationId ? ` | Size: ${item.productSizeVariationId}` : ''}
+                              {item.productColorVariationId ? `Color: ${getColorName(item.productColorVariationId)}` : ''} 
+                              {item.productColorVariationId && item.productSizeVariationId ? ' | ' : ''}
+                              {item.productSizeVariationId ? `Size: ${getSizeName(item.productSizeVariationId)}` : ''}
                             </p>
                             <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                           </div>

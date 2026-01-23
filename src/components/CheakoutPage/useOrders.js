@@ -2,12 +2,46 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ordersApi } from '../CheakoutPage/ordersApi';
 import { useAuth } from '../Auth/hooks/useAuth';
+import { colorApi, sizeApi } from '../AllProductPage/productApi';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user, isAuthenticated } = useAuth();
+  const [allColors, setAllColors] = useState([]);
+  const [allSizes, setAllSizes] = useState([]);
+
+  // Fetch variations
+  useEffect(() => {
+    const fetchVariations = async () => {
+      try {
+        const [colorRes, sizeRes] = await Promise.all([
+          colorApi.getAll(),
+          sizeApi.getAll()
+        ]);
+        if (colorRes.success) setAllColors(colorRes.data);
+        if (sizeRes.success) setAllSizes(sizeRes.data);
+      } catch (error) {
+        console.error('Error fetching color/size variations:', error);
+      }
+    };
+    fetchVariations();
+  }, []);
+
+  const getColorName = useCallback((id) => {
+    if (!id) return 'Default';
+    if (isNaN(id)) return id; // Already a name
+    const color = allColors.find(c => c.id === parseInt(id));
+    return color ? color.color : id;
+  }, [allColors]);
+
+  const getSizeName = useCallback((id) => {
+    if (!id) return 'Standard';
+    if (isNaN(id)) return id; // Already a name
+    const size = allSizes.find(s => s.id === parseInt(id));
+    return size ? (Array.isArray(size.size) ? size.size[0] : size.size) : id;
+  }, [allSizes]);
 
   // Status mapping for display
   const statusDisplayMap = {
@@ -29,11 +63,11 @@ export const useOrders = () => {
 
     // Get order status for display
     const displayStatus = statusDisplayMap[apiOrder.status] || apiOrder.status;
-    
+
     // Determine if order can be reviewed
     // Only delivered/complete orders with unreviewed items can be reviewed
-    const canReview = (apiOrder.status === 'delivered' || apiOrder.status === 'complete') && 
-                     apiOrder.OrderItems?.some(item => !item.isReviewed);
+    const canReview = (apiOrder.status === 'delivered' || apiOrder.status === 'complete') &&
+      apiOrder.OrderItems?.some(item => !item.isReviewed);
 
     return {
       id: apiOrder.id,
@@ -50,7 +84,7 @@ export const useOrders = () => {
       paymentStatus: apiOrder.paymentStatus || 'pending',
       customerName: apiOrder.Customer?.name || 'Customer',
       orderNote: apiOrder.orderNote || '',
-      
+
       // Build fully-qualified thumbnail URLs
       items: apiOrder.OrderItems?.map(item => {
         const rawThumb = item.Product?.thumbnailImage || '';
@@ -69,8 +103,8 @@ export const useOrders = () => {
           name: item.Product?.name || 'Product',
           price: `₹${item.unitPrice || item.totalPrice || 0}`,
           quantity: item.quantity,
-          color: item.color || 'Default',
-          size: item.size || 'Standard',
+          color: getColorName(item.productColorId || item.productColorVariationId || item.color),
+          size: getSizeName(item.productSizeId || item.productSizeVariationId || item.size),
           thumbnail,
           productId: item.productId,
           orderItemId: item.id,
@@ -78,7 +112,7 @@ export const useOrders = () => {
           canReview: !item.isReviewed && (apiOrder.status === 'delivered' || apiOrder.status === 'complete')
         };
       }) || [],
-      
+
       shippingAddress: apiOrder.shippingAddress || 'Address not available',
       deliveryDate: deliveryDate.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -104,7 +138,7 @@ export const useOrders = () => {
         })
       }
     };
-  }, []);
+  }, [getColorName, getSizeName]);
 
   // Load orders from API
   const loadOrders = useCallback(async (filters = {}) => {
@@ -118,7 +152,7 @@ export const useOrders = () => {
 
     try {
       const response = await ordersApi.getCustomerOrders(user.id, filters);
-      
+
       if (response.success) {
         const formattedOrders = response.data.map(formatOrderFromAPI);
         setOrders(formattedOrders);
@@ -139,17 +173,17 @@ export const useOrders = () => {
 
     try {
       const response = await ordersApi.cancelOrder(orderId);
-      
+
       if (response.success) {
         // Update local state to reflect cancelled status
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
-            ? { 
-                ...order, 
-                status: 'cancelled',
-                displayStatus: 'Cancelled',
-                canCancel: false 
-              }
+        setOrders(prev => prev.map(order =>
+          order.id === orderId
+            ? {
+              ...order,
+              status: 'cancelled',
+              displayStatus: 'Cancelled',
+              canCancel: false
+            }
             : order
         ));
         return { success: true, message: response.message || 'Order cancelled successfully' };
@@ -167,7 +201,7 @@ export const useOrders = () => {
 
   // Get current orders (not delivered, complete, cancelled, or returned)
   const getCurrentOrders = useCallback(() => {
-    return orders.filter(order => 
+    return orders.filter(order =>
       !['delivered', 'complete', 'cancelled', 'returned'].includes(order.status.toLowerCase())
     );
   }, [orders]);
@@ -194,12 +228,12 @@ export const useOrders = () => {
     orders,
     loading,
     error,
-    
+
     // Actions
     loadOrders,
     cancelOrder,
     dismissError,
-    
+
     // Computed values
     currentOrders: getCurrentOrders(),
     getOrdersByStatus,
