@@ -9,7 +9,10 @@ import * as yup from "yup";
 // ✅ Validation Schema
 const emailSchema = yup.object({
   name: yup.string().required("Name is required").min(2, "Min 2 characters"),
-  email: yup.string().required("Email is required").email("Invalid email"),
+  email: yup
+    .string()
+    .required("Email is required")
+    .matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, "Invalid email address"),
   phone: yup
     .string()
     .required("Phone is required")
@@ -167,38 +170,62 @@ export default function Contact() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    {...register("name")}
-                    className="w-full h-12 px-4 border border-gray-300 rounded-md focus:border-black focus:outline-none"
-                  />
-                  {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+                  <div className="flex flex-col space-y-1">
+                    <input
+                      type="text"
+                      placeholder="Full Name"
+                      {...register("name")}
+                      className={`w-full h-12 px-4 border rounded-md focus:outline-none transition-colors ${
+                        errors.name 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-gray-300 focus:border-black"
+                      }`}
+                    />
+                    {errors.name && <p className="text-red-500 text-xs px-1">{errors.name.message}</p>}
+                  </div>
 
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    {...register("email")}
-                    className="w-full h-12 px-4 border border-gray-300 rounded-md focus:border-black focus:outline-none"
-                  />
-                  {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
+                  <div className="flex flex-col space-y-1">
+                    <input
+                      type="email"
+                      placeholder="Email Address"
+                      {...register("email")}
+                      className={`w-full h-12 px-4 border rounded-md focus:outline-none transition-colors ${
+                        errors.email 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-gray-300 focus:border-black"
+                      }`}
+                    />
+                    {errors.email && <p className="text-red-500 text-xs px-1">{errors.email.message}</p>}
+                  </div>
 
-                  <input
-                    type="tel"
-                    placeholder="Phone Number"
-                    maxLength={10}
-                    {...register("phone")}
-                    className="w-full h-12 px-4 border border-gray-300 rounded-md focus:border-black focus:outline-none"
-                  />
-                  {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
+                  <div className="flex flex-col space-y-1">
+                    <input
+                      type="tel"
+                      placeholder="Phone Number"
+                      maxLength={10}
+                      {...register("phone")}
+                      className={`w-full h-12 px-4 border rounded-md focus:outline-none transition-colors ${
+                        errors.phone 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-gray-300 focus:border-black"
+                      }`}
+                    />
+                    {errors.phone && <p className="text-red-500 text-xs px-1">{errors.phone.message}</p>}
+                  </div>
 
-                  <textarea
-                    placeholder="Your Message"
-                    {...register("message")}
-                    rows={4}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:border-black focus:outline-none resize-none"
-                  />
-                  {errors.message && <p className="text-red-500 text-xs">{errors.message.message}</p>}
+                  <div className="flex flex-col space-y-1">
+                    <textarea
+                      placeholder="Your Message"
+                      {...register("message")}
+                      rows={4}
+                      className={`w-full p-3 border rounded-md focus:outline-none resize-none transition-colors ${
+                        errors.message 
+                        ? "border-red-500 focus:border-red-500" 
+                        : "border-gray-300 focus:border-black"
+                      }`}
+                    />
+                    {errors.message && <p className="text-red-500 text-xs px-1">{errors.message.message}</p>}
+                  </div>
 
                   <button
                     type="submit"

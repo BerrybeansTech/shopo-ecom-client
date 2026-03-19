@@ -2,11 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, MapPin, Plus, CreditCard, Wallet, Smartphone, Package, Shield, Clock, Edit2, Trash2, Check, Truck, Home, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getProductImage } from '../../utils/imageUtils';
 import Layout from '../Partials/Layout';
 import ThankYouPopup from './ThankYouPopup';
 import { ordersApi } from './ordersApi';
 import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
+import { addressApi } from '../Auth/addressApi';
+import { colorApi, sizeApi } from '../AllProductPage/productApi';
 
 export default function Checkout() {
   const [step, setStep] = useState(1);
@@ -47,84 +50,90 @@ export default function Checkout() {
   const [apiError, setApiError] = useState(null);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
+  const [allColors, setAllColors] = useState([]);
+  const [allSizes, setAllSizes] = useState([]);
+  const [billingSuggestions, setBillingSuggestions] = useState([]);
+  const [shippingSuggestions, setShippingSuggestions] = useState([]);
+  const [billingErrors, setBillingErrors] = useState({});
+  const [shippingErrors, setShippingErrors] = useState({});
+  const [selectedExistingBillingAddress, setSelectedExistingBillingAddress] = useState(null);
+  const [selectedExistingShippingAddress, setSelectedExistingShippingAddress] = useState(null);
 
-  const { 
-    items: cartItems, 
-    subtotal, 
-    discount, 
-    total, 
+  const {
+    items: cartItems,
+    subtotal,
+    discount,
+    total,
     clearCartAfterSuccessfulOrder,
     formatINR,
-    isAuthenticated 
+    isAuthenticated
   } = useCart();
-  
-  const { user, updateProfile, accessToken } = useAuth();
 
-  // Convert customer profile to addresses format
-  const customerToAddresses = (customer) => {
-    if (!customer) return [];
-    
-    const addressMap = new Map();
+  const { user, accessToken } = useAuth();
 
-    // Additional addresses stored in remarks
-    if (customer.remarks) {
-      try {
-        const additionalAddresses = JSON.parse(customer.remarks);
-        if (Array.isArray(additionalAddresses)) {
-          additionalAddresses.forEach((addr) => {
-            const addressId = addr.id || `additional_${Date.now()}_${Math.random()}`;
-            if (!addressMap.has(addressId)) {
-              addressMap.set(addressId, {
-                ...addr,
-                id: addressId,
-                isDefault: addr.isDefault || false
-              });
-            }
-          });
+  // Fetch addresses from API
+  const fetchAddresses = async () => {
+    try {
+      setIsUpdatingAddress(true);
+      const response = await addressApi.getAllAddresses();
+
+      if (response.success && response.data) {
+        setSavedAddresses(response.data);
+
+        // Set default addresses if not already set
+        if (!selectedBillingAddress && response.data.length > 0) {
+          const defaultAddr = response.data.find(addr => addr.isDefault);
+          setSelectedBillingAddress(defaultAddr ? defaultAddr.id : response.data[0].id);
         }
-      } catch (e) {
-        console.error('Error parsing remarks:', e);
-      }
-    }
 
-    return Array.from(addressMap.values());
+        if (!selectedShippingAddress && response.data.length > 0 && !useSameAddress) {
+          const defaultAddr = response.data.find(addr => addr.isDefault);
+          setSelectedShippingAddress(defaultAddr ? defaultAddr.id : response.data[0].id);
+        }
+      } else {
+        setSavedAddresses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      setApiError('Failed to load addresses. Please try again.');
+      setSavedAddresses([]);
+    } finally {
+      setIsUpdatingAddress(false);
+    }
   };
 
-  // Load addresses from user profile
   useEffect(() => {
     if (user) {
-      const addresses = customerToAddresses(user);
-      setSavedAddresses(addresses);
-      
-      // Pre-fill new address forms with user data
-      setNewBillingAddress(prev => ({
-        ...prev,
-        fullName: user.name || '',
-        phone: user.phone || ''
-      }));
-      
-      setNewShippingAddress(prev => ({
-        ...prev,
-        fullName: user.name || '',
-        phone: user.phone || ''
-      }));
-      
-      // Set default addresses only if not already set
-      if (!selectedBillingAddress && addresses.length > 0) {
-        const defaultBilling = addresses.find(addr => addr.type === 'billing' && addr.isDefault) || 
-                              addresses.find(addr => addr.type === 'billing') || 
-                              addresses[0];
-        if (defaultBilling) setSelectedBillingAddress(defaultBilling.id);
-      }
-      
-      if (!selectedShippingAddress && addresses.length > 0) {
-        const defaultShipping = addresses.find(addr => addr.type === 'shipping' && addr.isDefault) || 
-                               addresses.find(addr => addr.type === 'shipping') || 
-                               addresses[0];
-        if (defaultShipping) setSelectedShippingAddress(defaultShipping.id);
-      }
+      fetchAddresses();
+
+      // Fetch variations
+      const fetchVariations = async () => {
+        try {
+          const [colorRes, sizeRes] = await Promise.all([
+            colorApi.getAll(),
+            sizeApi.getAll()
+          ]);
+          if (colorRes.success) setAllColors(colorRes.data);
+          if (sizeRes.success) setAllSizes(sizeRes.data);
+        } catch (error) {
+          console.error('Error fetching color/size variations:', error);
+        }
+      };
+      fetchVariations();
     }
   }, [user]);
+
+  const getColorName = (id) => {
+    if (!id) return '';
+    const color = allColors.find(c => c.id === parseInt(id));
+    return color ? color.color : id;
+  };
+
+  const getSizeName = (id) => {
+    if (!id) return '';
+    const size = allSizes.find(s => s.id === parseInt(id));
+    return size ? (Array.isArray(size.size) ? size.size[0] : size.size) : id;
+  };
 
   // Auto-update shipping address when useSameAddress is true
   useEffect(() => {
@@ -149,143 +158,303 @@ export default function Checkout() {
   const formatCartItemsForAPI = () => {
     return cartItems.map(item => ({
       productId: item.productId || item.id,
+      productName: item.product?.name || item.name,
       quantity: item.quantity,
-      price: item.product?.sellingPrice || item.price,
-      productColorVariationId: item.productColorVariationId || null,
-      productSizeVariationId: item.productSizeVariationId || null
+      unitPrice: item.product?.sellingPrice || item.price,
+      totalPrice: (item.product?.sellingPrice || item.price) * item.quantity,
+      productColorId: item.productColorVariationId || null,
+      productSizeId: item.productSizeVariationId || null
     }));
   };
 
   const handleNewAddressChange = (type, field, value) => {
+    let newValue = value;
+    if (field === 'phone') {
+      newValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+    if (field === 'pincode') {
+      newValue = value.replace(/\D/g, '').slice(0, 6);
+    }
+
     if (type === 'billing') {
-      setNewBillingAddress(prev => ({ ...prev, [field]: value }));
+      const updated = { ...newBillingAddress, [field]: newValue };
+      setNewBillingAddress(updated);
+      setSelectedExistingBillingAddress(null); // Clear selected if anything changes
+      
+      // Clear error for this field when user starts typing
+      if (billingErrors[field]) {
+        setBillingErrors(prev => {
+          const newErrs = { ...prev };
+          delete newErrs[field];
+          return newErrs;
+        });
+      }
+
+      // Update suggestions
+      if (['name', 'fullName', 'address'].includes(field)) {
+        if (value.length >= 2) {
+          const suggestions = savedAddresses.filter(addr =>
+            (addr.name && addr.name.toLowerCase().includes(value.toLowerCase())) ||
+            (addr.fullName && addr.fullName.toLowerCase().includes(value.toLowerCase())) ||
+            (addr.address && addr.address.toLowerCase().includes(value.toLowerCase()))
+          );
+          setBillingSuggestions(suggestions);
+        } else {
+          setBillingSuggestions([]);
+        }
+      }
     } else {
-      setNewShippingAddress(prev => ({ ...prev, [field]: value }));
+      const updated = { ...newShippingAddress, [field]: newValue };
+      setNewShippingAddress(updated);
+      setSelectedExistingShippingAddress(null); // Clear selected if anything changes
+
+      // Clear error for this field when user starts typing
+      if (shippingErrors[field]) {
+        setShippingErrors(prev => {
+          const newErrs = { ...prev };
+          delete newErrs[field];
+          return newErrs;
+        });
+      }
+
+      // Update suggestions
+      if (['name', 'fullName', 'address'].includes(field)) {
+        if (value.length >= 2) {
+          const suggestions = savedAddresses.filter(addr =>
+            (addr.name && addr.name.toLowerCase().includes(value.toLowerCase())) ||
+            (addr.fullName && addr.fullName.toLowerCase().includes(value.toLowerCase())) ||
+            (addr.address && addr.address.toLowerCase().includes(value.toLowerCase()))
+          );
+          setShippingSuggestions(suggestions);
+        } else {
+          setShippingSuggestions([]);
+        }
+      }
+    }
+  };
+
+  const validateAddress = (type) => {
+    const address = type === 'billing' ? newBillingAddress : newShippingAddress;
+    const errors = {};
+
+    if (!address.fullName || address.fullName.trim().length < 3) {
+      errors.fullName = 'Full Name is required (min 3 characters)';
+    }
+    
+    if (!address.phone) {
+      errors.phone = 'Mobile number is required';
+    } else if (!/^\d{10}$/.test(address.phone)) {
+      errors.phone = 'Please enter a valid 10-digit mobile number';
+    }
+
+    if (!address.address || address.address.trim().length < 5) {
+      errors.address = 'Detailed address is required';
+    }
+
+    if (!address.city || address.city.trim() === '') {
+      errors.city = 'City is required';
+    }
+
+    if (!address.state || address.state.trim() === '') {
+      errors.state = 'State is required';
+    }
+
+    if (!address.pincode) {
+      errors.pincode = 'Pincode is required';
+    } else if (!/^\d{6}$/.test(address.pincode)) {
+      errors.pincode = 'Please enter a valid 6-digit pincode';
+    }
+
+    if (type === 'billing') {
+      setBillingErrors(errors);
+    } else {
+      setShippingErrors(errors);
+    }
+
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSelectSuggestion = (type, addr) => {
+    if (type === 'billing') {
+      setNewBillingAddress({
+        name: addr.name || '',
+        fullName: addr.fullName || addr.customer?.name || '',
+        phone: addr.phone || addr.customer?.phone || '',
+        address: addr.address || '',
+        city: addr.city || '',
+        state: addr.state || '',
+        pincode: addr.postalCode || addr.pincode || '',
+        country: addr.country || 'India',
+        type: 'billing'
+      });
+      setSelectedExistingBillingAddress(addr);
+      setBillingSuggestions([]);
+      setBillingErrors({});
+    } else {
+      setNewShippingAddress({
+        name: addr.name || '',
+        fullName: addr.fullName || addr.customer?.name || '',
+        phone: addr.phone || addr.customer?.phone || '',
+        address: addr.address || '',
+        city: addr.city || '',
+        state: addr.state || '',
+        pincode: addr.postalCode || addr.pincode || '',
+        country: addr.country || 'India',
+        type: 'shipping'
+      });
+      setSelectedExistingShippingAddress(addr);
+      setShippingSuggestions([]);
+      setShippingErrors({});
+    }
+  };
+
+  const handleContinueWithExisting = async (type) => {
+    const existingAddr = type === 'billing' ? selectedExistingBillingAddress : selectedExistingShippingAddress;
+    if (!existingAddr) return;
+
+    setIsUpdatingAddress(true);
+    try {
+      // Set as default so it appears in single-address view
+      await addressApi.setDefaultAddress({
+        ...existingAddr,
+        isDefault: true
+      });
+      await fetchAddresses();
+
+      if (type === 'billing') {
+        setSelectedBillingAddress(existingAddr.id);
+        setShowAddBillingAddress(false);
+        setSelectedExistingBillingAddress(null);
+      } else {
+        setSelectedShippingAddress(existingAddr.id);
+        setShowAddShippingAddress(false);
+        setUseSameAddress(false);
+        setSelectedExistingShippingAddress(null);
+      }
+    } catch (error) {
+      console.error('Failed to select existing address:', error);
+      setApiError('Failed to select the existing address.');
+    } finally {
+      setIsUpdatingAddress(false);
     }
   };
 
   const handleSaveNewAddress = async (type) => {
+    if (!validateAddress(type)) {
+      setApiError('Please fix the errors in the form');
+      return;
+    }
+
     const newAddress = type === 'billing' ? newBillingAddress : newShippingAddress;
-    
-    if (!newAddress.pincode || !newAddress.fullName || !newAddress.phone || 
-        !newAddress.address || !newAddress.city || !newAddress.state) {
-      setApiError('Please fill all required fields');
-      return;
-    }
 
-    if (!/^\d{10}$/.test(newAddress.phone)) {
-      setApiError('Please enter a valid 10-digit phone number');
-      return;
-    }
+    // Problem 1: Duplicate address check
+    const duplicate = savedAddresses.find(addr =>
+      addr.address.toLowerCase().trim() === newAddress.address.toLowerCase().trim() &&
+      addr.city.toLowerCase().trim() === newAddress.city.toLowerCase().trim() &&
+      addr.state.toLowerCase().trim() === newAddress.state.toLowerCase().trim() &&
+      (addr.postalCode || addr.pincode) === newAddress.pincode
+    );
 
-    if (!/^\d{6}$/.test(newAddress.pincode)) {
-      setApiError('Please enter a valid 6-digit pincode');
-      return;
+    if (duplicate) {
+      if (window.confirm('This address already exists. Would you like to use it?')) {
+        try {
+          setIsUpdatingAddress(true);
+          // Set as default so it appears in the single-address view
+          await addressApi.setDefaultAddress({
+            ...duplicate,
+            isDefault: true
+          });
+          await fetchAddresses();
+
+          if (type === 'billing') {
+            setSelectedBillingAddress(duplicate.id);
+            setShowAddBillingAddress(false);
+          } else {
+            setSelectedShippingAddress(duplicate.id);
+            setShowAddShippingAddress(false);
+            setUseSameAddress(false);
+          }
+        } catch (error) {
+          console.error('Failed to set existing address as default:', error);
+          setApiError('Failed to select the existing address.');
+        } finally {
+          setIsUpdatingAddress(false);
+        }
+        return;
+      }
     }
 
     setIsUpdatingAddress(true);
     setApiError(null);
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      
-      const isDuplicate = currentAddresses.some(addr => 
-        addr.address === newAddress.address &&
-        addr.city === newAddress.city &&
-        addr.pincode === newAddress.pincode &&
-        addr.type === type
-      );
-
-      if (isDuplicate) {
-        setApiError('This address already exists');
-        setIsUpdatingAddress(false);
-        return;
-      }
-
-      const newAddressId = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const newAddressObj = {
-        id: newAddressId,
-        name: newAddress.name || `${type === 'billing' ? 'Billing' : 'Shipping'} Address`,
-        fullName: newAddress.fullName,
+      // Both billing and shipping addresses should be saved to database
+      const createData = {
+        customerId: user.id,
+        name: newAddress.fullName,
         phone: newAddress.phone,
         address: newAddress.address,
         city: newAddress.city,
         state: newAddress.state,
-        pincode: newAddress.pincode,
         country: newAddress.country,
-        type: type,
-        isDefault: false
+        postalCode: newAddress.pincode,
+        isDefault: true // Always set as default as we only display default address
       };
 
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
+      const response = await addressApi.createAddress(createData);
 
-      const hasBillingAddress = currentAddresses.some(addr => addr.type === 'billing');
-      if (type === 'billing' && !hasBillingAddress) {
-        updatedCustomer = {
-          ...updatedCustomer,
-          address: newAddressObj.address,
-          city: newAddressObj.city,
-          state: newAddressObj.state,
-          country: newAddressObj.country,
-          postalCode: newAddressObj.pincode
-        };
-        newAddressObj.isDefault = true;
-      }
-
-      const allAddresses = [...currentAddresses, newAddressObj];
-      const additionalAddresses = allAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : user.remarks;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      
-      if (result.success) {
-        const updatedAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(updatedAddresses);
-        
-        if (type === 'billing') {
-          setSelectedBillingAddress(newAddressObj.id);
-          setNewBillingAddress({
-            name: '',
-            fullName: user.name || '',
-            phone: user.phone || '',
-            address: '',
-            city: '',
-            state: '',
-            pincode: '',
-            country: 'India',
-            type: 'billing'
-          });
-          setShowAddBillingAddress(false);
-        } else {
-          setSelectedShippingAddress(newAddressObj.id);
-          setNewShippingAddress({
-            name: '',
-            fullName: user.name || '',
-            phone: user.phone || '',
-            address: '',
-            city: '',
-            state: '',
-            pincode: '',
-            country: 'India',
-            type: 'shipping'
-          });
-          setShowAddShippingAddress(false);
+      if (response.success) {
+        // If it's successful, set it as default via a separate update call
+        if (response.data && response.data.id) {
+          try {
+            await addressApi.setDefaultAddress({
+              ...response.data,
+              isDefault: true
+            });
+          } catch (e) {
+            console.error('Failed to set as default:', e);
+          }
         }
-        
+
+        // Refresh addresses from API
+        await fetchAddresses();
+
+        // Select the newly created address
+        if (response.data && response.data.id) {
+          if (type === 'billing') {
+            setSelectedBillingAddress(response.data.id);
+            // Reset billing form
+            setNewBillingAddress(prev => ({
+              ...prev,
+              name: '',
+              address: '',
+              city: '',
+              state: '',
+              pincode: '',
+            }));
+            setShowAddBillingAddress(false);
+          } else {
+            setSelectedShippingAddress(response.data.id);
+            setUseSameAddress(false);
+            // Reset shipping form
+            setNewShippingAddress(prev => ({
+              ...prev,
+              name: '',
+              address: '',
+              city: '',
+              state: '',
+              pincode: '',
+            }));
+            setShowAddShippingAddress(false);
+          }
+        }
         setApiError(null);
       } else {
-        setApiError(result.error || 'Failed to save address');
+        setApiError(response.message || `Failed to save ${type} address`);
       }
     } catch (error) {
       console.error('Save address error:', error);
-      setApiError('Failed to save address. Please try again.');
+      setApiError(error.message || 'Failed to save address. Please try again.');
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -298,114 +467,26 @@ export default function Checkout() {
     setApiError(null);
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      const addressToDelete = currentAddresses.find(addr => addr.id === addressId);
-      const updatedAddresses = currentAddresses.filter(addr => addr.id !== addressId);
-      
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
+      // Delete from database via API
+      const response = await addressApi.deleteAddress(addressId);
 
-      if (addressToDelete?.type === 'billing' && addressToDelete?.isDefault) {
-        const newDefaultBilling = updatedAddresses.find(addr => addr.type === 'billing');
-        if (newDefaultBilling) {
-          updatedCustomer = {
-            ...updatedCustomer,
-            address: newDefaultBilling.address,
-            city: newDefaultBilling.city,
-            state: newDefaultBilling.state,
-            country: newDefaultBilling.country,
-            postalCode: newDefaultBilling.pincode
-          };
-        } else {
-          updatedCustomer = {
-            ...updatedCustomer,
-            address: '',
-            city: '',
-            state: '',
-            country: '',
-            postalCode: ''
-          };
-        }
-      }
+      if (response.success) {
+        // Refresh addresses from API
+        await fetchAddresses();
 
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : null;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      if (result.success) {
-        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(newAddresses);
-        
+        // Clear selection if deleted address was selected
         if (selectedBillingAddress === addressId) {
-          const newBillingAddr = newAddresses.find(addr => addr.type === 'billing');
-          setSelectedBillingAddress(newBillingAddr?.id || null);
+          setSelectedBillingAddress(null);
         }
         if (selectedShippingAddress === addressId) {
-          const newShippingAddr = newAddresses.find(addr => addr.type === 'shipping') || 
-                                 newAddresses.find(addr => addr.type === 'billing');
-          setSelectedShippingAddress(newShippingAddr?.id || null);
+          setSelectedShippingAddress(null);
         }
+      } else {
+        setApiError(response.message || 'Failed to delete address');
       }
     } catch (error) {
       console.error('Delete address error:', error);
-      setApiError('Failed to delete address. Please try again.');
-    } finally {
-      setIsUpdatingAddress(false);
-    }
-  };
-
-  const handleSetDefaultAddress = async (addressId, type) => {
-    const address = savedAddresses.find(addr => addr.id === addressId);
-    if (!address) return;
-
-    setIsUpdatingAddress(true);
-    setApiError(null);
-
-    try {
-      const currentAddresses = customerToAddresses(user);
-      
-      const updatedAddresses = currentAddresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId && addr.type === type
-      }));
-
-      let updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
-
-      if (type === 'billing') {
-        updatedCustomer = {
-          ...updatedCustomer,
-          address: address.address,
-          city: address.city,
-          state: address.state,
-          country: address.country,
-          postalCode: address.pincode
-        };
-      }
-
-      const additionalAddresses = updatedAddresses.filter(addr => addr.id);
-      updatedCustomer.remarks = additionalAddresses.length > 0 
-        ? JSON.stringify(additionalAddresses) 
-        : null;
-
-      const result = await updateProfile(updatedCustomer, accessToken);
-      if (result.success) {
-        const newAddresses = customerToAddresses({ ...user, ...updatedCustomer });
-        setSavedAddresses(newAddresses);
-      }
-    } catch (error) {
-      console.error('Set default address error:', error);
-      setApiError('Failed to set default address. Please try again.');
+      setApiError(error.message || 'Failed to delete address. Please try again.');
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -440,7 +521,7 @@ export default function Checkout() {
 
     const billingAddressData = savedAddresses.find(addr => addr.id === selectedBillingAddress);
     const shippingAddressData = useSameAddress ? billingAddressData : savedAddresses.find(addr => addr.id === selectedShippingAddress);
-    
+
     if (!billingAddressData) {
       setApiError('Please select a billing address');
       return;
@@ -455,11 +536,18 @@ export default function Checkout() {
     setApiError(null);
 
     try {
+      // Format addresses for order API
+      const formatAddressForOrder = (addr) => {
+        const customerName = addr.name || addr.customer?.name || addr.fullName || user.name;
+        const postalCode = addr.postalCode || addr.pincode;
+        return `${customerName}, ${addr.address}, ${addr.city}, ${addr.state} - ${postalCode}`;
+      };
+
       const orderData = {
         customerId: user.id,
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-        billingAddress: `${billingAddressData.fullName}, ${billingAddressData.address}, ${billingAddressData.city}, ${billingAddressData.state} - ${billingAddressData.pincode}`,
-        shippingAddress: `${shippingAddressData.fullName}, ${shippingAddressData.address}, ${shippingAddressData.city}, ${shippingAddressData.state} - ${shippingAddressData.pincode}`,
+        billingAddress: formatAddressForOrder(billingAddressData),
+        shippingAddress: formatAddressForOrder(shippingAddressData),
         subTotal: subtotal,
         tax: Math.round(subtotal * 0.18),
         shippingCharge: shipping,
@@ -477,19 +565,23 @@ export default function Checkout() {
 
         const orderDetailsData = {
           orderId: response.data.id,
-          items: cartItems,
+          items: cartItems.map(item => ({
+            ...item,
+            colorName: getColorName(item.productColorVariationId),
+            sizeName: getSizeName(item.productSizeVariationId)
+          })),
           billingAddress: billingAddressData,
           shippingAddress: shippingAddressData,
           paymentMethod: selectedPayment,
           totalAmount: finalTotal,
           savings: discount + couponDiscount,
           apiResponse: response.data,
-          useSameAddress: useSameAddress // Add this flag for ThankYouPopup
+          useSameAddress: useSameAddress
         };
 
         setOrderDetails(orderDetailsData);
         setShowThankYou(true);
-        
+
       } else {
         throw new Error(response.message || 'Failed to create order');
       }
@@ -512,8 +604,8 @@ export default function Checkout() {
 
   const isContinueToPaymentDisabled = !selectedBillingAddress || (useSameAddress ? false : !selectedShippingAddress);
   const isContinueToReviewDisabled = !selectedPayment;
-  const isPlaceOrderDisabled = !selectedBillingAddress || (useSameAddress ? false : !selectedShippingAddress) || 
-                               !selectedPayment || isPlacingOrder || cartItems.length === 0;
+  const isPlaceOrderDisabled = !selectedBillingAddress || (useSameAddress ? false : !selectedShippingAddress) ||
+    !selectedPayment || isPlacingOrder || cartItems.length === 0;
 
   if (!isAuthenticated) {
     return (
@@ -567,8 +659,8 @@ export default function Checkout() {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mx-4 mt-4">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">{apiError}</span>
-              <button 
-                onClick={() => setApiError(null)} 
+              <button
+                onClick={() => setApiError(null)}
                 className="text-red-500 hover:text-red-700 text-lg font-bold"
               >
                 ×
@@ -597,21 +689,18 @@ export default function Checkout() {
               ].map((s, idx) => (
                 <React.Fragment key={s.num}>
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                      step >= s.num 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-gray-500'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${step >= s.num
+                      ? 'bg-black text-white'
+                      : 'bg-gray-200 text-gray-500'
+                      }`}>
                       {step > s.num ? <Check className="w-4 h-4" /> : s.num}
                     </div>
-                    <span className={`text-xs sm:text-sm font-medium ${
-                      step >= s.num ? 'text-black' : 'text-gray-500'
-                    }`}>{s.label}</span>
+                    <span className={`text-xs sm:text-sm font-medium ${step >= s.num ? 'text-black' : 'text-gray-500'
+                      }`}>{s.label}</span>
                   </div>
                   {idx < 2 && (
-                    <div className={`hidden sm:block w-12 lg:w-24 h-0.5 ${
-                      step > s.num ? 'bg-black' : 'bg-gray-200'
-                    }`}></div>
+                    <div className={`hidden sm:block w-12 lg:w-24 h-0.5 ${step > s.num ? 'bg-black' : 'bg-gray-200'
+                      }`}></div>
                   )}
                 </React.Fragment>
               ))}
@@ -623,7 +712,7 @@ export default function Checkout() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* Step 1: Billing & Shipping Address */}
               {step >= 1 && (
                 <div className="space-y-6">
@@ -636,7 +725,7 @@ export default function Checkout() {
                           Billing Address
                         </h2>
                         {step > 1 && selectedBillingAddress && (
-                          <button 
+                          <button
                             onClick={() => setStep(1)}
                             className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
                           >
@@ -650,46 +739,37 @@ export default function Checkout() {
                     <div className="p-4 sm:p-6">
                       {step === 1 ? (
                         <div className="space-y-3">
-                          {getAddressesByType('billing').map(addr => (
+                          {(() => {
+                            const defaultAddr = savedAddresses.find(addr => addr.isDefault) || savedAddresses[0];
+                            return defaultAddr ? [defaultAddr] : [];
+                          })().map(addr => (
                             <div
                               key={addr.id}
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                selectedBillingAddress === addr.id
-                                  ? 'border-black bg-gray-50'
-                                  : 'border-gray-200 hover:border-gray-400'
-                              }`}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedBillingAddress === addr.id
+                                ? 'border-black bg-gray-50'
+                                : 'border-gray-200 hover:border-gray-400'
+                                }`}
                             >
                               <div className="flex items-start justify-between">
-                                <div 
+                                <div
                                   className="flex-1"
                                   onClick={() => setSelectedBillingAddress(addr.id)}
                                 >
                                   <div className="flex items-center space-x-2 mb-2">
-                                    <span className="font-semibold text-black">{addr.name}</span>
+                                    <span className="font-semibold text-black">
+                                      {addr.name || user.name}'s Address
+                                    </span>
                                     {addr.isDefault && (
-                                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded">Default Billing</span>
+                                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Main</span>
                                     )}
-                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
                                   </div>
-                                  <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                  <p className="text-sm text-black font-medium">{addr.name || user.name}</p>
                                   <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                                  <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postalCode || addr.pincode}</p>
+                                  <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone || user.phone}</p>
                                 </div>
                                 <div className="flex space-x-2">
-                                  {!addr.isDefault && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSetDefaultAddress(addr.id, 'billing');
-                                      }}
-                                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                                      title="Set as default billing"
-                                    >
-                                      <Check className="w-4 h-4 text-gray-600" />
-                                    </button>
-                                  )}
-                                  <button 
+                                  <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleDeleteAddress(addr.id);
@@ -713,79 +793,120 @@ export default function Checkout() {
                           </button>
 
                           {showAddBillingAddress && (
-                            <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                              <h4 className="font-semibold text-black">Add Billing Address</h4>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {/* Row 1: Full Name & Mobile */}
+                              <div className="relative">
+                                <div className="space-y-1">
+                                  <input
+                                    type="text"
+                                    placeholder="Full Name *"
+                                    value={newBillingAddress.fullName}
+                                    onChange={(e) => handleNewAddressChange('billing', 'fullName', e.target.value)}
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                  />
+                                  {billingErrors.fullName && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.fullName}</p>}
+                                </div>
+                                {billingSuggestions.length > 0 && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    {billingSuggestions.map(addr => (
+                                      <div
+                                        key={addr.id}
+                                        onClick={() => handleSelectSuggestion('billing', addr)}
+                                        className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-0 border-gray-100"
+                                      >
+                                        <p className="text-sm font-semibold text-black">{addr.fullName || addr.name || 'Saved Address'}</p>
+                                        <p className="text-xs text-gray-600 line-clamp-1">{addr.address}, {addr.city}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-1">
                                 <input
                                   type="text"
-                                  placeholder="Address Name (e.g., Home, Office)"
-                                  value={newBillingAddress.name}
-                                  onChange={(e) => handleNewAddressChange('billing', 'name', e.target.value)}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                  placeholder="Mobile *"
+                                  value={newBillingAddress.phone}
+                                  onChange={(e) => handleNewAddressChange('billing', 'phone', e.target.value)}
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                  maxLength="10"
                                 />
+                                {billingErrors.phone && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.phone}</p>}
+                              </div>
+
+                              {/* Row 2: Address & Pincode */}
+                              <div className="space-y-1">
+                                <input
+                                  type="text"
+                                  placeholder="Address (House No, Building, Street) *"
+                                  value={newBillingAddress.address}
+                                  onChange={(e) => handleNewAddressChange('billing', 'address', e.target.value)}
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                />
+                                {billingErrors.address && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.address}</p>}
+                              </div>
+                              <div className="space-y-1">
                                 <input
                                   type="text"
                                   placeholder="Pincode *"
                                   value={newBillingAddress.pincode}
                                   onChange={(e) => handleNewAddressChange('billing', 'pincode', e.target.value)}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.pincode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                   maxLength="6"
                                 />
+                                {billingErrors.pincode && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.pincode}</p>}
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <input 
-                                  type="text" 
-                                  placeholder="Full Name *" 
-                                  value={newBillingAddress.fullName}
-                                  onChange={(e) => handleNewAddressChange('billing', 'fullName', e.target.value)}
-                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                />
-                                <input 
-                                  type="text" 
-                                  placeholder="Mobile *" 
-                                  value={newBillingAddress.phone}
-                                  onChange={(e) => handleNewAddressChange('billing', 'phone', e.target.value)}
-                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                  maxLength="10"
-                                />
-                              </div>
-                              <input 
-                                type="text" 
-                                placeholder="Address (House No, Building, Street) *" 
-                                value={newBillingAddress.address}
-                                onChange={(e) => handleNewAddressChange('billing', 'address', e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                              />
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <input 
-                                  type="text" 
-                                  placeholder="City *" 
+
+                              {/* Row 3: City & State */}
+                              <div className="space-y-1">
+                                <input
+                                  type="text"
+                                  placeholder="City *"
                                   value={newBillingAddress.city}
                                   onChange={(e) => handleNewAddressChange('billing', 'city', e.target.value)}
-                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.city ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                 />
-                                <input 
-                                  type="text" 
-                                  placeholder="State *" 
+                                {billingErrors.city && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.city}</p>}
+                              </div>
+                              <div className="space-y-1">
+                                <input
+                                  type="text"
+                                  placeholder="State *"
                                   value={newBillingAddress.state}
                                   onChange={(e) => handleNewAddressChange('billing', 'state', e.target.value)}
-                                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${billingErrors.state ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                 />
+                                {billingErrors.state && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{billingErrors.state}</p>}
                               </div>
-                              <div className="flex space-x-3">
-                                <button 
-                                  onClick={() => handleSaveNewAddress('billing')}
-                                  disabled={isUpdatingAddress}
-                                  className={`flex-1 py-3 font-medium rounded-lg transition-colors ${
-                                    isUpdatingAddress
+
+                              {/* Row 4: Actions */}
+                              <div className="sm:col-span-2 flex space-x-3">
+                                {selectedExistingBillingAddress ? (
+                                  <button
+                                    onClick={() => handleContinueWithExisting('billing')}
+                                    disabled={isUpdatingAddress}
+                                    className="flex-1 py-3 font-medium rounded-lg transition-colors bg-green-600 hover:bg-green-700 text-white flex items-center justify-center space-x-2"
+                                  >
+                                    <Check className="w-5 h-5" />
+                                    <span>{isUpdatingAddress ? 'Processing...' : 'Continue with Existing Address'}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleSaveNewAddress('billing')}
+                                    disabled={isUpdatingAddress}
+                                    className={`flex-1 py-3 font-medium rounded-lg transition-colors ${isUpdatingAddress
                                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                       : 'bg-black hover:bg-gray-800 text-white'
-                                  }`}
-                                >
-                                  {isUpdatingAddress ? 'Saving...' : 'Save Billing Address'}
-                                </button>
-                                <button 
-                                  onClick={() => setShowAddBillingAddress(false)}
+                                      }`}
+                                  >
+                                    {isUpdatingAddress ? 'Saving...' : 'Save Billing Address'}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setShowAddBillingAddress(false);
+                                    setSelectedExistingBillingAddress(null);
+                                    setBillingSuggestions([]);
+                                  }}
                                   className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
                                 >
                                   Cancel
@@ -796,28 +917,31 @@ export default function Checkout() {
                         </div>
                       ) : (
                         <div className="p-4 bg-gray-50 rounded-lg">
-                          {savedAddresses.find(a => a.id === selectedBillingAddress) && (
-                            <div>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="font-semibold text-black">
-                                  {savedAddresses.find(a => a.id === selectedBillingAddress).name}
-                                </span>
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                          {savedAddresses.find(a => a.id === selectedBillingAddress) && (() => {
+                            const addr = savedAddresses.find(a => a.id === selectedBillingAddress);
+                            return (
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-semibold text-black">
+                                    {addr.customer?.name || addr.fullName || 'Billing'}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Billing</span>
+                                </div>
+                                <p className="text-sm font-medium text-black">
+                                  {addr.customer?.name || addr.fullName || user.name}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {addr.address}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Mobile: {addr.customer?.phone || addr.phone || user.phone}
+                                </p>
                               </div>
-                              <p className="text-sm font-medium text-black">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
-                              </p>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -832,7 +956,7 @@ export default function Checkout() {
                           Shipping Address
                         </h2>
                         {step > 1 && selectedShippingAddress && (
-                          <button 
+                          <button
                             onClick={() => setStep(1)}
                             className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
                           >
@@ -872,46 +996,39 @@ export default function Checkout() {
                             </div>
                           ) : (
                             <>
-                              {getAddressesByType('shipping').map(addr => (
+                              {(() => {
+                                const defaultAddr = savedAddresses.find(addr => addr.isDefault) || savedAddresses[0];
+                                return defaultAddr ? [defaultAddr] : [];
+                              })().map(addr => (
                                 <div
                                   key={addr.id}
-                                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                    selectedShippingAddress === addr.id
-                                      ? 'border-black bg-gray-50'
-                                      : 'border-gray-200 hover:border-gray-400'
-                                  }`}
+                                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedShippingAddress === addr.id
+                                    ? 'border-black bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-400'
+                                    }`}
                                 >
                                   <div className="flex items-start justify-between">
-                                    <div 
+                                    <div
                                       className="flex-1"
                                       onClick={() => setSelectedShippingAddress(addr.id)}
                                     >
                                       <div className="flex items-center space-x-2 mb-2">
-                                        <span className="font-semibold text-black">{addr.name}</span>
+                                        <span className="font-semibold text-black">
+                                          {addr.customer?.name || addr.fullName || user.name}'s Address
+                                        </span>
                                         {addr.isDefault && (
-                                          <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded">Default Shipping</span>
+                                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Main</span>
                                         )}
-                                        <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
                                       </div>
-                                      <p className="text-sm text-black font-medium">{addr.fullName}</p>
+                                      <p className="text-sm text-black font-medium">{addr.customer?.name || addr.fullName || user.name}</p>
                                       <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
-                                      <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
-                                      <p className="text-sm text-gray-600 mt-1">Mobile: {addr.phone}</p>
+                                      <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postalCode || addr.pincode}</p>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {addr.isTemporary ? `Mobile: ${addr.phone}` : `Email: ${addr.customer?.email || user.email}`}
+                                      </p>
                                     </div>
                                     <div className="flex space-x-2">
-                                      {!addr.isDefault && (
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSetDefaultAddress(addr.id, 'shipping');
-                                          }}
-                                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                                          title="Set as default shipping"
-                                        >
-                                          <Check className="w-4 h-4 text-gray-600" />
-                                        </button>
-                                      )}
-                                      <button 
+                                      <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleDeleteAddress(addr.id);
@@ -933,85 +1050,127 @@ export default function Checkout() {
                                 <Plus className="w-5 h-5" />
                                 <span className="font-medium">Add New Shipping Address</span>
                               </button>
-
                               {showAddShippingAddress && (
                                 <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                                  <h4 className="font-semibold text-black">Add Shipping Address</h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <input
-                                      type="text"
-                                      placeholder="Address Name (e.g., Home, Office)"
-                                      value={newShippingAddress.name}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'name', e.target.value)}
-                                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="Pincode *"
-                                      value={newShippingAddress.pincode}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'pincode', e.target.value)}
-                                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm"
-                                      maxLength="6"
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <input 
-                                      type="text" 
-                                      placeholder="Full Name *" 
-                                      value={newShippingAddress.fullName}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'fullName', e.target.value)}
-                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                    />
-                                    <input 
-                                      type="text" 
-                                      placeholder="Mobile *" 
-                                      value={newShippingAddress.phone}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'phone', e.target.value)}
-                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                      maxLength="10"
-                                    />
-                                  </div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Address (House No, Building, Street) *" 
-                                    value={newShippingAddress.address}
-                                    onChange={(e) => handleNewAddressChange('shipping', 'address', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                  />
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <input 
-                                      type="text" 
-                                      placeholder="City *" 
-                                      value={newShippingAddress.city}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'city', e.target.value)}
-                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                    />
-                                    <input 
-                                      type="text" 
-                                      placeholder="State *" 
-                                      value={newShippingAddress.state}
-                                      onChange={(e) => handleNewAddressChange('shipping', 'state', e.target.value)}
-                                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black text-sm" 
-                                    />
-                                  </div>
-                                  <div className="flex space-x-3">
-                                    <button 
-                                      onClick={() => handleSaveNewAddress('shipping')}
-                                      disabled={isUpdatingAddress}
-                                      className={`flex-1 py-3 font-medium rounded-lg transition-colors ${
-                                        isUpdatingAddress
-                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                          : 'bg-black hover:bg-gray-800 text-white'
-                                      }`}
-                                    >
-                                      {isUpdatingAddress ? 'Saving...' : 'Save Shipping Address'}
-                                    </button>
-                                    <button 
-                                      onClick={() => setShowAddShippingAddress(false)}
-                                      className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
+                                  <h4 className="font-semibold text-black">Add Shipping Address</h4>                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Row 1: Full Name & Mobile */}
+                                    <div className="relative">
+                                      <div className="space-y-1">
+                                        <input
+                                          type="text"
+                                          placeholder="Full Name *"
+                                          value={newShippingAddress.fullName}
+                                          onChange={(e) => handleNewAddressChange('shipping', 'fullName', e.target.value)}
+                                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                        />
+                                        {shippingErrors.fullName && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.fullName}</p>}
+                                      </div>
+                                      {shippingSuggestions.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                          {shippingSuggestions.map(addr => (
+                                            <div
+                                              key={addr.id}
+                                              onClick={() => handleSelectSuggestion('shipping', addr)}
+                                              className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-0 border-gray-100"
+                                            >
+                                              <p className="text-sm font-semibold text-black">{addr.fullName || addr.name || 'Saved Address'}</p>
+                                              <p className="text-xs text-gray-600 line-clamp-1">{addr.address}, {addr.city}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Mobile *"
+                                        value={newShippingAddress.phone}
+                                        onChange={(e) => handleNewAddressChange('shipping', 'phone', e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                        maxLength="10"
+                                      />
+                                      {shippingErrors.phone && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.phone}</p>}
+                                    </div>
+
+                                    {/* Row 2: Address & Pincode */}
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Address (House No, Building, Street) *"
+                                        value={newShippingAddress.address}
+                                        onChange={(e) => handleNewAddressChange('shipping', 'address', e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      />
+                                      {shippingErrors.address && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.address}</p>}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        placeholder="Pincode *"
+                                        value={newShippingAddress.pincode}
+                                        onChange={(e) => handleNewAddressChange('shipping', 'pincode', e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.pincode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                        maxLength="6"
+                                      />
+                                      {shippingErrors.pincode && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.pincode}</p>}
+                                    </div>
+
+                                    {/* Row 3: City & State */}
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        placeholder="City *"
+                                        value={newShippingAddress.city}
+                                        onChange={(e) => handleNewAddressChange('shipping', 'city', e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.city ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      />
+                                      {shippingErrors.city && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.city}</p>}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        placeholder="State *"
+                                        value={newShippingAddress.state}
+                                        onChange={(e) => handleNewAddressChange('shipping', 'state', e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:border-black text-sm transition-colors ${shippingErrors.state ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                      />
+                                      {shippingErrors.state && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{shippingErrors.state}</p>}
+                                    </div>
+
+                                    {/* Row 4: Actions */}
+                                    <div className="sm:col-span-2 flex space-x-3">
+                                      {selectedExistingShippingAddress ? (
+                                        <button
+                                          onClick={() => handleContinueWithExisting('shipping')}
+                                          disabled={isUpdatingAddress}
+                                          className="flex-1 py-3 font-medium rounded-lg transition-colors bg-green-600 hover:bg-green-700 text-white flex items-center justify-center space-x-2"
+                                        >
+                                          <Check className="w-5 h-5" />
+                                          <span>{isUpdatingAddress ? 'Processing...' : 'Continue with Existing Address'}</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => handleSaveNewAddress('shipping')}
+                                          disabled={isUpdatingAddress}
+                                          className={`flex-1 py-3 font-medium rounded-lg transition-colors ${isUpdatingAddress
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-black hover:bg-gray-800 text-white'
+                                            }`}
+                                        >
+                                          {isUpdatingAddress ? 'Saving...' : 'Save Shipping Address'}
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => {
+                                          setShowAddShippingAddress(false);
+                                          setSelectedExistingShippingAddress(null);
+                                          setShippingSuggestions([]);
+                                        }}
+                                        className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -1029,45 +1188,53 @@ export default function Checkout() {
                                   Copied from Billing
                                 </span>
                               </div>
-                              {savedAddresses.find(a => a.id === selectedBillingAddress) && (
-                                <div>
-                                  <p className="text-sm font-medium text-black">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).fullName}
-                                  </p>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).address}, {savedAddresses.find(a => a.id === selectedBillingAddress).city}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {savedAddresses.find(a => a.id === selectedBillingAddress).state} - {savedAddresses.find(a => a.id === selectedBillingAddress).pincode}
-                                  </p>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    Mobile: {savedAddresses.find(a => a.id === selectedBillingAddress).phone}
-                                  </p>
+                              {savedAddresses.find(a => a.id === selectedBillingAddress) && (() => {
+                                const addr = savedAddresses.find(a => a.id === selectedBillingAddress);
+                                return (
+                                  <div>
+                                    <p className="text-sm font-medium text-black">
+                                      {addr.customer?.name || addr.fullName || user.name}
+                                    </p>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      {addr.address}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                      {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                    </p>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      Mobile: {addr.customer?.phone || addr.phone || user.phone}
+                                    </p>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (() => {
+                            const addr = savedAddresses.find(a => a.id === selectedShippingAddress);
+                            return (
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="font-semibold text-black">
+                                    {addr.customer?.name || addr.fullName || user.name}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">
+                                    {addr.isTemporary ? 'Temporary Shipping' : 'Shipping'}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          ) : savedAddresses.find(a => a.id === selectedShippingAddress) && (
-                            <div>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="font-semibold text-black">
-                                  {savedAddresses.find(a => a.id === selectedShippingAddress).name}
-                                </span>
-                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Shipping</span>
+                                <p className="text-sm font-medium text-black">
+                                  {addr.customer?.name || addr.fullName || user.name}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {addr.address}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {addr.city}, {addr.state} - {addr.postalCode || addr.pincode}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Mobile: {addr.isTemporary ? addr.phone : (addr.customer?.phone || addr.phone || user.phone)}
+                                </p>
                               </div>
-                              <p className="text-sm font-medium text-black">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).fullName}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).address}, {savedAddresses.find(a => a.id === selectedShippingAddress).city}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {savedAddresses.find(a => a.id === selectedShippingAddress).state} - {savedAddresses.find(a => a.id === selectedShippingAddress).pincode}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Mobile: {savedAddresses.find(a => a.id === selectedShippingAddress).phone}
-                              </p>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -1076,11 +1243,10 @@ export default function Checkout() {
                   <button
                     onClick={() => setStep(2)}
                     disabled={isContinueToPaymentDisabled}
-                    className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
-                      isContinueToPaymentDisabled
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-black hover:bg-gray-800 text-white'
-                    }`}
+                    className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${isContinueToPaymentDisabled
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-black hover:bg-gray-800 text-white'
+                      }`}
                   >
                     Continue to Payment
                   </button>
@@ -1104,19 +1270,16 @@ export default function Checkout() {
                           <div
                             key={method.id}
                             onClick={() => setSelectedPayment(method.id)}
-                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                              selectedPayment === method.id
-                                ? 'border-black bg-gray-50'
-                                : 'border-gray-200 hover:border-gray-400'
-                            }`}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedPayment === method.id
+                              ? 'border-black bg-gray-50'
+                              : 'border-gray-200 hover:border-gray-400'
+                              }`}
                           >
                             <div className="flex items-center space-x-3">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                selectedPayment === method.id ? 'bg-black' : 'bg-gray-200'
-                              }`}>
-                                <method.icon className={`w-5 h-5 ${
-                                  selectedPayment === method.id ? 'text-white' : 'text-gray-600'
-                                }`} />
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedPayment === method.id ? 'bg-black' : 'bg-gray-200'
+                                }`}>
+                                <method.icon className={`w-5 h-5 ${selectedPayment === method.id ? 'text-white' : 'text-gray-600'
+                                  }`} />
                               </div>
                               <div className="flex-1">
                                 <p className="font-semibold text-black">{method.name}</p>
@@ -1129,11 +1292,10 @@ export default function Checkout() {
                         <button
                           onClick={() => setStep(3)}
                           disabled={isContinueToReviewDisabled}
-                          className={`w-full mt-4 py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${
-                            isContinueToReviewDisabled
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-black hover:bg-gray-800 text-white'
-                          }`}
+                          className={`w-full mt-4 py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base ${isContinueToReviewDisabled
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-black hover:bg-gray-800 text-white'
+                            }`}
                         >
                           Continue to Review
                         </button>
@@ -1153,7 +1315,7 @@ export default function Checkout() {
                             </p>
                           </div>
                         </div>
-                        <button 
+                        <button
                           onClick={() => setStep(2)}
                           className="text-sm text-black hover:text-gray-700 transition-colors flex items-center"
                         >
@@ -1229,26 +1391,26 @@ export default function Checkout() {
                         <p className="text-sm text-gray-600">3-5 business days</p>
                       </div>
                     </div>
-
                     {cartItems.map(item => {
                       const product = item.product || {};
-                      const productName = product.name || "Product";
-                      const thumbnail = product.thumbnailImage || "https://via.placeholder.com/80";
                       const sellingPrice = product.sellingPrice || item.price || 0;
                       const mrp = product.mrp || sellingPrice;
 
                       return (
                         <div key={item.id} className="flex space-x-3 pb-4 border-b border-gray-200 last:border-0">
-                          <img 
-                            src={thumbnail} 
-                            alt={productName}
-                            className="w-16 h-16 rounded-lg object-cover border border-gray-200" 
+                          <img
+                            src={getProductImage(product)}
+                            alt={product?.name || "Product"}
+                            className="w-16 h-16 rounded-lg object-cover border border-gray-200"
                           />
                           <div className="flex-1">
-                            <h4 className="text-sm font-medium text-black">{productName}</h4>
+                            <h4 className="text-sm font-medium text-black">
+                              {product?.name || "Product"}
+                            </h4>
                             <p className="text-xs text-gray-600 mt-1">
-                              {item.productColorVariationId ? `Color: ${item.productColorVariationId}` : ''} 
-                              {item.productSizeVariationId ? ` | Size: ${item.productSizeVariationId}` : ''}
+                              {item.productColorVariationId ? `Color: ${getColorName(item.productColorVariationId)}` : ''}
+                              {item.productColorVariationId && item.productSizeVariationId ? ' | ' : ''}
+                              {item.productSizeVariationId ? `Size: ${getSizeName(item.productSizeVariationId)}` : ''}
                             </p>
                             <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                           </div>
@@ -1269,11 +1431,10 @@ export default function Checkout() {
                     <button
                       onClick={handlePlaceOrder}
                       disabled={isPlaceOrderDisabled}
-                      className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base flex items-center justify-center space-x-2 ${
-                        isPlaceOrderDisabled
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-black hover:bg-gray-800 text-white'
-                      }`}
+                      className={`w-full py-3 sm:py-4 font-semibold rounded-lg transition-all text-sm sm:text-base flex items-center justify-center space-x-2 ${isPlaceOrderDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-black hover:bg-gray-800 text-white'
+                        }`}
                     >
                       <Shield className="w-5 h-5" />
                       <span>
@@ -1430,11 +1591,10 @@ export default function Checkout() {
                 <button
                   onClick={() => setStep(2)}
                   disabled={isContinueToPaymentDisabled}
-                  className={`px-6 py-3 font-semibold rounded-lg transition-all ${
-                    isContinueToPaymentDisabled
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-black hover:bg-gray-800 text-white'
-                  }`}
+                  className={`px-6 py-3 font-semibold rounded-lg transition-all ${isContinueToPaymentDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-gray-800 text-white'
+                    }`}
                 >
                   Continue
                 </button>
@@ -1443,11 +1603,10 @@ export default function Checkout() {
                 <button
                   onClick={() => setStep(3)}
                   disabled={isContinueToReviewDisabled}
-                  className={`px-6 py-3 font-semibold rounded-lg transition-all ${
-                    isContinueToReviewDisabled
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-black hover:bg-gray-800 text-white'
-                  }`}
+                  className={`px-6 py-3 font-semibold rounded-lg transition-all ${isContinueToReviewDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-gray-800 text-white'
+                    }`}
                 >
                   Continue
                 </button>

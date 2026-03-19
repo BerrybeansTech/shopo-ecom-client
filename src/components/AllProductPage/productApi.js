@@ -26,7 +26,7 @@ const deduplicateRequest = async (key, requestFn) => {
 
 const buildQueryString = (params) => {
   const queryParams = new URLSearchParams();
-  
+
   Object.keys(params).forEach(key => {
     const value = params[key];
     if (value !== null && value !== undefined && value !== '') {
@@ -37,7 +37,7 @@ const buildQueryString = (params) => {
       }
     }
   });
-  
+
   const queryString = queryParams.toString();
   return queryString ? `?${queryString}` : '';
 };
@@ -77,7 +77,7 @@ export const occasionApi = {
   getAll: async (filters = {}) => {
     try {
       const queryParams = {};
-      
+
       if (filters.material) {
         if (Array.isArray(filters.material)) {
           queryParams.material = filters.material.join(',');
@@ -88,7 +88,7 @@ export const occasionApi = {
 
       const queryString = buildQueryString(queryParams);
       const key = `occasion-getAll-${queryString}`;
-      
+
       return deduplicateRequest(key, async () => {
         return await apiService.get(`/product/occasion/get-all${queryString}`);
       });
@@ -212,6 +212,36 @@ export const productApi = {
       throw error;
     }
   },
+
+  getRelatedProducts: async (productId, categoryId, limit = 8) => {
+    try {
+      const key = `product-related-${productId}-${categoryId}-${limit}`;
+      return deduplicateRequest(key, async () => {
+        // Fetch products from the same category, excluding the current product
+        const queryParams = {
+          category: categoryId,
+          limit: limit + 1, // Fetch one extra to account for filtering out current product
+          page: 1,
+        };
+
+        const queryString = buildQueryString(queryParams);
+        const response = await apiService.get(`/product/get-all-product${queryString}`);
+
+        // Filter out the current product and limit results
+        if (response?.success && Array.isArray(response.data)) {
+          const filteredProducts = response.data
+            .filter(p => p.id !== parseInt(productId))
+            .slice(0, limit);
+          return { success: true, data: filteredProducts };
+        }
+
+        return response;
+      });
+    } catch (error) {
+      console.error(`Error fetching related products for ${productId}:`, error);
+      throw error;
+    }
+  },
 };
 
 // REVIEW API
@@ -312,10 +342,10 @@ export const productUtils = {
     const flattened = [];
     categories.forEach((cat) => {
       flattened.push({ id: cat.id, name: cat.name, type: "category", level: 0 });
-      
+
       cat.ProductSubCategories?.forEach((sub) => {
         flattened.push({ id: sub.id, name: sub.name, parentId: cat.id, type: "subcategory", level: 1 });
-        
+
         sub.ProductChildCategories?.forEach((child) => {
           flattened.push({ id: child.id, name: child.name, parentId: sub.id, type: "childcategory", level: 2 });
         });
@@ -327,6 +357,7 @@ export const productUtils = {
 
   transformFiltersToQueryParams: (filters, categories = [], occasions = [], materials = []) => {
     const {
+      selectedCategoryId = null,
       selectedSubCategories = [],
       selectedDetails = [],
       priceRange = { min: 0, max: 10000 },
@@ -335,7 +366,7 @@ export const productUtils = {
       selectedOccasions = [],
       selectedMaterials = [],
       selectedReviewThresholds = [],
-      newArrival = false, 
+      newArrival = false,
       selectedAvailability = [],
       sortOption,
       searchQuery,
@@ -352,10 +383,16 @@ export const productUtils = {
       queryParams.name = searchQuery;
     }
 
+    // Category ID - Handle main category selection from URL
+    const categoryIds = new Set();
+    if (selectedCategoryId) {
+      categoryIds.add(parseInt(selectedCategoryId));
+      console.log('📍 Adding categoryId to query params:', selectedCategoryId);
+    }
+
     // Subcategories - convert names to IDs
     if (selectedSubCategories.length > 0) {
       const subCategoryIds = [];
-      const categoryIds = new Set();
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
           if (selectedSubCategories.includes(subCategory.name)) {
@@ -367,15 +404,11 @@ export const productUtils = {
       if (subCategoryIds.length > 0) {
         queryParams.subCategory = subCategoryIds;
       }
-      if (categoryIds.size > 0) {
-        queryParams.category = Array.from(categoryIds);
-      }
     }
 
     // Child categories - convert names to IDs
     if (selectedDetails.length > 0) {
       const childCategoryIds = [];
-      const categoryIds = new Set(queryParams.category || []);
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
           subCategory.ProductChildCategories?.forEach(childCategory => {
@@ -392,9 +425,12 @@ export const productUtils = {
       if (childCategoryIds.length > 0) {
         queryParams.childCategory = childCategoryIds;
       }
-      if (categoryIds.size > 0) {
-        queryParams.category = Array.from(categoryIds);
-      }
+    }
+
+    // Add category IDs to query params
+    if (categoryIds.size > 0) {
+      queryParams.category = Array.from(categoryIds);
+      console.log('📍 Final category IDs for API:', queryParams.category);
     }
 
     // Price range
@@ -471,7 +507,7 @@ export const productUtils = {
 
   filterProductsClientSide: (products, filters) => {
     if (!products || !Array.isArray(products)) return [];
-    
+
     let filtered = [...products];
     const {
       selectedSubCategories = [],
@@ -487,8 +523,8 @@ export const productUtils = {
 
     // Category filters
     if (selectedSubCategories.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedSubCategories.some(subCat => 
+      filtered = filtered.filter(product =>
+        selectedSubCategories.some(subCat =>
           product.subCategory?.name?.toLowerCase().includes(subCat.toLowerCase())
         )
       );
@@ -500,7 +536,7 @@ export const productUtils = {
         return selectedDetails.some(detailKey => {
           const [subCategory, detail] = detailKey.split("||");
           return (
-            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) && 
+            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) &&
             product.childCategory?.name?.toLowerCase().includes(detail.toLowerCase())
           );
         });
@@ -522,9 +558,9 @@ export const productUtils = {
           ?.map(inv => inv.productColor?.color)
           .filter(Boolean)
           .map(color => color.toLowerCase()) || [];
-        
-        return selectedColors.some(selectedColor => 
-          productColors.some(productColor => 
+
+        return selectedColors.some(selectedColor =>
+          productColors.some(productColor =>
             productColor.includes(selectedColor.toLowerCase())
           )
         );
@@ -538,9 +574,9 @@ export const productUtils = {
           ?.flatMap(inv => inv.productSize?.size || [])
           .filter(Boolean)
           .map(size => size.toLowerCase()) || [];
-        
-        return selectedSizes.some(selectedSize => 
-          productSizes.some(productSize => 
+
+        return selectedSizes.some(selectedSize =>
+          productSizes.some(productSize =>
             productSize.includes(selectedSize.toLowerCase())
           )
         );
@@ -549,7 +585,7 @@ export const productUtils = {
 
     // Material filter
     if (selectedMaterials.length > 0) {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         selectedMaterials.some(material => {
           const productMaterial = product.material?.name;
           if (!productMaterial) return false;
@@ -560,8 +596,8 @@ export const productUtils = {
 
     // Occasion filter
     if (selectedOccasions.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedOccasions.some(occasion => 
+      filtered = filtered.filter(product =>
+        selectedOccasions.some(occasion =>
           product.occasion?.name?.toLowerCase().includes(occasion.toLowerCase())
         )
       );

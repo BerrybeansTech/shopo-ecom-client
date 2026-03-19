@@ -379,7 +379,7 @@
 
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Home,
   ShoppingBag,
@@ -427,10 +427,46 @@ const DesktopNavbar = ({
   setShowAccountDropdown,
   setShowSearchResults,
 }) => {
+  const navigate = useNavigate();
+
+  // Check if we're on the shop/all-products page
+  const isShopPage = isActiveRoute("/all-products") || isActiveRoute("/category");
+
   const clearSearch = () => {
     handleSearch("");
     setShowSearchResults(false);
+    // If we're on shop page, navigate to clear URL
+    if (isShopPage) {
+      navigate("/all-products");
+    }
   };
+
+  // Handle search submit (Enter key or Search button click)
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim();
+      // Close dropdown first
+      setShowSearchResults(false);
+      // Then navigate
+      navigate(`/all-products?name=${encodeURIComponent(query)}`);
+    }
+  };
+
+   const CartIcon = () => (
+    <svg
+      className="w-5 h-5 current-color"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  );
 
   return (
     <nav
@@ -465,8 +501,14 @@ const DesktopNavbar = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value, { showDropdown: true })}
                   onFocus={() => setShowSearchResults(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
                   placeholder="Search for products, brands and more..."
                   className={`w-full h-11 ${
                     searchQuery ? "pl-5" : "pl-12"
@@ -491,20 +533,39 @@ const DesktopNavbar = ({
               {showSearchResults && searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
                   <div className="max-h-96 overflow-y-auto">
-                    {searchResults.map((product, index) => (
-                      <Link
+                    {searchResults.slice(0, 5).map((product, index) => (
+                      <button
                         key={`${product.id}-${index}`}
-                        to={getProductUrl(product)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors group"
-                        onClick={() => setShowSearchResults(false)}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Navigate to single product page
+                          const productUrl = getProductUrl(product);
+                          setShowSearchResults(false);
+                          navigate(productUrl);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors group text-left cursor-pointer"
                       >
                         <Search className="w-4 h-4 text-gray-300 group-hover:text-gray-400" />
                         <span className="flex-1 font-medium">
                           {product.name}
                         </span>
-                        <span className="text-xs text-gray-400">Enter</span>
-                      </Link>
+                      </button>
                     ))}
+                    {/* View all results button */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSearchSubmit();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 border-t border-gray-200 transition-colors cursor-pointer"
+                    >
+                      <Search className="w-4 h-4" />
+                      View all results for "{searchQuery}"
+                    </button>
                   </div>
                 </div>
               )}
@@ -552,27 +613,6 @@ const DesktopNavbar = ({
               <span className="text-sm font-medium">Shop</span>
             </Link>
 
-            {/* Cart */}
-            <Link
-              to="/cart"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 relative group ${
-                isActiveRoute("/cart")
-                  ? "bg-gray-100 text-gray-900 font-medium"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
-              title={`Cart (${itemCount} items)`}
-            >
-              <div className="relative">
-                <ShoppingBag className="w-5 h-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {itemCount}
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-medium">Cart</span>
-            </Link>
-
             {/* Track Order */}
             <Link
               to="/track-order"
@@ -599,6 +639,27 @@ const DesktopNavbar = ({
             >
               <FileText className="w-5 h-5" />
               <span className="text-sm font-medium">Blog</span>
+            </Link>
+
+            {/* Cart */}
+            <Link
+              to="/cart"
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 relative group ${
+                isActiveRoute("/cart")
+                  ? "bg-gray-100 text-gray-900 font-medium"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+              title={`Cart (${itemCount} items)`}
+            >
+              <div className="relative">
+                <CartIcon />
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {itemCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-medium">Cart</span>
             </Link>
 
             {/* Divider */}
@@ -775,7 +836,7 @@ const DesktopNavbar = ({
                                   }
                                 >
                                   <Link
-                                    to={`/category/${category.id}/${subcategory.id}`}
+                                    to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}`}
                                     className={`flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors ${
                                       activeSubcategory === subIndex
                                         ? "text-gray-900"
@@ -810,7 +871,7 @@ const DesktopNavbar = ({
                               ].childCategories.map((childCategory) => (
                                 <Link
                                   key={childCategory.id}
-                                  to={`/category/${category.id}/${category.subcategories[activeSubcategory].id}/${childCategory.id}`}
+                                  to={`/all-products?categoryId=${category.id}&subcategoryId=${category.subcategories[activeSubcategory].id}&childCategoryId=${childCategory.id}`}
                                   className="block text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
                                   onClick={() => {
                                     setActiveCategory(null);

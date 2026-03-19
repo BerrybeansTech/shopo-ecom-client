@@ -180,17 +180,22 @@ if (result.success) {
                 value={formData.newPassword}
                 onChange={handlePasswordChange}
                 disabled={isLoading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50 ${
+                  error && !isValidPassword(formData.newPassword) ? "border-red-500" : "border-gray-300"
+                }`}
               />
               <button
                 type="button"
                 onClick={toggleNewPasswordVisibility}
                 disabled={isLoading}
-                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                className="absolute right-3 top-[42px] text-gray-500 hover:text-gray-700 disabled:opacity-50"
                 aria-label={showNewPassword ? "Hide new password" : "Show new password"}
               >
                 {showNewPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
               </button>
+              {error && formData.newPassword.length > 0 && !isValidPassword(formData.newPassword) && (
+                <p className="mt-1 text-xs text-red-600 font-medium">{error}</p>
+              )}
             </div>
             <div className="relative">
               <label
@@ -207,17 +212,22 @@ if (result.success) {
                 value={formData.confirmPassword}
                 onChange={handlePasswordChange}
                 disabled={isLoading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 pr-12 disabled:bg-gray-50 ${
+                  error && formData.newPassword !== formData.confirmPassword ? "border-red-500" : "border-gray-300"
+                }`}
               />
               <button
                 type="button"
                 onClick={toggleConfirmPasswordVisibility}
                 disabled={isLoading}
-                className="absolute right-3 top-2/3 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                className="absolute right-3 top-[42px] text-gray-500 hover:text-gray-700 disabled:opacity-50"
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
                 {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
               </button>
+              {error && formData.confirmPassword.length > 0 && formData.newPassword !== formData.confirmPassword && (
+                <p className="mt-1 text-xs text-red-600 font-medium">{error}</p>
+              )}
             </div>
             <button
               type="submit"

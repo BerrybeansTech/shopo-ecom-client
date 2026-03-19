@@ -1,4 +1,3 @@
-// components/Cart/CartPage.js
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from 'react-redux';
@@ -6,10 +5,10 @@ import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/Layout";
 import { useCart } from "../CartPage/useCart";
 import { resetOrderCompleted } from "../CartPage/cartSlice";
+import { getProductImage } from "../../utils/imageUtils";
 
 export default function CartPage() {
   const dispatch = useDispatch();
-  const placeholderSrc = "data:image/svg+xml;base64," + btoa('<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg"><rect width="128" height="128" fill="#f3f4f6"/><text x="64" y="64" text-anchor="middle" dy=".3em" font-family="sans-serif" font-size="12" fill="#9ca3af">No Image</text></svg>');
   
   const {
     items,
@@ -174,7 +173,6 @@ export default function CartPage() {
                     {items.map((item) => {
                       const product = item.product || {};
                       const productName = product.name || "Product";
-                      const thumbnail = product.thumbnailImage || placeholderSrc;
                       const sellingPrice = getItemPrice(item);
                       const quantity = item.quantity || 1;
                       const itemTotal = sellingPrice * quantity;
@@ -197,10 +195,9 @@ export default function CartPage() {
                             <div className="flex-shrink-0">
                               <div className="w-32 h-32 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                                 <img
-                                  src={thumbnail}
+                                  src={getProductImage(product)}
                                   alt={productName}
                                   className="w-full h-full object-cover"
-                                  onError={(e) => { e.target.src = placeholderSrc; }}
                                 />
                               </div>
                             </div>
@@ -208,7 +205,7 @@ export default function CartPage() {
                             <div className="flex-1 flex flex-col justify-between">
                               <div>
                                 <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                                  {productName}
+                                  {product?.name || "Product"}
                                 </h2>
                                 <p className="text-sm text-gray-600 mb-2">
                                   Delivery by{" "}
@@ -216,12 +213,6 @@ export default function CartPage() {
                                     {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                   </span>
                                 </p>
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                                  <span>Size: <strong>{product.size || 'S'}</strong></span>
-                                  {/* <span className="text-lg font-semibold text-gray-900">
-                                    Price: {formatINR(sellingPrice)}
-                                  </span> */}
-                                </div>
 
                                 <div className="flex items-center gap-2 mb-4">
                                   <span className="text-2xl font-bold text-gray-900">
@@ -287,8 +278,6 @@ export default function CartPage() {
                       <div className="space-y-4">
                         {savedItems.map((item) => {
                           const product = item.product || {};
-                          const productName = product.name || "Product";
-                          const thumbnail = product.thumbnailImage || placeholderSrc;
                           const sellingPrice = getItemPrice(item);
 
                           return (
@@ -299,15 +288,14 @@ export default function CartPage() {
                               <div className="flex gap-5">
                                 <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
                                   <img
-                                    src={thumbnail}
-                                    alt={productName}
+                                    src={getProductImage(product)}
+                                    alt={product?.name || "Product"}
                                     className="w-full h-full object-cover"
-                                    onError={(e) => { e.target.src = placeholderSrc; }}
                                   />
                                 </div>
                                 <div className="flex-1">
                                   <h3 className="text-md font-semibold text-gray-900 mb-1">
-                                    {productName}
+                                    {product?.name || "Product"}
                                   </h3>
                                   <p className="text-sm text-gray-600 mb-2">
                                     Size: {product.size || 'S'} • Seller: {product.seller || 'RedBrocket'}

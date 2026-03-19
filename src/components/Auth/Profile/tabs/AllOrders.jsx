@@ -19,6 +19,7 @@ import {
 import TabNavigation from "./TabNavigation";
 import { useOrders } from "../../../CheakoutPage/useOrders";
 import { useAuth } from "../../hooks/useAuth";
+import { getProductImage } from "../../../../utils/imageUtils";
 
 export default function AllOrders() {
   const [activeTab, setActiveTab] = useState("All orders");
@@ -365,7 +366,7 @@ export default function AllOrders() {
                     className="flex items-start space-x-3 p-3 bg-white-400 rounded-lg border border-white-500"
                   >
                     <img
-                      src={product.thumbnail}
+                      src={getProductImage(product)}
                       alt={product.name}
                       className="w-14 h-14 object-cover rounded-lg flex-shrink-0 border border-white-500"
                     />

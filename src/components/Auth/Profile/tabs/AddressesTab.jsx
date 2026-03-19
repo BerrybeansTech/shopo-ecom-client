@@ -1,7 +1,8 @@
 // components/Profile/AddressesTab.js
 import React, { useState, useEffect } from "react";
-import { Trash2, Plus, MapPin, Phone, Globe, MapPinned, Check, Edit2 } from "lucide-react";
+import { Trash2, Plus, User, MapPin, Phone, Globe, MapPinned, Check, Edit2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import { addressApi } from "../../addressApi";
 
 export default function AddressesTab() {
   const [addresses, setAddresses] = useState([]);
@@ -9,142 +10,58 @@ export default function AddressesTab() {
   const [editAddress, setEditAddress] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
-    fullName: "",
     phone: "",
     address: "",
     city: "",
     state: "",
-    pincode: "",
     country: "India",
-    type: "billing"
+    postalCode: ""
   });
+  const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [fetchingAddresses, setFetchingAddresses] = useState(true);
 
-  const { user, updateProfile, accessToken } = useAuth();
+  const { user } = useAuth();
 
-  // FIXED: Properly convert customer profile to addresses format
-  const customerToAddresses = (customer) => {
-    if (!customer) return [];
-    
-    const addressMap = new Map();
-    
-    // FIXED: Always add main profile address first
-    if (customer.address && customer.city && customer.state && customer.postalCode) {
-      const mainAddressId = 'main_address';
-      addressMap.set(mainAddressId, {
-        id: mainAddressId,
-        name: "Default Address",
-        fullName: customer.name || "",
-        phone: customer.phone || "",
-        address: customer.address || "",
-        city: customer.city || "",
-        state: customer.state || "",
-        pincode: customer.postalCode || "",
-        country: customer.country || "India",
-        type: "billing",
-        isDefault: true, // Main address is always default
-        isMainAddress: true
-      });
-    }
-    
-    // FIXED: Parse additional addresses from remarks
-    if (customer.remarks) {
-      try {
-        const remarksData = JSON.parse(customer.remarks);
-        
-        // Check if remarks is an array of addresses
-        if (Array.isArray(remarksData)) {
-          remarksData.forEach((addr, index) => {
-            if (addr && typeof addr === 'object') {
-              const addressId = addr.id || `addr_${Date.now()}_${index}`;
-              // Only add if not duplicate of main address
-              if (!addressMap.has(addressId)) {
-                addressMap.set(addressId, {
-                  ...addr,
-                  id: addressId,
-                  isDefault: addr.isDefault || false,
-                  isMainAddress: false
-                });
-              }
-            }
-          });
-        }
-        // FIXED: Handle if remarks is a single address object
-        else if (typeof remarksData === 'object' && remarksData.address) {
-          const addressId = remarksData.id || `addr_${Date.now()}_single`;
-          if (!addressMap.has(addressId)) {
-            addressMap.set(addressId, {
-              ...remarksData,
-              id: addressId,
-              isDefault: remarksData.isDefault || false,
-              isMainAddress: false
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing remarks:', e);
-        // If parsing fails, try to use remarks as a string address
-        if (typeof customer.remarks === 'string' && customer.remarks.length > 10) {
-          const addressId = 'additional_address';
-          if (!addressMap.has(addressId)) {
-            addressMap.set(addressId, {
-              id: addressId,
-              name: "Additional Address",
-              fullName: customer.name || "",
-              phone: customer.phone || "",
-              address: customer.remarks,
-              city: customer.city || "",
-              state: customer.state || "",
-              pincode: customer.postalCode || "",
-              country: customer.country || "India",
-              type: "billing",
-              isDefault: false,
-              isMainAddress: false
-            });
-          }
-        }
-      }
-    }
-    
-    return Array.from(addressMap.values());
-  };
-
-  // FIXED: Load addresses from user profile with proper initialization
-  useEffect(() => {
-    if (user && !isInitialized) {
-      console.log('Loading addresses from user:', user);
-      const userAddresses = customerToAddresses(user);
-      console.log('Parsed addresses:', userAddresses);
-      setAddresses(userAddresses);
-      setIsInitialized(true);
-    }
-  }, [user, isInitialized]);
-
-  // FIXED: Update addresses when user changes
+  // Fetch addresses from API on component mount
   useEffect(() => {
     if (user) {
-      console.log('User updated, reloading addresses');
-      const userAddresses = customerToAddresses(user);
-      console.log('Updated addresses:', userAddresses);
-      setAddresses(userAddresses);
+      fetchAddresses();
     }
   }, [user]);
+
+  const fetchAddresses = async () => {
+    try {
+      setFetchingAddresses(true);
+      setError("");
+      const response = await addressApi.getAllAddresses();
+
+      if (response.success && response.data) {
+        setAddresses(response.data);
+      } else {
+        setAddresses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      setError('Failed to load addresses. Please try again.');
+      setAddresses([]);
+    } finally {
+      setFetchingAddresses(false);
+    }
+  };
 
   const openEditPopup = (address) => {
     console.log('Editing address:', address);
     setEditAddress(address);
-    setFormData({ 
+    setFormData({
       name: address.name || "",
-      fullName: address.fullName || "",
       phone: address.phone || "",
       address: address.address || "",
       city: address.city || "",
       state: address.state || "",
-      pincode: address.pincode || "",
       country: address.country || "India",
-      type: address.type || "billing"
+      postalCode: address.postalCode || ""
     });
     setIsPopupOpen(true);
     setError("");
@@ -155,14 +72,12 @@ export default function AddressesTab() {
     setEditAddress(null);
     setFormData({
       name: "",
-      fullName: user?.name || "",
-      phone: user?.phone || "",
+      phone: "",
       address: "",
       city: "",
       state: "",
-      pincode: "",
       country: "India",
-      type: "billing"
+      postalCode: ""
     });
     setIsPopupOpen(true);
     setError("");
@@ -173,44 +88,81 @@ export default function AddressesTab() {
     setEditAddress(null);
     setFormData({
       name: "",
-      fullName: "",
       phone: "",
       address: "",
       city: "",
       state: "",
-      pincode: "",
       country: "India",
-      type: "billing"
+      postalCode: ""
     });
     setError("");
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let newValue = value;
+    
+    if (name === 'phone') {
+      newValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+    if (name === 'postalCode') {
+      newValue = value.replace(/\D/g, '').slice(0, 6);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
     setError("");
+    
+    // Clear field-specific error
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const validateForm = () => {
-    if (!formData.fullName || !formData.phone || !formData.address || 
-        !formData.city || !formData.state || !formData.pincode) {
-      setError("All fields marked with * are required.");
+    const errors = {};
+    
+    if (!formData.name || formData.name.trim().length < 3) {
+      errors.name = "Full Name is required (min 3 chars).";
+    }
+    
+    if (!formData.phone) {
+      errors.phone = "Phone number is required.";
+    } else if (!/^\d{10}$/.test(formData.phone)) {
+      errors.phone = "Enter a valid 10-digit phone number.";
+    }
+
+    if (!formData.address || formData.address.trim().length < 5) {
+      errors.address = "Address is required (min 5 chars).";
+    }
+
+    if (!formData.city || !formData.city.trim()) {
+      errors.city = "City is required.";
+    }
+
+    if (!formData.state || !formData.state.trim()) {
+      errors.state = "State is required.";
+    }
+
+    if (!formData.postalCode) {
+      errors.postalCode = "Postal code is required.";
+    } else if (!/^\d{6}$/.test(formData.postalCode)) {
+      errors.postalCode = "Enter a valid 6-digit postal code.";
+    }
+
+    setFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      setError("Please fix the highlighted errors.");
       return false;
     }
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      setError("Please enter a valid 10-digit phone number.");
-      return false;
-    }
-    const pincodeRegex = /^\d{6}$/;
-    if (!pincodeRegex.test(formData.pincode)) {
-      setError("Please enter a valid 6-digit pincode.");
-      return false;
-    }
+    
     return true;
   };
 
-  // FIXED: Save address with proper handling
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -218,84 +170,68 @@ export default function AddressesTab() {
     setError("");
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      let updatedAddresses = [...currentAddresses];
-      
-      // FIXED: Check for duplicates (excluding current edit address)
-      const isDuplicate = currentAddresses.some(addr => 
-        addr.id !== (editAddress?.id || '') &&
-        addr.address.toLowerCase().trim() === formData.address.toLowerCase().trim() &&
-        addr.city.toLowerCase().trim() === formData.city.toLowerCase().trim() &&
-        addr.pincode === formData.pincode
-      );
-
-      if (isDuplicate) {
-        setError('This address already exists');
-        setLoading(false);
-        return;
-      }
-
       if (editAddress) {
         // Update existing address
-        updatedAddresses = updatedAddresses.map(addr =>
-          addr.id === editAddress.id 
-            ? { 
-                ...formData, 
-                id: editAddress.id, 
-                isDefault: addr.isDefault,
-                isMainAddress: addr.isMainAddress 
-              }
-            : addr
-        );
-      } else {
-        // Add new address
-        const newAddress = {
-          ...formData,
-          id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          isDefault: false, // New addresses are not default by default
-          isMainAddress: false
+        const updateData = {
+          id: editAddress.id,
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          postalCode: formData.postalCode
         };
-        updatedAddresses.push(newAddress);
-      }
 
-      // FIXED: Separate main address from additional addresses
-      const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
-      const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
-      
-      // Get all additional addresses (excluding main address)
-      const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
+        const response = await addressApi.updateAddress(updateData);
 
-      // FIXED: Prepare updated customer data
-      const updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        // Always update main profile fields from default address
-        address: defaultAddress?.address || "",
-        city: defaultAddress?.city || "",
-        state: defaultAddress?.state || "",
-        country: defaultAddress?.country || "India",
-        postalCode: defaultAddress?.pincode || "",
-        // Store additional addresses in remarks
-        remarks: additionalAddresses.length > 0 ? JSON.stringify(additionalAddresses) : null
-      };
-
-      console.log('Saving address - Updated customer:', updatedCustomer);
-      const result = await updateProfile(updatedCustomer, accessToken);
-      
-      if (result.success) {
-        console.log('Address saved successfully');
-        closePopup();
-        // Refresh addresses after successful save
-        const refreshedAddresses = customerToAddresses(result.data?.data || updatedCustomer);
-        setAddresses(refreshedAddresses);
+        if (response.success) {
+          console.log('Address updated successfully');
+          await fetchAddresses(); // Refresh the list
+          closePopup();
+        } else {
+          setError(response.message || 'Failed to update address');
+        }
       } else {
-        setError(result.error || 'Failed to save address');
+        // Create new address
+        const createData = {
+          customerId: user.id,
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          isDefault: addresses.length === 0
+        };
+
+        const response = await addressApi.createAddress(createData);
+
+        if (response.success) {
+          // If it's the first address, set it as default via a separate update call
+          if (createData.isDefault && response.data && response.data.id) {
+            try {
+              await addressApi.setDefaultAddress({
+                ...response.data,
+                isDefault: true
+              });
+            } catch (e) {
+              console.error('Failed to auto-set as default:', e);
+            }
+          }
+
+          console.log('Address created successfully');
+          await fetchAddresses(); // Refresh the list
+          closePopup();
+        }
+        else {
+          setError(response.message || 'Failed to create address');
+        }
       }
     } catch (error) {
       console.error('Save address error:', error);
-      setError('Failed to save address. Please try again.');
+      setError(error.message || 'Failed to save address. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -308,122 +244,44 @@ export default function AddressesTab() {
     setError("");
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      const addressToDelete = currentAddresses.find(addr => addr.id === addressId);
-      
-      // Don't allow deletion of main address
-      if (addressToDelete?.isMainAddress) {
-        setError('Cannot delete the main address. Please update your profile instead.');
-        setLoading(false);
-        return;
-      }
+      const response = await addressApi.deleteAddress(addressId);
 
-      const updatedAddresses = currentAddresses.filter(addr => addr.id !== addressId);
-      
-      // If we're deleting the last address, clear everything
-      if (updatedAddresses.length === 0) {
-        const updatedCustomer = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          address: "",
-          city: "",
-          state: "",
-          country: "",
-          postalCode: "",
-          remarks: null
-        };
-
-        await updateProfile(updatedCustomer, accessToken);
+      if (response.success) {
+        console.log('Address deleted successfully');
+        await fetchAddresses(); // Refresh the list
       } else {
-        // Get main address (always exists)
-        const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
-        const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
-        
-        // Get additional addresses (excluding main)
-        const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
-
-        const updatedCustomer = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          address: defaultAddress.address,
-          city: defaultAddress.city,
-          state: defaultAddress.state,
-          country: defaultAddress.country,
-          postalCode: defaultAddress.pincode,
-          remarks: additionalAddresses.length > 0 ? JSON.stringify(additionalAddresses) : null
-        };
-
-        await updateProfile(updatedCustomer, accessToken);
+        setError(response.message || 'Failed to delete address');
       }
-      
-      // Refresh addresses
-      const refreshedAddresses = customerToAddresses(user);
-      setAddresses(refreshedAddresses);
     } catch (error) {
       console.error('Delete address error:', error);
-      setError('Failed to delete address. Please try again.');
+      setError(error.message || 'Failed to delete address. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSetDefault = async (addressId) => {
+  const handleSetDefault = async (address) => {
     setLoading(true);
     setError("");
 
     try {
-      const currentAddresses = customerToAddresses(user);
-      const selectedAddress = currentAddresses.find(addr => addr.id === addressId);
-      
-      if (!selectedAddress) {
-        setError('Address not found');
-        setLoading(false);
-        return;
-      }
-
-      // FIXED: Update isDefault flags - only selected address is default
-      const updatedAddresses = currentAddresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId
-      }));
-
-      // Get main address
-      const mainAddress = updatedAddresses.find(addr => addr.isMainAddress);
-      const defaultAddress = updatedAddresses.find(addr => addr.isDefault) || mainAddress || updatedAddresses[0];
-      
-      // Get additional addresses (excluding main)
-      const additionalAddresses = updatedAddresses.filter(addr => !addr.isMainAddress);
-
-      const updatedCustomer = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: defaultAddress.address,
-        city: defaultAddress.city,
-        state: defaultAddress.state,
-        country: defaultAddress.country,
-        postalCode: defaultAddress.pincode,
-        remarks: additionalAddresses.length > 0 ? JSON.stringify(additionalAddresses) : null
+      // Create update data with isDefault: true
+      const updateData = {
+        ...address,
+        isDefault: true
       };
 
-      console.log('Setting default address:', updatedCustomer);
-      const result = await updateProfile(updatedCustomer, accessToken);
-      
-      if (result.success) {
-        // Refresh addresses after successful update
-        const refreshedAddresses = customerToAddresses(result.data?.data || updatedCustomer);
-        setAddresses(refreshedAddresses);
+      const response = await addressApi.setDefaultAddress(updateData);
+
+      if (response.success) {
+        console.log('Default address set successfully');
+        await fetchAddresses(); // Refresh the list
       } else {
-        setError(result.error || 'Failed to set default address');
+        setError(response.message || 'Failed to set default address');
       }
     } catch (error) {
       console.error('Set default address error:', error);
-      setError('Failed to set default address. Please try again.');
+      setError(error.message || 'Failed to set default address. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -432,16 +290,16 @@ export default function AddressesTab() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-black-900 mb-1">Saved Addresses</h2>
-        <p className="text-black-50 text-sm">Manage your delivery addresses</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Saved Addresses</h2>
+        <p className="text-gray-600 text-sm">Manage your delivery addresses</p>
       </div>
 
       {/* Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-black-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white-50 p-6 rounded-lg shadow-lg">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black-900 mx-auto"></div>
-            <p className="text-sm text-black-50 mt-2">Processing...</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
+            <p className="text-sm text-gray-600 mt-2">Processing...</p>
           </div>
         </div>
       )}
@@ -451,145 +309,151 @@ export default function AddressesTab() {
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg flex items-center gap-2">
           <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm font-medium">{error}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {addresses.map((address) => (
-          <div
-            key={address.id}
-            className="bg-white-50 rounded-lg border border-white-700 hover:border-black-100 transition-all duration-300 overflow-hidden group"
-          >
-            <div className="bg-white-200 p-4 border-b border-white-700">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-white-400 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-black-100" />
+      {/* Fetching Addresses State */}
+      {fetchingAddresses ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-3"></div>
+          <p className="text-gray-600">Loading addresses...</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {addresses.map((address) => (
+              <div
+                key={address.id}
+                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 overflow-hidden"
+              >
+                {/* Header with badges */}
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-gray-600" />
+                      <h3 className="text-base font-semibold text-gray-900">
+                        {address.isDefault ? 'Default Address' : 'Additional Address'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(address.id)}
+                      className="p-1.5 hover:bg-red-50 rounded-lg transition-colors group"
+                      aria-label="Delete address"
+                    >
+                      <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-colors" />
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-black-900">{address.name}</h3>
-                    <div className="flex gap-1 mt-1">
-                      {address.isDefault && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-black-900 text-white-50">
-                          Default
-                        </span>
-                      )}
-                      {address.isMainAddress && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-blue-500 text-white-50">
-                          Main
-                        </span>
-                      )}
+                  <div className="flex gap-2">
+                    {address.isDefault && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                        Main
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Address Details */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-gray-400 mt-1" />
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">
+                        Full Name *
+                      </p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {address.name || address.customer?.name || user.name}
+                      </p>
                     </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(address.id)}
-                  disabled={address.isMainAddress}
-                  className={`w-8 h-8 rounded-full border ${
-                    address.isMainAddress 
-                      ? 'border-white-500 bg-white-50 cursor-not-allowed' 
-                      : 'border-white-700 bg-white-50 hover:bg-red-600 hover:border-red-600'
-                  } flex items-center justify-center transition-all duration-300 group`}
-                  aria-label="Delete address"
-                >
-                  <Trash2 className={`w-4 h-4 ${
-                    address.isMainAddress 
-                      ? 'text-white-500' 
-                      : 'text-black-50 group-hover:text-white-50'
-                  } transition-colors`} />
-                </button>
-              </div>
-            </div>
 
-            <div className="p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-white-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-black-50"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-black-50 font-medium mb-1">Full Name *</p>
-                  <p className="text-sm text-black-900 font-semibold">{address.fullName}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-white-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Phone className="w-4 h-4 text-black-100" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-black-50 font-medium mb-1">Phone Number *</p>
-                  <p className="text-sm text-black-900 font-medium">{address.phone}</p>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-white-700">
-                <div className="flex items-start gap-3 mb-2">
-                  <div className="w-6 h-6 rounded-lg bg-white-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <MapPinned className="w-4 h-4 text-black-100" />
+                  <div className="flex items-start gap-2">
+                    <Phone className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">Phone Number *</p>
+                      <p className="text-sm text-gray-900">{address.phone || user.phone}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-black-50 font-medium mb-1">Address *</p>
-                    <p className="text-sm text-black-900 font-medium">
-                      {address.address}, {address.city}, {address.state} - {address.pincode}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-white-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Globe className="w-4 h-4 text-black-100" />
+                  <div className="flex items-start gap-2">
+                    <MapPinned className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">Address *</p>
+                      <p className="text-sm text-gray-900">{address.address}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-black-50 font-medium mb-1">Country</p>
-                    <p className="text-sm text-black-900 font-medium">{address.country}</p>
+
+                  <div className="flex items-start gap-2">
+                    <Globe className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">City, State - Pincode</p>
+                      <p className="text-sm text-gray-900">
+                        {address.city}, {address.state} - {address.postalCode}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <Globe className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">Country</p>
+                      <p className="text-sm text-gray-900">{address.country}</p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="pt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditPopup(address)}
+                      className="flex-1 py-2 px-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit
+                    </button>
+                    {!address.isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefault(address)}
+                        className="flex-1 py-2 px-3 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4" />
+                        Set Default
+                      </button>
+                    )}
+                    {address.isDefault && (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex-1 py-2 px-3 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4" />
+                        Default
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEditPopup(address)}
-                  className="flex-1 py-2 px-3 border border-white-700 rounded-lg text-sm font-medium text-black-100 hover:bg-white-300 transition-colors flex items-center justify-center gap-1"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetDefault(address.id)}
-                  disabled={address.isDefault}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-1 ${
-                    address.isDefault
-                      ? "bg-white-500 text-black-50 cursor-not-allowed"
-                      : "bg-black-900 hover:bg-black-200 text-white-50"
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  {address.isDefault ? "Default" : "Set Default"}
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {addresses.length === 0 && (
-        <div className="text-center py-8 border-2 border-dashed border-white-700 rounded-lg mb-6">
-          <MapPin className="w-12 h-12 text-black-50 mx-auto mb-3" />
-          <p className="text-black-50 mb-4">No addresses saved yet</p>
-          <p className="text-sm text-black-50">Add your first address to get started</p>
-        </div>
+          {addresses.length === 0 && (
+            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg mb-6">
+              <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 mb-4">No addresses saved yet</p>
+              <p className="text-sm text-gray-500">Add your first address to get started</p>
+            </div>
+          )}
+        </>
       )}
 
       <button
         type="button"
         onClick={openAddPopup}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-black-900 text-white-50 rounded-lg text-sm font-semibold hover:bg-black-200 transition-all duration-300"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-all duration-300"
       >
         <Plus className="w-4 h-4" />
         Add New Address
@@ -597,75 +461,47 @@ export default function AddressesTab() {
 
       {/* Add/Edit Address Popup */}
       {isPopupOpen && (
-        <div className="fixed inset-0 bg-black-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white-50 rounded-lg p-6 w-full max-w-md mx-auto shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-black-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {editAddress ? "Edit Address" : "Add New Address"}
             </h3>
-            
+
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-black-100 mb-1">
-                  Address Name <span className="text-black-50">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
-                  placeholder="e.g., Home, Office"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={`w-full h-10 px-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="Full Name"
+                  />
+                  {formErrors.name && <p className="text-[10px] text-red-500 mt-1">{formErrors.name}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className={`w-full h-10 px-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 ${formErrors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="10-digit phone"
+                    maxLength="10"
+                  />
+                  {formErrors.phone && <p className="text-[10px] text-red-500 mt-1">{formErrors.phone}</p>}
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black-100 mb-1">
-                  Address Type *
-                </label>
-                <select
-                  name="type"
-                  value={formData.type}
-                  onChange={handleInputChange}
-                  className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
-                >
-                  <option value="billing">Billing</option>
-                  <option value="shipping">Shipping</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-black-100 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
-                  placeholder="Enter full name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-black-100 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
-                  placeholder="10-digit mobile number"
-                  maxLength="10"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-black-100 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address *
                 </label>
                 <textarea
@@ -673,15 +509,15 @@ export default function AddressesTab() {
                   value={formData.address}
                   onChange={handleInputChange}
                   rows="3"
-                  className="w-full px-3 py-2 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900 resize-none"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 resize-none ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   placeholder="House No, Building, Street, Area"
-                  required
                 />
+                {formErrors.address && <p className="text-[10px] text-red-500 mt-1">{formErrors.address}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-black-100 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     City *
                   </label>
                   <input
@@ -689,14 +525,14 @@ export default function AddressesTab() {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
+                    className={`w-full h-10 px-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 ${formErrors.city ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     placeholder="City"
-                    required
                   />
+                  {formErrors.city && <p className="text-[10px] text-red-500 mt-1">{formErrors.city}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black-100 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     State *
                   </label>
                   <input
@@ -704,32 +540,32 @@ export default function AddressesTab() {
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
-                    className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
+                    className={`w-full h-10 px-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 ${formErrors.state ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     placeholder="State"
-                    required
                   />
+                  {formErrors.state && <p className="text-[10px] text-red-500 mt-1">{formErrors.state}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-black-100 mb-1">
-                    Pincode *
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Postal Code *
                   </label>
                   <input
                     type="text"
-                    name="pincode"
-                    value={formData.pincode}
+                    name="postalCode"
+                    value={formData.postalCode}
                     onChange={handleInputChange}
-                    className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
-                    placeholder="6-digit pincode"
+                    className={`w-full h-10 px-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900 ${formErrors.postalCode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="6-digit postal code"
                     maxLength="6"
-                    required
                   />
+                  {formErrors.postalCode && <p className="text-[10px] text-red-500 mt-1">{formErrors.postalCode}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-black-100 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Country
                   </label>
                   <input
@@ -737,7 +573,7 @@ export default function AddressesTab() {
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
-                    className="w-full h-10 px-3 border border-white-700 rounded-lg focus:ring-2 focus:ring-black-900 focus:border-black-900 outline-none text-sm text-black-900"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-sm text-gray-900"
                     placeholder="Country"
                   />
                 </div>
@@ -749,14 +585,14 @@ export default function AddressesTab() {
                 type="button"
                 onClick={handleSave}
                 disabled={loading}
-                className="flex-1 py-2 px-3 bg-black-900 text-white-50 rounded-lg text-sm font-semibold hover:bg-black-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 px-3 bg-black text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : 'Save Address'}
               </button>
               <button
                 type="button"
                 onClick={closePopup}
-                className="flex-1 py-2 px-3 border border-white-700 rounded-lg text-sm font-medium text-black-100 hover:bg-white-300 transition-all"
+                className="flex-1 py-2 px-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
               >
                 Cancel
               </button>

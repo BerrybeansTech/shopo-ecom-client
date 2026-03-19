@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
+import { normalizeProductImages } from "../../utils/imageUtils";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
-  const { addItemToCart, refreshCart } = useCart();
+  const { items, addItemToCart, updateItemQuantity, refreshCart, isItemUpdating } = useCart();
 
   // Add state for add to cart feedback
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -26,11 +27,20 @@ export default function ProductView({ product, className, reportHandler, writeRe
       : 0;
 
     // Get images
-    const images = product.galleryImage && product.galleryImage.length > 0
-      ? product.galleryImage
-      : product.thumbnailImage
-      ? [product.thumbnailImage]
-      : [];
+    let rawImages = [];
+    if (product.galleryImage && Array.isArray(product.galleryImage)) {
+      rawImages = product.galleryImage;
+    } else if (product.images && Array.isArray(product.images)) {
+      rawImages = product.images;
+    } else if (product.thumbnailImage) {
+      rawImages = [product.thumbnailImage];
+    } else if (product.thumbnail) {
+      rawImages = [product.thumbnail];
+    }
+
+    const images = rawImages.length > 0 
+      ? rawImages.map(img => typeof img === 'string' ? (img.startsWith('http') ? img : `http://luxcycs.com/rabbit-and-finch-uploads/${img.startsWith('/') ? img.substring(1) : img}`) : '')
+      : [normalizeProductImages(product)[0]]; // Fallback to current utility logic
 
     // Process available colors and sizes from inventories
     const colorMap = new Map();
@@ -217,6 +227,26 @@ export default function ProductView({ product, className, reportHandler, writeRe
     );
   }, [transformedProduct, selectedColorId]);
 
+  // Check if current selection is already in cart
+  const itemInCart = useMemo(() => {
+    if (!items || !transformedProduct || !selectedColorId || !selectedSizeId) return null;
+    
+    // Find matching inventory for current selection to get variation IDs
+    const inventory = transformedProduct.inventories.find(inv => {
+      const colorMatch = inv.productColor?.id === selectedColorId;
+      const sizeMatch = inv.productSize?.size?.includes(selectedSize?.name);
+      return colorMatch && sizeMatch;
+    });
+
+    if (!inventory) return null;
+
+    return items.find(item => 
+      Number(item.productId) === Number(transformedProduct.id) && 
+      Number(item.productColorVariationId) === Number(inventory.productColor?.id) &&
+      Number(item.productSizeVariationId) === Number(inventory.productSize?.id)
+    );
+  }, [items, transformedProduct, selectedColorId, selectedSizeId, selectedSize]);
+
   // Check if both color and size are selected
   const isOptionsSelected = useMemo(() => {
     return selectedColorId && selectedSizeId;
@@ -373,15 +403,29 @@ export default function ProductView({ product, className, reportHandler, writeRe
     setUserMessage(""); // Clear any previous messages
   };
 
-  const increment = () => {
-    if (quantity < currentStock) {
-      setQuantity(prev => prev + 1);
+  const increment = async () => {
+    if (itemInCart) {
+      if (itemInCart.quantity < currentStock) {
+        await updateItemQuantity(itemInCart.id, itemInCart.quantity + 1);
+      } else {
+        setUserMessage(`⚠️ Only ${currentStock} items available in stock`);
+      }
+    } else {
+      if (quantity < currentStock) {
+        setQuantity(prev => prev + 1);
+      }
     }
   };
 
-  const decrement = () => {
-    if (quantity > 1) {
-      setQuantity(prev => prev - 1);
+  const decrement = async () => {
+    if (itemInCart) {
+      if (itemInCart.quantity > 1) {
+        await updateItemQuantity(itemInCart.id, itemInCart.quantity - 1);
+      }
+    } else {
+      if (quantity > 1) {
+        setQuantity(prev => prev - 1);
+      }
     }
   };
 
@@ -482,30 +526,27 @@ export default function ProductView({ product, className, reportHandler, writeRe
       
       if (result.success) {
         setAddToCartSuccess(true);
-        
         // Show success alert
         alert("✅ Successfully added to cart!");
-        
         // Refresh cart to get updated data
         await refreshCart();
-        
-        console.log("Cart result:", result);
+        return true;
       } else {
         throw new Error(result.error || "Failed to add to cart");
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
       alert(`❌ Failed to add product to cart\n\n${error.message}\n\nPlease try again or contact support.`);
+      return false;
     } finally {
       setIsAddingToCart(false);
     }
   };
 
   const handleBuyNow = async () => {
-    await handleAddToCart();
-    if (addToCartSuccess) {
-      // After successful add to cart, redirect to cart page
-      window.location.href = '/cart';
+    const success = await handleAddToCart();
+    if (success) {
+      navigate('/checkout');
     }
   };
 
@@ -671,19 +712,19 @@ export default function ProductView({ product, className, reportHandler, writeRe
       {/* Details Section */}
       <div className="flex-1">
         <div className="product-details w-full mt-10 lg:mt-0">
-          <span className="text-qgray text-xs font-normal uppercase tracking-wider mb-2 inline-block">
+          <span className="text-gray-500 text-xs font-normal uppercase tracking-wider mb-2 inline-block">
             {transformedProduct.category}
           </span>
-          <p className="text-xl font-medium text-qblack mb-4">
+          <p className="text-xl font-medium text-gray-900 mb-4">
             {transformedProduct.name}
           </p>
 
           {/* Rating */}
           <div className="flex space-x-[10px] items-center mb-6">
-            <span className="bg-qgreen text-xs font-bold py-1 px-2 rounded">
+            <span className="bg-green-600 text-white text-xs font-bold py-1 px-2 rounded">
               {transformedProduct.rating.toFixed(1)} ★
             </span>
-            <span className="text-qblack text-sm">
+            <span className="text-gray-900 text-sm">
               {transformedProduct.reviewCount} reviews
             </span>
           </div>
@@ -691,15 +732,15 @@ export default function ProductView({ product, className, reportHandler, writeRe
           {/* Price Section */}
           <div className="mb-7">
             <div className="flex items-center mb-2">
-              <span className="text-2xl font-bold text-qblack">
+              <span className="text-2xl font-bold text-gray-900">
                 ₹{calculatedPrice.sellingPrice.toLocaleString()}
               </span>
               {calculatedPrice.discount > 0 && (
                 <>
-                  <span className="text-lg font-medium text-qgray line-through ml-3">
+                  <span className="text-lg font-medium text-gray-400 line-through ml-3">
                     ₹{calculatedPrice.mrp.toLocaleString()}
                   </span>
-                  <span className="text-sm font-semibold text-qred ml-3 bg-qred-light px-2 py-1 rounded">
+                  <span className="text-sm font-semibold text-red-600 ml-3 bg-red-50 px-2 py-1 rounded">
                     {calculatedPrice.discount}% off
                   </span>
                   <span
@@ -775,7 +816,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
           {/* Color Selection */}
           <div className="colors mb-[30px]">
-            <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
+            <span className="text-sm font-normal uppercase text-gray-500 mb-[14px] inline-block">
               COLOR
             </span>
             <div className="flex space-x-4 items-center">
@@ -802,7 +843,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
           {/* Size Selection */}
           <div className="product-size mb-[30px]">
-            <span className="text-sm font-normal uppercase text-qgray mb-[14px] inline-block">
+            <span className="text-sm font-normal uppercase text-gray-500 mb-[14px] inline-block">
               SIZE
             </span>
             {selectedColorId ? (
@@ -872,80 +913,86 @@ export default function ProductView({ product, className, reportHandler, writeRe
           )}
 
           {/* Quantity and Action Buttons */}
-          <div className="quantity-card-wrapper w-full flex flex-col sm:flex-row items-center gap-3 mb-[30px]">
-            <div className="w-[120px] h-[50px] px-[26px] flex items-center border border-gray-300 rounded relative">
-              <div className="flex justify-between items-center w-full">
-                <button
-                  onClick={decrement}
-                  type="button"
-                  className={`text-base transition-colors ${
-                    quantity <= 1 || isOutOfStock || isAddingToCart || !isOptionsSelected
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-gray-600 hover:text-black"
-                  }`}
-                  disabled={quantity <= 1 || isOutOfStock || isAddingToCart || !isOptionsSelected}
-                >
-                  -
-                </button>
-                
-                <input
-                  type="number"
-                  value={quantity}
-                  onChange={handleQuantityChange}
-                  min="1"
-                  max={currentStock}
-                  className="w-12 text-center border-none outline-none text-black bg-transparent appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  disabled={isOutOfStock || isAddingToCart || !isOptionsSelected}
-                />
-                
-                <button
-                  onClick={increment}
-                  type="button"
-                  className={`text-base transition-colors ${
-                    quantity >= currentStock || isOutOfStock || isAddingToCart || !isOptionsSelected
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-gray-600 hover:text-black"
-                  }`}
-                  disabled={quantity >= currentStock || isOutOfStock || isAddingToCart || !isOptionsSelected}
-                >
-                  +
-                </button>
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+            {/* Quantity Selector */}
+            <div className="inline-flex items-center border border-gray-300 rounded-lg overflow-hidden h-[50px]">
+              <button
+                onClick={decrement}
+                className="w-12 h-full flex items-center justify-center bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                disabled={itemInCart ? (itemInCart.quantity <= 1 || isItemUpdating(itemInCart.id)) : (quantity <= 1 || isOutOfStock || isAddingToCart || !isOptionsSelected)}
+              >
+                <span className="text-xl">−</span>
+              </button>
+              <div className="w-16 h-full flex items-center justify-center font-semibold text-gray-900 bg-white border-x border-gray-300">
+                {itemInCart ? (isItemUpdating(itemInCart.id) ? "..." : itemInCart.quantity) : quantity}
               </div>
+              <button
+                onClick={increment}
+                className="w-12 h-full flex items-center justify-center bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                disabled={itemInCart ? (itemInCart.quantity >= currentStock || isItemUpdating(itemInCart.id)) : (quantity >= currentStock || isOutOfStock || isAddingToCart || !isOptionsSelected)}
+              >
+                <span className="text-xl">+</span>
+              </button>
             </div>
 
             {/* Action Buttons Container */}
-            <div className="flex flex-1 w-full sm:w-auto gap-3">
-              <button
-                type="button"
-                onClick={isAddToCartDisabled ? handleDisabledButtonClick : handleAddToCart}
-                className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded flex items-center justify-center gap-2 ${
-                  isAddToCartDisabled
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-black text-white hover:bg-gray-700 cursor-pointer transform hover:scale-105 transition-transform"
-                }`}
-              >
-                {isAddingToCart ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Adding...
-                  </>
-                ) : !isOptionsSelected ? (
-                  "Select Options"
-                ) : (
-                  `Add To Cart`
-                )}
-              </button>
+            <div className="flex flex-1 w-full gap-3">
+              {itemInCart ? (
+                <button
+                  onClick={() => navigate('/cart')}
+                  className="flex-1 h-[50px] bg-gray-900 text-white rounded-lg font-bold flex items-center justify-center space-x-2 hover:bg-black transition-all transform active:scale-95 shadow-md"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 3H5L5.4 5M5.4 5H21L17 13H7M5.4 5L7 13M7 13L4.707 15.293C4.077 15.923 4.523 17 5.414 17H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="9" cy="21" r="1" fill="currentColor" />
+                    <circle cx="17" cy="21" r="1" fill="currentColor" />
+                  </svg>
+                  <span>GO TO CART</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={isAddToCartDisabled ? handleDisabledButtonClick : handleAddToCart}
+                  className={`flex-1 h-[50px] text-sm font-bold transition-all rounded-lg flex items-center justify-center gap-2 ${
+                    isAddToCartDisabled
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : addToCartSuccess
+                      ? "bg-green-600 text-white shadow-lg"
+                      : "bg-gray-900 text-white hover:bg-black shadow-lg hover:shadow-xl transform active:scale-95 transition-transform"
+                  }`}
+                  disabled={isAddingToCart}
+                >
+                  {isAddingToCart ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>ADDING...</span>
+                    </div>
+                  ) : addToCartSuccess ? (
+                    <div className="flex items-center gap-2">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>ADDED ITEM</span>
+                    </div>
+                  ) : !isOptionsSelected ? (
+                    "SELECT OPTIONS"
+                  ) : (
+                    "ADD TO CART"
+                  )}
+                </button>
+              )}
 
               <button
                 type="button"
-                onClick={isAddToCartDisabled ? handleDisabledButtonClick : handleBuyNow}
-                className={`flex-1 h-[50px] text-sm font-semibold transition-colors rounded ${
-                  isAddToCartDisabled
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-black text-white hover:bg-gray-800 cursor-pointer transform hover:scale-105 transition-transform"
+                onClick={itemInCart ? () => navigate('/checkout') : handleBuyNow}
+                className={`flex-1 h-[50px] text-sm font-bold transition-all rounded-lg border-2 transform active:scale-95 ${
+                  isAddToCartDisabled && !itemInCart
+                    ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"
                 }`}
+                disabled={isAddingToCart}
               >
-                Buy Now
+                BUY NOW
               </button>
             </div>
           </div>

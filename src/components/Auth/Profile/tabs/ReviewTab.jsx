@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Star, Upload, X, Image as ImageIcon, ShoppingBag, CheckCircle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { apiService } from "../../../../services/apiservice";
+import { getProductImage, getImageUrl } from "../../../../utils/imageUtils";
 
 const ratingLabels = {
   1: "Very Dissatisfied",
@@ -10,9 +11,6 @@ const ratingLabels = {
   4: "Very Satisfied",
   5: "Excellent",
 };
-
-// Get base URL for images
-const BASE_URL = 'http://luxcycs.com:5501';
 
 export default function ReviewTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,12 +90,6 @@ export default function ReviewTab() {
     }
   };
 
-  const getProductImageUrl = (imagePath) => {
-    if (!imagePath) return "/assets/images/shirt2.webp";
-    if (imagePath.startsWith('http')) return imagePath;
-    return `${BASE_URL}/${imagePath}`;
-  };
-
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     
@@ -158,8 +150,8 @@ export default function ReviewTab() {
             year: "numeric",
           }),
           productName: review.Product?.name || "Unknown Product",
-          productImage: getProductImageUrl(review.Product?.thumbnailImage),
-          reviewImages: review.images?.map(img => getProductImageUrl(img)) || [],
+          productImage: getProductImage(review.Product),
+          reviewImages: review.images?.map(img => getImageUrl(img)) || [],
           orderId: review.OrderItem?.Order?.orderId || null
         }));
         setReviews(transformedReviews);
@@ -206,8 +198,8 @@ export default function ReviewTab() {
             year: "numeric",
           }),
           productName: selectedProduct?.name || "Product",
-          productImage: getProductImageUrl(selectedProduct?.thumbnailImage),
-          reviewImages: response.data?.images?.map(img => getProductImageUrl(img)) || imagePreviews.map(p => p.url)
+          productImage: getProductImage(selectedProduct),
+          reviewImages: response.data?.images?.map(img => getImageUrl(img)) || imagePreviews.map(p => p.url)
         };
 
         // Add new review to the top of the list immediately
@@ -362,7 +354,7 @@ export default function ReviewTab() {
             <div className="flex items-start gap-3">
               <div className="flex items-center gap-3">
                 <img
-                  src={getProductImageUrl(selectedProduct.thumbnailImage)}
+                  src={getProductImage(selectedProduct)}
                   alt={selectedProduct.name}
                   className="w-16 h-16 border border-gray-300 rounded-lg object-cover"
                 />

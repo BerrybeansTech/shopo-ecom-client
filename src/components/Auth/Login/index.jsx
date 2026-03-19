@@ -191,8 +191,15 @@ export default function Login() {
                 value={formData.identifier}
                 onChange={handleInputChange}
                 disabled={isLoading || loading}
-                className="block w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
+                className={`block w-full px-4 py-3 rounded-lg border ${
+                   error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+                } focus:ring-1 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base`}
               />
+              {error && (
+                <p className="mt-1.5 text-xs font-medium text-red-600">
+                  {error}
+                </p>
+              )}
             </div>
 
             <button
