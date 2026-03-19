@@ -220,7 +220,9 @@ if (result.success) {
                     value={formData.password}
                     onChange={handleInputChange}
                     disabled={isLoading || loading}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-gray-800 placeholder-gray-400 disabled:bg-gray-50"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-1 transition-colors duration-200 ${
+                      error ? "border-red-500 focus:ring-red-500 focus:border-red-500" : "border-gray-300 focus:ring-gray-900 focus:border-gray-900"
+                    } text-gray-800 placeholder-gray-400 disabled:bg-gray-50`}
                   />
                   <button
                     type="button"
@@ -231,6 +233,11 @@ if (result.success) {
                     {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                   </button>
                 </div>
+                {error && (
+                  <p className="mt-1.5 text-xs font-medium text-red-600">
+                    {error}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end">

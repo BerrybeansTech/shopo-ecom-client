@@ -11,7 +11,11 @@ export const addressApi = {
      */
     getAllAddresses: async () => {
         try {
-            const response = await apiService.apiCall('/customer/get-all-address', {
+            const customerId = apiService.getCurrentUserId();
+            if (!customerId) {
+                console.warn('No customer ID found in storage');
+            }
+            const response = await apiService.apiCall(`/customer/get-all-address?customerId=${customerId || ''}`, {
                 method: 'GET',
             });
             return response;
@@ -114,12 +118,12 @@ export const addressApi = {
      * @param {number} addressId - The ID of the address to set as default
      * @returns {Promise} Response confirming default address set
      */
-    setDefaultAddress: async (addressId) => {
+    setDefaultAddress: async (addressData) => {
         try {
-            console.log('Setting default address:', addressId);
-            const response = await apiService.apiCall('/customer/set-default-address', {
+            console.log('Setting default address:', addressData.id);
+            const response = await apiService.apiCall('/customer/update-address', {
                 method: 'PUT',
-                body: { id: addressId },
+                body: addressData,
             });
             console.log('Set default address response:', response);
             return response;

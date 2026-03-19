@@ -38,48 +38,46 @@ export default function Signup() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     let newValue = value;
+    let fieldError = "";
 
     if (name === "phone") {
       newValue = value.replace(/\D/g, "").slice(0, 10);
-    }
-
-    setFormData({ ...formData, [name]: newValue });
-    clearError();
-
-    // Validation
-    if (name === "phone") {
       const phoneRegex = /^\d{10}$/;
-      setErrors({
-        ...errors,
-        phone: phoneRegex.test(newValue) ? "" : "Mobile number must be 10 digits.",
-      });
+      if (!newValue) {
+        fieldError = "Mobile number is required.";
+      } else if (!phoneRegex.test(newValue)) {
+        fieldError = "Mobile number must be 10 digits.";
+      }
     }
+
     if (name === "password") {
-      setErrors({
-        ...errors,
-        password: newValue.length < 6 ? "Password must be at least 6 characters" : "",
-      });
+      if (!newValue) {
+        fieldError = "Password is required.";
+      } else if (newValue.length < 6) {
+        fieldError = "Password must be at least 6 characters.";
+      }
     }
 
     if (name === "fname") {
       // Only letters and spaces allowed
       newValue = value.replace(/[^a-zA-Z\s]/g, "");
-      setErrors({
-        ...errors,
-        fname: newValue.trim() === "" ? "Name is required" : "",
-      })
+      if (newValue.trim() === "") {
+        fieldError = "Full name is required.";
+      }
     }
 
-    setFormData({ ...formData, [name]: newValue });
-    clearError();
-    
     if (name === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      setErrors({
-        ...errors,
-        email: emailRegex.test(newValue) ? "" : "Please enter a valid email address.",
-      });
+      if (!newValue) {
+        fieldError = "Email address is required.";
+      } else if (!emailRegex.test(newValue)) {
+        fieldError = "Please enter a valid email address.";
+      }
     }
+
+    setFormData(prev => ({ ...prev, [name]: newValue }));
+    setErrors(prev => ({ ...prev, [name]: fieldError }));
+    clearError();
   };
 
   const handleSubmit = async (e) => {
@@ -172,11 +170,11 @@ export default function Signup() {
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
             {/* Mobile Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Mobile Number
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 font-bold">
+                <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold ${errors.phone ? "text-red-500" : "text-gray-700"}`}>
                   +91
                 </span>
                 <input
@@ -185,15 +183,19 @@ export default function Signup() {
                   type="text"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full pl-14 pr-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
+                  className={`w-full pl-14 pr-4 py-3 rounded-lg border transition duration-200 text-sm sm:text-base ${
+                    errors.phone 
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500 text-red-900" 
+                      : "border-gray-300 focus:border-gray-900 focus:ring-gray-900 text-gray-800"
+                  } focus:ring-1 placeholder-gray-400`}
                 />
               </div>
-              {errors.phone && <p className="text-red-600 text-sm mt-2">{errors.phone}</p>}
+              {errors.phone && <p className="text-red-600 text-[11px] font-medium mt-1 ml-1">{errors.phone}</p>}
             </div>
-
+ 
             {/* Name Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name
               </label>
               <input
@@ -202,14 +204,18 @@ export default function Signup() {
                 type="text"
                 value={formData.fname}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
+                className={`w-full px-4 py-3 rounded-lg border transition duration-200 text-sm sm:text-base ${
+                  errors.fname 
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500 text-red-900" 
+                    : "border-gray-300 focus:border-gray-900 focus:ring-gray-900 text-gray-800"
+                } focus:ring-1 placeholder-gray-400`}
               />
-              {errors.fname && <p className="text-red-600 text-sm mt-2">{errors.fname}</p>}
+              {errors.fname && <p className="text-red-600 text-[11px] font-medium mt-1 ml-1">{errors.fname}</p>}
             </div>
-
+ 
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
               </label>
               <input
@@ -218,14 +224,18 @@ export default function Signup() {
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
+                className={`w-full px-4 py-3 rounded-lg border transition duration-200 text-sm sm:text-base ${
+                  errors.email 
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500 text-red-900" 
+                    : "border-gray-300 focus:border-gray-900 focus:ring-gray-900 text-gray-800"
+                } focus:ring-1 placeholder-gray-400`}
               />
-              {errors.email && <p className="text-red-600 text-sm mt-2">{errors.email}</p>}
+              {errors.email && <p className="text-red-600 text-[11px] font-medium mt-1 ml-1">{errors.email}</p>}
             </div>
-
+ 
             {/* Password Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -235,7 +245,11 @@ export default function Signup() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition text-gray-800 placeholder-gray-400 text-sm sm:text-base"
+                  className={`w-full px-4 py-3 pr-12 rounded-lg border transition duration-200 text-sm sm:text-base ${
+                    errors.password 
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500 text-red-900" 
+                      : "border-gray-300 focus:border-gray-900 focus:ring-gray-900 text-gray-800"
+                  } focus:ring-1 placeholder-gray-400`}
                 />
                 <button
                   type="button"
@@ -245,7 +259,7 @@ export default function Signup() {
                   {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-600 text-sm mt-2">{errors.password}</p>}
+              {errors.password && <p className="text-red-600 text-[11px] font-medium mt-1 ml-1">{errors.password}</p>}
             </div>
 
             {/* Optional Fields (can be collapsed or shown in profile later) */}

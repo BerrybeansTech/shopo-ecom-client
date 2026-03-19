@@ -125,7 +125,7 @@ export default function ForgotPassword() {
                 Mobile Number
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-medium">+91</span>
+                <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-medium transition-colors ${error ? "text-red-500" : "text-gray-700"}`}>+91</span>
                 <input
                   id="mobileNumber"
                   name="mobileNumber"
@@ -134,11 +134,18 @@ export default function ForgotPassword() {
                   onChange={handleMobileChange}
                   placeholder="Enter 10-digit mobile number"
                   disabled={isLoading}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 disabled:bg-gray-50"
+                  className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-gray-900 placeholder-gray-500 disabled:bg-gray-50 ${
+                    error ? "border-red-500" : "border-gray-300"
+                  }`}
                   maxLength={10}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              {error && (
+                <p className="mt-1.5 text-xs font-medium text-red-600">
+                  {error}
+                </p>
+              )}
+              <p className="text-[11px] text-gray-500 mt-2">
                 We'll send a 6-digit OTP to this mobile number
               </p>
             </div>
