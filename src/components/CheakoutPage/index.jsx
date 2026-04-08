@@ -10,6 +10,7 @@ import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
 import { addressApi } from '../Auth/addressApi';
 import { colorApi, sizeApi } from '../AllProductPage/productApi';
+import { trackNectorEvent } from '../NectorSDK/nectorEvents';
 
 export default function Checkout() {
   const [step, setStep] = useState(1);
@@ -581,6 +582,17 @@ export default function Checkout() {
 
         setOrderDetails(orderDetailsData);
         setShowThankYou(true);
+
+        // Track Order Completed in Nector
+        try {
+          await trackNectorEvent(user?._id || user?.id, 'order_completed', {
+            order_id: response.data.id || response.data._id,
+            amount: finalTotal,
+            currency: 'INR'
+          });
+        } catch (nectorError) {
+          console.error('Failed to track nector event:', nectorError);
+        }
 
       } else {
         throw new Error(response.message || 'Failed to create order');

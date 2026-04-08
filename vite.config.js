@@ -10,6 +10,7 @@ const pwaConfig = {
   includeAssets: ["logo-color.svg"],
   workbox: {
     globPatterns: ["**/*.{js,css,html,png,jpg,gif,svg}"], // Include your asset types
+    maximumFileSizeToCacheInBytes: 30000000, // Increase limit to 30MB for large images (pro.jpg, pro1.jpg)
     navigateFallback: "/", // The fallback for client-side routing
     navigateFallbackAllowlist: [/^(?!\/__).*/], // Allowlist for navigateFallback
     runtimeCaching: [
