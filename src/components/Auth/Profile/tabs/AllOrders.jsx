@@ -82,7 +82,7 @@ export default function AllOrders() {
   const downloadInvoice = async (order) => {
     try {
       const invoiceContent = `
-        SHOPO STORE
+        Rabbit and Finch
         ============
         
         Order #${order.orderId || order.id}
