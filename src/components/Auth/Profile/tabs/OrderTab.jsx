@@ -187,17 +187,17 @@ export default function OrderTab() {
           <p className="text-black-300">Track and manage your orders</p>
         </div>
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="text-center py-12 bg-white-400 rounded-lg border border-black-300">
-          <div className="w-16 h-16 bg-white-500 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="flex flex-col items-center justify-center text-center py-12 bg-white-400 rounded-lg border border-black-300 shadow-sm">
+          <div className="w-16 h-16 bg-white-500 rounded-full flex items-center justify-center mb-4">
             <AlertCircle className="w-8 h-8 text-black-600" />
           </div>
           <h3 className="text-lg font-semibold text-black-900 mb-2">Please Login</h3>
-          <p className="text-sm text-black-600 mb-4">
+          <p className="text-sm text-black-600 mb-4 max-w-sm mx-auto">
             You need to be logged in to view your current orders.
           </p>
           <button
             onClick={() => navigate('/login')}
-            className="bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-colors"
+            className="bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-all duration-200 shadow-md font-medium"
           >
             Login Now
           </button>
@@ -215,9 +215,9 @@ export default function OrderTab() {
           <p className="text-black-300">Track and manage your orders</p>
         </div>
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="text-center py-12 bg-white-50 rounded-lg border border-white-500">
+        <div className="flex flex-col items-center justify-center text-center py-12 bg-white-50 rounded-lg border border-white-500 shadow-sm">
           <h3 className="text-lg font-semibold text-black-900 mb-2">Wishlist Content</h3>
-          <p className="text-sm text-black-300">
+          <p className="text-sm text-black-300 max-w-sm mx-auto">
             Please navigate to the Wishlist section to view your saved items.
           </p>
         </div>
@@ -234,19 +234,19 @@ export default function OrderTab() {
           <p className="text-black-300">Track and manage your orders</p>
         </div>
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="text-center py-12 bg-white-50 rounded-lg border border-white-500">
-          <div className="mx-auto h-24 w-24 text-black-300 mb-4">
-            <Package className="w-full h-full" />
+        <div className="flex flex-col items-center justify-center text-center py-16 bg-white-50 rounded-xl border border-white-500 shadow-sm">
+          <div className="h-20 w-20 text-black-900 mb-4">
+            <Package className="w-full h-full stroke-[1.5]" />
           </div>
-          <h3 className="text-lg font-medium text-black-900 mb-2">
+          <h3 className="text-xl font-bold text-black-900 mb-2">
             No active orders
           </h3>
-          <p className="text-black-300 max-w-sm">
+          <p className="text-black-300 text-sm max-w-xs mx-auto">
             You don't have any pending, shipped, or processing orders.
           </p>
           <button
             onClick={() => navigate('/all-products')}
-            className="mt-4 bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-colors"
+            className="mt-6 bg-black-900 text-white-50 px-8 py-3 rounded-lg hover:bg-black-800 transition-all duration-200 font-semibold shadow-md active:scale-95"
           >
             Start Shopping
           </button>
