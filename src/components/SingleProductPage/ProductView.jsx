@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 import { normalizeProductImages } from "../../utils/imageUtils";
+import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
@@ -813,6 +814,9 @@ export default function ProductView({ product, className, reportHandler, writeRe
               {userMessage}
             </div>
           )}
+
+          {/* Nector Earn Points Widget */}
+          <NectorEarnPoints price={calculatedPrice.sellingPrice} />
 
           {/* Color Selection */}
           <div className="colors mb-[30px]">

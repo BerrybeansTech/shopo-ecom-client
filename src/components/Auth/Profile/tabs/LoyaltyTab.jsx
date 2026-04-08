@@ -1,39 +1,47 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useSelector } from "react-redux";
+import { NECTOR_API_KEY, NECTOR_PLATFORM } from "../../../NectorSDK/constants";
 
 export default function LoyaltyTab() {
+  const { user } = useSelector((state) => state.auth);
+  const containerId = 'nector-loyalty-tab-container';
+
+  useEffect(() => {
+    function initRewardsPage() {
+      if (window.nector_sdk && (user?.id || user?._id)) {
+        window.nector_sdk.init_widget(
+          'reward',
+          {
+            api_key: NECTOR_API_KEY,
+            platform: NECTOR_PLATFORM,
+            customer_id: user?._id || user?.id || ''
+          },
+          containerId
+        );
+      }
+    }
+
+    if (window.nector_sdk) {
+      initRewardsPage();
+    } else {
+      window.addEventListener('nector_sdk_initialized', initRewardsPage);
+    }
+
+    return () => {
+      window.removeEventListener('nector_sdk_initialized', initRewardsPage);
+    };
+  }, [user]);
+
   return (
     <div className="loyalty-tab w-full">
       <h1 className="text-[22px] font-bold text-qblack mb-5">Loyalty Program</h1>
       <div className="loyalty-content">
-        <p className="text-qgray text-base mb-4">
-          Earn points on every purchase and redeem them for exclusive rewards.
-        </p>
-        <div className="loyalty-points bg-primarygray p-6 rounded-lg">
-          <h2 className="text-lg font-semibold text-qblack mb-3">Your Points</h2>
-          <div className="points-display flex items-center">
-            <span className="text-3xl font-bold text-qyellow mr-3">1,250</span>
-            <span className="text-base text-qgray">points</span>
-          </div>
-          <p className="text-sm text-qgray mt-2">
-            Next reward at 1,500 points
-          </p>
-        </div>
-        <div className="loyalty-rewards mt-6">
-          <h3 className="text-lg font-semibold text-qblack mb-3">Available Rewards</h3>
-          <ul className="space-y-2">
-            <li className="flex justify-between items-center p-3 bg-white rounded border">
-              <span>10% Discount Coupon</span>
-              <span className="text-qyellow font-semibold">500 points</span>
-            </li>
-            <li className="flex justify-between items-center p-3 bg-white rounded border">
-              <span>Free Shipping</span>
-              <span className="text-qyellow font-semibold">300 points</span>
-            </li>
-            <li className="flex justify-between items-center p-3 bg-white rounded border">
-              <span>$5 Gift Card</span>
-              <span className="text-qyellow font-semibold">750 points</span>
-            </li>
-          </ul>
+        <div id={containerId} className="min-h-[600px] bg-white rounded-lg border border-gray-100 p-4">
+          {!window.nector_sdk && (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
