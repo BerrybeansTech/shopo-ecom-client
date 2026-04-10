@@ -586,6 +586,8 @@ import {
 } from "lucide-react";
 import { getCategoryIcon, getProfileIcon } from "../../../../utils/categoryIconMapping";
 
+
+
 const MobileNavbar = ({
   isScrolled,
   navigationCategories,
@@ -597,6 +599,8 @@ const MobileNavbar = ({
   isAuthenticated,
   itemCount,
   profileMenuItems,
+
+
   getProductUrl,
   navigateToProduct,
   getUserDisplayName,
@@ -809,9 +813,11 @@ const MobileNavbar = ({
               <UserCircle className="w-6 h-6 text-gray-700" />
             </button>
 
+
             {/* Cart Button */}
             <Link
               to="/cart"
+
               className="relative p-3 rounded-lg transition-colors hover:bg-gray-50 active:scale-95"
               title="Shopping Cart"
             >

@@ -18,78 +18,18 @@ export default function WishlistTab({ className }) {
   const navigate = useNavigate();
 
 
-  // Subscribe to wishlist changes from other components
-  useEffect(() => {
-    const unsubscribe = wishlistEvents.subscribe((wishlistResponse) => {
-      const wishlistIds = wishlistResponse.wishList || [];
-      setWishlistData(wishlistIds);
+  const fetchProductDetails = React.useCallback(async (productIds) => {
+    try {
+      if (!productIds || productIds.length === 0) {
+        setProducts([]);
+        return;
+      }
       
-      // Update products list to match new wishlist
-      if (wishlistIds.length > 0) {
-        // Only fetch if we don't have the product data already
-        const currentProductIds = products.map(p => p.id);
-        const needsUpdate = wishlistIds.some(id => !currentProductIds.includes(id)) ||
-                           currentProductIds.some(id => !wishlistIds.includes(id));
-        
-        if (needsUpdate) {
-          fetchProductDetails(wishlistIds);
-        }
-      } else {
-        setProducts([]);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [products]);
-
-  // Handle URL hash to set active tab on page load
-  useEffect(() => {
-    const hash = location.hash;
-    if (hash === "#wishlist") {
-      setActiveTab("Wishlist");
-    } else if (hash === "#allorders") {
-      setActiveTab("All orders");
-    } else if (hash === "#current") {
-      setActiveTab("Current");
-    } else {
-      setActiveTab("Wishlist");
-    }
-  }, [location]);
-
-  useEffect(() => {
-    if (activeTab === "Wishlist") {
-      fetchWishlist();
-    }
-  }, [activeTab]);
-
-  const fetchWishlist = async () => {
-    try {
       setLoading(true);
-      setError(null);
-      const response = await getWishlist();
-      const wishlistIds = response.wishList || [];
-      setWishlistData(wishlistIds);
-
-      if (wishlistIds.length > 0) {
-        await fetchProductDetails(wishlistIds);
-      } else {
-        setProducts([]);
-      }
-    } catch (err) {
-      console.error('Error fetching wishlist:', err);
-      setError(err.message || 'Failed to load wishlist');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProductDetails = async (productIds) => {
-    try {
       const productPromises = productIds.map(async (productId) => {
         try {
           const response = await apiService.get(`/product/get-product/${productId}`);
-          const productData = response.data || response;
-          return productData;
+          return response.data || response;
         } catch (err) {
           console.error(`Error fetching product ${productId}:`, err);
           return null;
@@ -97,13 +37,66 @@ export default function WishlistTab({ className }) {
       });
 
       const productDetails = await Promise.all(productPromises);
-      const validProducts = productDetails.filter(product => product !== null);
-      setProducts(validProducts);
+      setProducts(productDetails.filter(product => product !== null));
     } catch (err) {
       console.error('Error fetching product details:', err);
       setError('Failed to load product details');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
+
+  const fetchWishlist = React.useCallback(async (force = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getWishlist(force);
+      const wishlistIds = response.wishList || [];
+      setWishlistData(wishlistIds);
+      // fetchProductDetails will be triggered by the useEffect below
+    } catch (err) {
+      console.error('Error fetching wishlist:', err);
+      setError(err.message || 'Failed to load wishlist');
+      setLoading(false);
+    }
+  }, []);
+
+  // Effect to fetch product details whenever wishlist IDs change
+  useEffect(() => {
+    if (wishlistData && wishlistData.length > 0) {
+      fetchProductDetails(wishlistData);
+    } else {
+      setProducts([]);
+      // Only stop loading if we're not currently fetching the wishlist itself
+      setLoading(false);
+    }
+  }, [wishlistData, fetchProductDetails]);
+
+  // Subscribe to wishlist changes from other components
+  useEffect(() => {
+    const unsubscribe = wishlistEvents.subscribe((wishlistResponse) => {
+      const wishlistIds = wishlistResponse.wishList || [];
+      setWishlistData(wishlistIds);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+
+  // Handle URL hash and trigger fetches
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash === "#wishlist" || !hash) {
+      setActiveTab("Wishlist");
+      fetchWishlist(true); // Force refresh from server
+    } else if (hash === "#allorders") {
+      setActiveTab("All orders");
+    } else if (hash === "#current" || hash === "#order") {
+      setActiveTab("Current");
+    }
+  }, [location.hash, fetchWishlist]);
+
+
 
   const handleRemoveItem = async (itemId) => {
     setRemovingItem(itemId);
@@ -183,8 +176,9 @@ export default function WishlistTab({ className }) {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-black-900 mb-2">My Wishlist</h2>
         <p className="text-black-300">
-          {products.length} {products.length === 1 ? "item" : "items"} saved
+          {wishlistData.length} {wishlistData.length === 1 ? "item" : "items"} saved
         </p>
+
       </div>
 
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />

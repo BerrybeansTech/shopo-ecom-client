@@ -65,7 +65,7 @@ export default function CartPage() {
         <div className="cart-page-wrapper w-full bg-white pb-[30px]">
           <div className="w-full">
             <PageTitle
-              title="Your Cart"
+              title=""
               breadcrumb={[
                 { name: "home", path: "/" },
                 { name: "cart", path: "/cart" },
@@ -89,7 +89,7 @@ export default function CartPage() {
         <div className="cart-page-wrapper w-full bg-white pb-[30px]">
           <div className="w-full">
             <PageTitle
-              title="Your Cart"
+              title=""
               breadcrumb={[
                 { name: "home", path: "/" },
                 { name: "cart", path: "/cart" },
@@ -123,7 +123,7 @@ export default function CartPage() {
       <div className="cart-page-wrapper w-full bg-white pb-[30px]">
         <div className="w-full">
           <PageTitle
-            title="Your Cart"
+            title=""
             breadcrumb={[
               { name: "home", path: "/" },
               { name: "cart", path: "/cart" },
@@ -131,7 +131,7 @@ export default function CartPage() {
           />
         </div>
 
-        <div className="w-full mt-[50px]">
+        <div className="w-full">
           <div className="container-x mx-auto">
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

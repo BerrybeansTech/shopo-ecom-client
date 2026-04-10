@@ -394,6 +394,8 @@ import {
 } from "lucide-react";
 import { getCategoryIcon, getCategoryImages, getProfileIcon } from "../../../../utils/categoryIconMapping";
 
+
+
 const DesktopNavbar = ({
   isScrolled,
   navigationCategories,
@@ -408,6 +410,8 @@ const DesktopNavbar = ({
   user,
   itemCount,
   total,
+
+
   isEmpty,
   formatINR,
   activeSubcategory,
@@ -496,7 +500,7 @@ const DesktopNavbar = ({
             <div ref={searchRef} className="relative w-full">
               <div className="relative flex items-center group">
                 {!searchQuery && (
-                  <Search className="absolute left-4 w-5 h-5 text-gray-400 group-focus-within:text-gray-600 pointer-events-none" />
+                  <Search className="absolute left-4 w-5 h-5 text-gray-800 group-focus-within:text-gray-600 pointer-events-none" />
                 )}
                 <input
                   type="text"
@@ -512,7 +516,7 @@ const DesktopNavbar = ({
                   placeholder="Search for products, brands and more..."
                   className={`w-full h-11 ${
                     searchQuery ? "pl-5" : "pl-12"
-                  } pr-12 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:bg-white focus:border-gray-400 focus:shadow-md transition-all duration-200`}
+                  } pr-12 bg-white border border-gray-800 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:bg-white focus:border-gray-900 focus:shadow-md transition-all duration-200`}
                 />
                 {searchQuery && (
                   <button
@@ -531,7 +535,7 @@ const DesktopNavbar = ({
 
               {/* Search Results Dropdown */}
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-300 z-50 overflow-hidden">
                   <div className="max-h-96 overflow-y-auto">
                     {searchResults.slice(0, 5).map((product, index) => (
                       <button
@@ -574,7 +578,7 @@ const DesktopNavbar = ({
                 searchQuery &&
                 searchResults.length === 0 &&
                 !searchLoading && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 px-4 py-6 text-center">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-300 z-50 px-4 py-6 text-center">
                     <div className="text-sm text-gray-600">
                       No results found for "{searchQuery}"
                     </div>
@@ -588,65 +592,65 @@ const DesktopNavbar = ({
             {/* Home */}
             <Link
               to="/"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActiveRoute("/")
-                  ? "bg-gray-100 text-gray-900 font-medium"
+                  ? "text-gray-900 font-bold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
               title="Home"
             >
               <Home className="w-5 h-5" />
-              <span className="text-sm font-medium">Home</span>
+              <span className="text-[0.95rem] font-medium">Home</span>
             </Link>
 
             {/* Shop */}
             <Link
               to="/all-products"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActiveRoute("/all-products")
-                  ? "bg-gray-100 text-gray-900 font-medium"
+                  ? "text-gray-900 font-bold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
               title="Shop"
             >
               <Store className="w-5 h-5" />
-              <span className="text-sm font-medium">Shop</span>
+              <span className="text-[0.95rem] font-medium">Shop</span>
             </Link>
 
             {/* Track Order */}
             <Link
               to="/track-order"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActiveRoute("/track-order")
-                  ? "bg-gray-100 text-gray-900 font-medium"
+                  ? "text-gray-900 font-bold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
               title="Track Order"
             >
               <Package className="w-5 h-5" />
-              <span className="text-sm font-medium">Track</span>
+              <span className="text-[0.95rem] font-medium">Track</span>
             </Link>
 
             {/* Blog */}
             <Link
               to="/blogs"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActiveRoute("/blogs")
-                  ? "bg-gray-100 text-gray-900 font-medium"
+                  ? "text-gray-900 font-bold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
               title="Blog"
             >
               <FileText className="w-5 h-5" />
-              <span className="text-sm font-medium">Blog</span>
+              <span className="text-[0.95rem] font-medium">Blog</span>
             </Link>
 
             {/* Cart */}
             <Link
               to="/cart"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 relative group ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 relative group ${
                 isActiveRoute("/cart")
-                  ? "bg-gray-100 text-gray-900 font-medium"
+                  ? "text-gray-900 font-bold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
               title={`Cart (${itemCount} items)`}
@@ -654,13 +658,15 @@ const DesktopNavbar = ({
               <div className="relative">
                 <CartIcon />
                 {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                     {itemCount}
                   </span>
                 )}
               </div>
-              <span className="text-sm font-medium">Cart</span>
+              <span className="text-[0.95rem] font-medium">Cart</span>
             </Link>
+
+
 
             {/* Divider */}
             <div className="h-6 w-px bg-gray-200 mx-2" />
@@ -669,9 +675,9 @@ const DesktopNavbar = ({
             <div ref={accountRef} className="relative">
               <button
                 onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                   showAccountDropdown
-                    ? "bg-gray-100 text-gray-900 font-medium"
+                    ? "text-gray-900 font-bold bg-gray-50"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 }`}
                 title="Account"
@@ -679,7 +685,7 @@ const DesktopNavbar = ({
                 <div className="relative">
                   <UserCircle className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-medium">
+                <span className="text-[0.95rem] font-medium">
                   {isAuthenticated
                     ? getUserDisplayName()?.split(" ")[0]
                     : "Account"}
@@ -720,7 +726,7 @@ const DesktopNavbar = ({
                               key={item.id}
                               onMouseDown={(e) => e.stopPropagation()}
                               onClick={() => navigateToProfile(item.hash)}
-                              className="flex items-center gap-3 w-full px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all group"
+                              className="flex items-center gap-3 w-full px-5 py-3 text-[0.95rem] font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all group"
                             >
                               <IconComponent className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
                               <span>{item.label}</span>
@@ -769,7 +775,7 @@ const DesktopNavbar = ({
 
         {/* Categories Mega Menu */}
         <div className="hidden lg:block border-t border-gray-100">
-          <div className="flex items-center justify-center gap-8 px-4 py-4">
+          <div className="flex items-center justify-center gap-8 px-4 py-2">
             {navigationCategories.length > 0 ? (
               navigationCategories.map((category, index) => {
                 const categoryImages = getCategoryImages(category.name);
@@ -803,7 +809,7 @@ const DesktopNavbar = ({
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap max-w-[80px] truncate">
+                        <span className="text-sm font-semibold text-gray-700 whitespace-nowrap max-w-[80px] truncate">
                           {category.name}
                         </span>
                         {category.subcategories.length > 0 && (
@@ -837,7 +843,7 @@ const DesktopNavbar = ({
                                 >
                                   <Link
                                     to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}`}
-                                    className={`flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors ${
+                                    className={`flex items-center justify-between px-4 py-2 text-sm font-medium transition-colors ${
                                       activeSubcategory === subIndex
                                         ? "text-gray-900"
                                         : "text-gray-700 hover:text-gray-900"
@@ -862,7 +868,7 @@ const DesktopNavbar = ({
                         {category.subcategories[activeSubcategory]
                           ?.childCategories.length > 0 && (
                           <div className="min-w-[300px] bg-white py-4 px-6 max-h-[400px] overflow-y-auto">
-                            <h3 className="text-xs font-bold text-gray-900 mb-3 pb-2 border-b border-gray-200">
+                            <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-200">
                               {category.subcategories[activeSubcategory].name}
                             </h3>
                             <div className="space-y-1">
@@ -872,7 +878,7 @@ const DesktopNavbar = ({
                                 <Link
                                   key={childCategory.id}
                                   to={`/all-products?categoryId=${category.id}&subcategoryId=${category.subcategories[activeSubcategory].id}&childCategoryId=${childCategory.id}`}
-                                  className="block text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
+                                  className="block text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
                                   onClick={() => {
                                     setActiveCategory(null);
                                     setActiveSubcategory(null);

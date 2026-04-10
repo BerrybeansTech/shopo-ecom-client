@@ -42,7 +42,7 @@ export default function Home() {
             "assets/images/banner1.jpg",
           ]}
           sectionHeight="sm:h-[440px] h-auto"
-          className="products-ads-section py-16"
+          className="products-ads-section"
         />
         <NewArrivals />
         <ProductsAd
@@ -50,7 +50,7 @@ export default function Home() {
             "assets/images/banner1.jpg",
           ]}
           sectionHeight="sm:h-[440px] h-auto"
-          className="products-ads-section py-16"
+          className="products-ads-section"
         />
         <Accessories
           className="accessories"

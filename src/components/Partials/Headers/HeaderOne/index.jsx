@@ -5,6 +5,8 @@ import { useAuth } from "../../../Auth/hooks/useAuth";
 import { useCart } from "../../../CartPage/useCart";
 import { productApi } from "../../../AllProductPage/productApi";
 import { getCategoryImages } from "../../../../utils/categoryIconMapping";
+
+
 import { getProductImage } from "../../../../utils/imageUtils";
 import DesktopNavbar from "./DesktopNavbar";
 import MobileNavbar from "./MobileNavbar";
@@ -32,6 +34,8 @@ const Navbar = () => {
   const { itemCount, total, formatINR, isEmpty } = useCart();
 
   const [isFetching, setIsFetching] = useState(false);
+
+
 
   const profileMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: "Home", hash: "/profile#dashboard" },

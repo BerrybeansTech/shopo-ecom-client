@@ -990,13 +990,15 @@ export default function AllProductPage() {
 
     if (wishlistLoading[productId]) return;
 
+    const productIdStr = String(productId);
+
     // Optimistically update UI
     setWishlistItems((prev) => {
       const newWishlist = new Set(prev);
-      if (newWishlist.has(productId)) {
-        newWishlist.delete(productId);
+      if (newWishlist.has(productIdStr)) {
+        newWishlist.delete(productIdStr);
       } else {
-        newWishlist.add(productId);
+        newWishlist.add(productIdStr);
       }
       return newWishlist;
     });
@@ -1004,16 +1006,16 @@ export default function AllProductPage() {
     setWishlistLoading((prev) => ({ ...prev, [productId]: true }));
 
     try {
-      await updateWishlist(productId);
+      await updateWishlist(productIdStr);
     } catch (error) {
       console.error("Error updating wishlist:", error);
       // Revert optimistic update on error
       setWishlistItems((prev) => {
         const newWishlist = new Set(prev);
-        if (newWishlist.has(productId)) {
-          newWishlist.delete(productId);
+        if (newWishlist.has(productIdStr)) {
+          newWishlist.delete(productIdStr);
         } else {
-          newWishlist.add(productId);
+          newWishlist.add(productIdStr);
         }
         return newWishlist;
       });
@@ -1023,7 +1025,8 @@ export default function AllProductPage() {
     }
   };
 
-  const isInWishlist = (productId) => wishlistItems.has(productId);
+  const isInWishlist = (productId) => wishlistItems.has(String(productId));
+
   
   const handleColorSelect = (productId, colorId, colorName) => {
     // Find the product from API data to access full inventory
