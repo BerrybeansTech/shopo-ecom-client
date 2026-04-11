@@ -33,6 +33,7 @@ import ForgotPassword from "./components/Auth/VerifyOTP/ForgotPassword.jsx";
 import ResetPassword from "./components/Auth/VerifyOTP/ResetPassword.jsx";
 import ShippingPolicy from "./components/ShippingPolicy/index.jsx";
 import ReturnOrExchangePolicy from "./components/ReturnOrExchangePolicy/indesx.jsx";
+import NectorRewardsPage from "./components/NectorSDK/NectorRewardsPage";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -63,8 +64,10 @@ const router = createBrowserRouter([
   { path: "/become-saller", element: <BecomeSaller /> },
   { path: "/privacy-policy", element: <PrivacyPolicy /> },
   { path: "/terms-condition", element: <TermsCondition /> },
-  {path: "shipping-policy", element: <ShippingPolicy /> },
-  {path: "return-policy", element: <ReturnOrExchangePolicy/>},
+  { path: "shipping-policy", element: <ShippingPolicy /> },
+  { path: "return-policy", element: <ReturnOrExchangePolicy/>},
+  { path: "/rewards", element: <NectorRewardsPage /> },
+  { path: "/lander", element: <NectorRewardsPage /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "*", element: <FourZeroFour /> },

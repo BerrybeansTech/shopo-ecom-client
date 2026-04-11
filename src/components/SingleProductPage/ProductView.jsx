@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { reviewApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 import { normalizeProductImages } from "../../utils/imageUtils";
+import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
@@ -829,6 +830,21 @@ export default function ProductView({ product, className, reportHandler, writeRe
                     key={color.id}
                     onClick={() => handleColorChange(color.id)}
                     className={`px-4 py-2 border rounded transition-all duration-200 ${selectedColorId === color.id
+          {/* Nector Earn Points Widget */}
+          <NectorEarnPoints price={calculatedPrice.sellingPrice} />
+
+          {/* Color Selection */}
+          <div className="colors mb-[30px]">
+            <span className="text-sm font-normal uppercase text-gray-500 mb-[14px] inline-block">
+              COLOR
+            </span>
+            <div className="flex space-x-4 items-center">
+              {transformedProduct.colors.map((color) => (
+                <button
+                  key={color.id}
+                  onClick={() => handleColorChange(color.id)}
+                  className={`px-4 py-2 border rounded transition-all duration-200 ${
+                    selectedColorId === color.id
                       ? "border-black bg-black text-white shadow-md transform scale-105"
                       : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
                       } ${color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
