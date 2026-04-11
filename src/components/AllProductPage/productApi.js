@@ -115,7 +115,7 @@ export const productApi = {
     try {
       const queryParams = {
         page: filters.page || 1,
-        limit: filters.limit || 50,
+        limit: filters.limit || 12,
         ...(filters.name && { name: filters.name }),
         ...(filters.subCategory && { subCategory: filters.subCategory }),
         ...(filters.childCategory && { childCategory: filters.childCategory }),
@@ -370,7 +370,7 @@ export const productUtils = {
       selectedAvailability = [],
       sortOption,
       searchQuery,
-      pagination = { currentPage: 1, itemsPerPage: 50 }
+      pagination = { currentPage: 1, itemsPerPage: 12 }
     } = filters;
 
     const queryParams = {

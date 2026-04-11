@@ -49,7 +49,7 @@ export default function AllProductPage() {
   const [productsError, setProductsError] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: parseInt(searchParams.get("page")) || 1,
-    itemsPerPage: parseInt(searchParams.get("limit")) || 50,
+    itemsPerPage: parseInt(searchParams.get("limit")) || 12,
     totalItems: 0,
     totalPages: 0,
   });
@@ -498,6 +498,17 @@ export default function AllProductPage() {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
+  // Handler for pagination changes - with scroll to top
+  const handlePageChange = useCallback((page) => {
+    setPagination((prev) => ({ ...prev, currentPage: page }));
+    
+    // Smooth scroll to top when page changes
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }, []);
+
   // Handler for filter changes
   const handleFilterChange = (setter) => (value) => {
     setter(value);
@@ -783,6 +794,17 @@ export default function AllProductPage() {
 
   // Apply client-side filtering as fallback
   const filteredProducts = useMemo(() => {
+    // 1. DEDUPLICATE: Remove products with duplicate IDs from apiProducts
+    const uniqueApiProducts = [];
+    const seenIds = new Set();
+    
+    (apiProducts || []).forEach(product => {
+      if (product && product.id && !seenIds.has(product.id)) {
+        uniqueApiProducts.push(product);
+        seenIds.add(product.id);
+      }
+    });
+
     const hasClientSideFilters =
       selectedColors.length > 0 ||
       selectedSizes.length > 0 ||
@@ -790,11 +812,8 @@ export default function AllProductPage() {
       selectedReviewThresholds.length > 0 ||
       selectedAvailability.length > 0;
 
-    if (hasClientSideFilters) {
-      console.log("Applying client-side filtering for colors/sizes/materials/ratings");
-      const clientSideFiltered = productUtils.filterProductsClientSide(
-        apiProducts,
-        {
+    const baseProducts = hasClientSideFilters 
+      ? productUtils.filterProductsClientSide(uniqueApiProducts, {
           selectedSubCategories,
           selectedDetails,
           priceRange,
@@ -804,82 +823,54 @@ export default function AllProductPage() {
           selectedMaterials,
           selectedReviewThresholds,
           selectedAvailability,
-        }
-      );
+        })
+      : uniqueApiProducts;
 
-      console.log("Client-side filtered products:", clientSideFiltered.length);
+    // 2. SLICE: If we have more than itemsPerPage (meaning API returned everything), slice it
+    // This strictly ensures that "Show 13 Result" requirement is met on the UI
+    const startIndex = 0; // The API already gives us products for current page if it supports pagination
+    // But if it returns everything, we need to calculate slice based on page
+    const shouldSliceLocally = baseProducts.length > pagination.itemsPerPage;
+    const finalProducts = shouldSliceLocally 
+      ? baseProducts.slice((pagination.currentPage - 1) * pagination.itemsPerPage, pagination.currentPage * pagination.itemsPerPage)
+      : baseProducts;
 
-      return clientSideFiltered.map((product) => {
-        const mrp = parseFloat(product.mrp || 0);
-        const sellingPrice = parseFloat(
-          product.sellingPrice || product.mrp || 0
-        );
-        const discount =
-          mrp > 0 && sellingPrice < mrp
-            ? Math.round(((mrp - sellingPrice) / mrp) * 100)
-            : 0;
+    return finalProducts.map((product) => {
+      const mrp = parseFloat(product.mrp || 0);
+      const sellingPrice = parseFloat(product.sellingPrice || product.mrp || 0);
+      const discount = mrp > 0 && sellingPrice < mrp ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
+      const productImage = getProductImage(product);
+      const totalStock = product.inventories?.reduce((sum, inv) => sum + (inv.availableQuantity || 0), 0) || 0;
+      
+      const productColors = [...new Set(product.inventories?.map((inv) => {
+        const color = inv.productColor?.color;
+        if (color) return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+        return null;
+      }).filter(Boolean) || [])];
 
-        const productImage = getProductImage(product);
+      const productSizes = [...new Set(product.inventories?.flatMap((inv) => inv.productSize?.size || []).filter(Boolean) || [])];
 
-        const totalStock =
-          product.inventories?.reduce(
-            (sum, inv) => sum + (inv.availableQuantity || 0),
-            0
-          ) || 0;
-
-        const productColors = [
-          ...new Set(
-            product.inventories
-              ?.map((inv) => {
-                const color = inv.productColor?.color;
-                if (color) {
-                  return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
-                }
-                return null;
-              })
-              .filter(Boolean) || []
-          ),
-        ];
-
-        const productSizes = [
-          ...new Set(
-            product.inventories
-              ?.flatMap((inv) => inv.productSize?.size || [])
-              .filter(Boolean) || []
-          ),
-        ];
-
-        return {
-          id: product.id,
-          name: product.name || "Unnamed Product",
-          image: productImage,
-          price: `₹${mrp.toLocaleString()}`,
-          offer_price: `₹${sellingPrice.toLocaleString()}`,
-          discount: discount,
-          review: parseFloat(product.averageRating || 0),
-          reviewCount: product.reviewCount || 0,
-          stock: totalStock,
-          subCategory: product.subCategory?.name || "",
-          subCategoryDetail: product.childCategory?.name || "",
-          colors: productColors,
-          sizes: productSizes,
-          material: product.material?.name || "",
-          occasion: product.occasion ? [product.occasion.name] : [],
-          product_type:
-            product.status === "featured"
-              ? "featured"
-              : product.status === "popular"
-              ? "popular"
-              : "",
-        };
-      });
-    }
-
-    console.log("Using backend filtered products:", transformedProducts.length);
-    return transformedProducts;
+      return {
+        id: product.id,
+        name: product.name || "Unnamed Product",
+        image: productImage,
+        price: `₹${mrp.toLocaleString()}`,
+        offer_price: `₹${sellingPrice.toLocaleString()}`,
+        discount: discount,
+        review: parseFloat(product.averageRating || 0),
+        reviewCount: product.reviewCount || 0,
+        stock: totalStock,
+        subCategory: product.subCategory?.name || "",
+        subCategoryDetail: product.childCategory?.name || "",
+        colors: productColors,
+        sizes: productSizes,
+        material: product.material?.name || "",
+        occasion: product.occasion ? [product.occasion.name] : [],
+        product_type: product.status === "featured" ? "featured" : product.status === "popular" ? "popular" : "",
+      };
+    });
   }, [
     apiProducts,
-    transformedProducts,
     selectedSubCategories,
     selectedDetails,
     priceRange,
@@ -889,6 +880,8 @@ export default function AllProductPage() {
     selectedMaterials,
     selectedReviewThresholds,
     selectedAvailability,
+    pagination.itemsPerPage,
+    pagination.currentPage
   ]);
 
   // Apply sorting to filtered products
@@ -1402,16 +1395,24 @@ export default function AllProductPage() {
                   </div>
                 </div>
 
-                {/* Product Grid */}
+                {/* Product Grid Skeleton / Loading State */}
                 <div className="p-3 sm:p-4 lg:p-6">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-16 sm:py-20">
-                      <div className="flex flex-col items-center gap-3 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-gray-600 font-medium text-sm sm:text-base">
-                          Loading products...
-                        </p>
-                      </div>
+                  {productsLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
+                      {[...Array(pagination.itemsPerPage)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
+                          <div className="aspect-square bg-gray-200"></div>
+                          <div className="p-3 sm:p-4 space-y-3">
+                            <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                            <div className="flex gap-2">
+                              <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                              <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : sortedProducts.length === 0 ? (
                     <div className="p-8 sm:p-12 text-center">
@@ -1456,7 +1457,7 @@ export default function AllProductPage() {
                           return (
                             <div
                               key={product.id}
-                              className="bg-white rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col relative"
+                              className="bg-white rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-500 overflow-hidden group flex flex-col relative animate-in fade-in zoom-in-95 duration-700"
                             >
                               {/* Image Section */}
                               <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
@@ -1659,15 +1660,7 @@ export default function AllProductPage() {
                         <div className="flex justify-center mt-8">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() =>
-                                setPagination((prev) => ({
-                                  ...prev,
-                                  currentPage: Math.max(
-                                    1,
-                                    prev.currentPage - 1
-                                  ),
-                                }))
-                              }
+                              onClick={() => handlePageChange(Math.max(1, pagination.currentPage - 1))}
                               disabled={pagination.currentPage === 1}
                               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                             >
@@ -1691,12 +1684,7 @@ export default function AllProductPage() {
                                 return (
                                   <div key={page} className="flex items-center">
                                     <button
-                                      onClick={() =>
-                                        setPagination((prev) => ({
-                                          ...prev,
-                                          currentPage: page,
-                                        }))
-                                      }
+                                      onClick={() => handlePageChange(page)}
                                       className={`w-10 h-10 rounded-lg ${
                                         pagination.currentPage === page
                                           ? "bg-gray-900 text-white"
@@ -1713,15 +1701,7 @@ export default function AllProductPage() {
                               })}
 
                             <button
-                              onClick={() =>
-                                setPagination((prev) => ({
-                                  ...prev,
-                                  currentPage: Math.min(
-                                    pagination.totalPages,
-                                    prev.currentPage + 1
-                                  ),
-                                }))
-                              }
+                              onClick={() => handlePageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
                               disabled={
                                 pagination.currentPage === pagination.totalPages
                               }
