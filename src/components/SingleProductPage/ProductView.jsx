@@ -140,8 +140,8 @@ export default function ProductView({ product, className, reportHandler, writeRe
       inventoryMap: inventoryMap,
       specifications: {
         fabric: product.material?.name || 'Not specified',
-        fitType: product.fitType || 'Regular',
-        occasion: product.occasion?.name || 'Casual',
+        fitType: product.fitType || '',
+        occasion: product.occasion?.name || '',
         careInstructions: product.careInstructions || 'Machine wash cold',
         description: product.description || '',
         seasonal: product.seasonal || 'All Season'
