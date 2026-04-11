@@ -40,12 +40,26 @@ export const getWishlist = async (forceRefresh = false) => {
       throw new Error('User not authenticated');
     }
 
+    const cacheKey = `/customer/wishlist/${user.id}`;
+
+    // Explicitly bypass apiService's internal deduplication cache if forceRefresh is true
+    if (forceRefresh) {
+      apiService.clearCacheForKey(cacheKey);
+    }
+
     // Return cached data if valid and not forcing refresh
     if (!forceRefresh && isCacheValid()) {
       return wishlistCache.data;
     }
 
-    const response = await apiService.get(`/customer/wishlist/${user.id}`);
+    const response = await apiService.get(cacheKey, { 
+      skipDeduplication: forceRefresh 
+    });
+    
+    // Normalize IDs to strings for consistent comparison across types
+    if (response && response.wishList) {
+      response.wishList = response.wishList.map(String);
+    }
     
     // Update cache
     wishlistCache.data = response;
@@ -69,12 +83,27 @@ export const updateWishlist = async (productId) => {
       throw new Error('User not authenticated');
     }
 
+    // Normalize productId to string
+    const productIdStr = String(productId);
+
+    // Clear GET cache before mutation to avoid any race conditions
+    apiService.clearCacheForKey(`/customer/wishlist/${user.id}`);
+
+    // Use skipDeduplication to ensure toggle always hits server even if clicked rapidly
     const response = await apiService.post('/customer/update-wishlist', {
       userId: user.id,
-      productId
-    });
+      productId: productIdStr
+    }, { skipDeduplication: true });
     
-    // Update cache with new data
+    // Normalize IDs in response
+    if (response && response.wishList) {
+      response.wishList = response.wishList.map(String);
+    }
+
+    // Clear apiService's internal GET cache for this user's wishlist since it has changed
+    apiService.clearCacheForKey(`/customer/wishlist/${user.id}`);
+
+    // Update internal cache with new data
     wishlistCache.data = response;
     wishlistCache.timestamp = Date.now();
     
@@ -88,6 +117,7 @@ export const updateWishlist = async (productId) => {
   }
 };
 
+
 // Clear all items from wishlist
 export const clearWishlist = async () => {
   try {
@@ -96,9 +126,12 @@ export const clearWishlist = async () => {
       throw new Error('User not authenticated');
     }
 
-    const response = await apiService.delete(`/customer/wishlist/clear/${user.id}`);
+    const response = await apiService.delete(`/customer/wishlist/clear/${user.id}`, { 
+      skipDeduplication: true 
+    });
     
-    // Clear cache
+    // Clear and reset cache
+    apiService.clearCacheForKey(`/customer/wishlist/${user.id}`);
     wishlistCache.data = { wishList: [] };
     wishlistCache.timestamp = Date.now();
     
@@ -111,6 +144,7 @@ export const clearWishlist = async () => {
     throw error;
   }
 };
+
 
 // Check if product is in wishlist
 export const isProductInWishlist = async (productId) => {

@@ -39,7 +39,7 @@ export default function NewArrivals({ className = "" }) {
   };
 
   return (
-    <div className={`bg-white ${className}`}>
+    <div className={`bg-[#f8f8f899] py-16 ${className}`}>
       <div className="container-x mx-auto px-4">
         {/* Section Header */}
         <div className="flex justify-between items-center mb-6">

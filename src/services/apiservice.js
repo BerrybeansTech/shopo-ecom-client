@@ -146,31 +146,48 @@ export const apiService = (() => {
     }
   };
 
-  // Public methods with deduplication
+  // Public methods with optional deduplication
   const get = (endpoint, options = {}) => {
+    if (options.skipDeduplication) {
+      return apiCall(endpoint, options);
+    }
     const key = `GET-${endpoint}`;
     return deduplicateRequest(key, () => apiCall(endpoint, options));
   };
 
+
   const post = (endpoint, body, options = {}) => {
+    if (options.skipDeduplication) {
+      return apiCall(endpoint, { method: 'POST', body, ...options });
+    }
     const key = `POST-${endpoint}-${JSON.stringify(body)}`;
     return deduplicateRequest(key, () => apiCall(endpoint, { method: 'POST', body, ...options }));
   };
 
   const put = (endpoint, body, options = {}) => {
+    if (options.skipDeduplication) {
+      return apiCall(endpoint, { method: 'PUT', body, ...options });
+    }
     const key = `PUT-${endpoint}-${JSON.stringify(body)}`;
     return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PUT', body, ...options }));
   };
 
   const patch = (endpoint, body, options = {}) => {
+    if (options.skipDeduplication) {
+      return apiCall(endpoint, { method: 'PATCH', body, ...options });
+    }
     const key = `PATCH-${endpoint}-${JSON.stringify(body)}`;
     return deduplicateRequest(key, () => apiCall(endpoint, { method: 'PATCH', body, ...options }));
   };
 
   const del = (endpoint, options = {}) => {
+    if (options.skipDeduplication) {
+      return apiCall(endpoint, { method: 'DELETE', ...options });
+    }
     const key = `DELETE-${endpoint}`;
     return deduplicateRequest(key, () => apiCall(endpoint, { method: 'DELETE', ...options }));
   };
+
 
   // Clear cache methods
   const clearCache = () => {

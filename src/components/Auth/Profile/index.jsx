@@ -33,16 +33,14 @@ export default function Profile() {
   const navigate = useNavigate();
   const { logout, loading, user, accessToken } = useAuth();
   
-  const getHashContent = location.hash.split("#");
   const [active, setActive] = useState("dashboard");
 
   useEffect(() => {
-    setActive(
-      getHashContent && getHashContent.length > 1
-        ? getHashContent[1]
-        : "dashboard"
-    );
-  }, [getHashContent]);
+    const hash = location.hash.replace("#", "") || "dashboard";
+    setActive(hash);
+  }, [location.hash]);
+
+
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -152,8 +150,8 @@ export default function Profile() {
               <div className="profile-wrapper w-full mt-6 md:mt-8 flex flex-col md:flex-row md:space-x-12">
                 {/* Sidebar */}
                 <div
-                  className={`mobile-sidebar z-50 w-[280px] md:w-[256px] min-h-[400px] md:min-h-[600px] border-r border-white-500
-                    fixed md:static top-0 left-0 h-full md:h-auto bg-white-50 z-0 
+                  className={`mobile-sidebar w-[280px] md:w-[256px] min-h-[400px] md:min-h-[600px] border-r border-white-500
+                    fixed md:static top-0 left-0 h-full md:h-auto bg-white-50 z-50 md:z-auto
                     transition-transform duration-300 ease-in-out 
                     ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
                     md:translate-x-0 shadow-lg md:shadow-none overflow-y-auto`}
@@ -271,6 +269,25 @@ export default function Profile() {
                         </span>
                       </Link>
                     </div>
+                    <div className="item group">
+                      <Link 
+                        to="/profile#wishlist" 
+                        onClick={handleMenuClick}
+                        className={`flex space-x-3 items-center p-3 rounded-lg transition-all duration-200 border-l-4 ${
+                          active === 'wishlist' 
+                            ? 'bg-white-400 text-black-900 border-black-700 font-medium' 
+                            : 'border-transparent text-black-300 hover:bg-white-300 hover:text-black-900 hover:border-black-500'
+                        }`}
+                      >
+                        <span className={`transition-transform group-hover:scale-110 ${active === 'wishlist' ? 'text-black-700' : 'text-black-400 group-hover:text-black-700'}`}>
+                          <IcoLove />
+                        </span>
+                        <span className="text-base">
+                          Wishlist
+                        </span>
+                      </Link>
+                    </div>
+
                     <div className="item group">
                       <Link 
                         to="/profile#loyalty" 
