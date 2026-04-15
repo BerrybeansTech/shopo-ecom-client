@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { reviewApi } from "../AllProductPage/productApi";
+import { reviewApi, fitTypeApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
-import { normalizeProductImages } from "../../utils/imageUtils";
+import { getImageUrl, normalizeProductImages } from "../../utils/imageUtils";
 import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
@@ -13,6 +13,21 @@ export default function ProductView({ product, className, reportHandler, writeRe
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addToCartSuccess, setAddToCartSuccess] = useState(false);
   const [userMessage, setUserMessage] = useState(""); // For showing messages to user
+
+  // Fit types — fetched once, used to resolve fitTypeId → name
+  const [fitTypes, setFitTypes] = useState([]);
+  useEffect(() => {
+    fitTypeApi.getAll().then(res => {
+      setFitTypes(res?.data || []);
+    }).catch(() => {});
+  }, []);
+
+  // Resolve fit type name from product.fitTypeId
+  const fitTypeName = useMemo(() => {
+    if (!product?.fitTypeId || fitTypes.length === 0) return '';
+    const found = fitTypes.find(ft => ft.id === product.fitTypeId);
+    return found ? found.name : '';
+  }, [product?.fitTypeId, fitTypes]);
 
   // Transform API product data to handle inventory structure
   const transformedProduct = useMemo(() => {
@@ -38,9 +53,19 @@ export default function ProductView({ product, className, reportHandler, writeRe
     }
 
     // Add gallery images
-    if (product.galleryImage && Array.isArray(product.galleryImage)) {
+    let gallery = product.galleryImage;
+    if (typeof gallery === "string") {
+      try {
+        const parsed = JSON.parse(gallery);
+        if (Array.isArray(parsed)) gallery = parsed;
+      } catch {
+        // leave as-is
+      }
+    }
+
+    if (gallery && Array.isArray(gallery)) {
       // Avoid duplicates if thumbnail is already in gallery
-      const galleryImages = product.galleryImage.filter(img => !rawImages.includes(img));
+      const galleryImages = gallery.filter(img => !rawImages.includes(img));
       rawImages = [...rawImages, ...galleryImages];
     } else if (product.images && Array.isArray(product.images)) {
       const moreImages = product.images.filter(img => !rawImages.includes(img));
@@ -48,7 +73,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
     }
 
     const images = rawImages.length > 0
-      ? rawImages.map(img => typeof img === 'string' ? (img.startsWith('http') ? img : `http://luxcycs.com/rabbit-and-finch-uploads/${img.startsWith('/') ? img.substring(1) : img}`) : '')
+      ? rawImages.map((img) => (typeof img === "string" ? getImageUrl(img) : ""))
       : [normalizeProductImages(product)[0]]; // Fallback to current utility logic
 
     // Process available colors and sizes from inventories
@@ -140,7 +165,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
       inventoryMap: inventoryMap,
       specifications: {
         fabric: product.material?.name || 'Not specified',
-        fitType: product.fitType || '',
+        fitType: fitTypeName || product.fitType || '',
         occasion: product.occasion?.name || '',
         careInstructions: product.careInstructions || 'Machine wash cold',
         description: product.description || '',
@@ -153,7 +178,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
     console.log("Transformed product:", result);
     return result;
-  }, [product]);
+  }, [product, fitTypeName]);
 
   // State management
   const [mainImage, setMainImage] = useState(null);
@@ -1184,22 +1209,29 @@ export default function ProductView({ product, className, reportHandler, writeRe
                     </span>
                   </div>
 
-                  {/* Review Images */}
-                  {review.images && review.images.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      {review.images.map((image, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={`http://luxcycs.com/rabbit-and-finch-uploads/${image}`}
-                            alt={`Review image ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
-                            onClick={() => window.open(`http://luxcycs.com/rabbit-and-finch-uploads/${image}`, '_blank')}
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg cursor-pointer"></div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Review Images - normalize to array to handle string/null from DB */}
+                  {(() => {
+                    const imgs = Array.isArray(review.images)
+                      ? review.images
+                      : review.images
+                      ? [review.images]
+                      : [];
+                    return imgs.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        {imgs.map((image, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={image.startsWith('http') ? image : `http://luxcycs.com/rabbit-and-finch-uploads/${image}`}
+                              alt={`Review image ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
+                              onClick={() => window.open(image.startsWith('http') ? image : `http://luxcycs.com/rabbit-and-finch-uploads/${image}`, '_blank')}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg cursor-pointer"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               ))}
 

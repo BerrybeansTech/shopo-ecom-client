@@ -24,8 +24,7 @@ export default function ReviewTab() {
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     fetchUserReviews();
@@ -40,27 +39,14 @@ export default function ReviewTab() {
         }
       }, 100);
     }
-    // Fetch user's order history for eligible reviews
-    fetchOrderHistory();
   }, [searchParams]);
 
-  const fetchOrderHistory = async () => {
-    try {
-      setLoadingOrders(true);
-      // Replace with your actual order history API endpoint
-      const response = await apiService.get('/order/user-orders');
-      if (response.success) {
-        // Filter for delivered/completed orders
-        const deliveredOrders = response.data.filter(order => 
-          order.status === 'delivered' || order.status === 'completed'
-        );
-        setOrderHistory(deliveredOrders);
-      }
-    } catch (error) {
-      console.error('Error fetching order history:', error);
-    } finally {
-      setLoadingOrders(false);
-    }
+  const showNotification = (message, type = "error") => {
+    setNotification({ message, type });
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setNotification(null);
+    }, 5000);
   };
 
   const fetchProductDetails = async (productId) => {
@@ -80,11 +66,11 @@ export default function ReviewTab() {
         setSelectedProduct(productData);
       } else {
         console.error('Product not found');
-        alert('Product details could not be loaded. Please try again.');
+        showNotification('Product details could not be loaded. Please try again.');
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
-      alert('Failed to load product details. Please try again.');
+      showNotification('Failed to load product details. Please try again.');
     } finally {
       setLoadingProduct(false);
     }
@@ -95,7 +81,7 @@ export default function ReviewTab() {
     
     // Limit to 5 images
     if (selectedImages.length + files.length > 5) {
-      alert('You can only upload up to 5 images');
+      showNotification('You can only upload up to 5 images');
       return;
     }
 
@@ -105,11 +91,11 @@ export default function ReviewTab() {
       const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
       
       if (!isValidType) {
-        alert(`${file.name} is not a valid image file`);
+        showNotification(`${file.name} is not a valid image file`);
         return false;
       }
       if (!isValidSize) {
-        alert(`${file.name} is too large. Maximum size is 5MB`);
+        showNotification(`${file.name} is too large. Maximum size is 5MB`);
         return false;
       }
       return true;
@@ -140,20 +126,35 @@ export default function ReviewTab() {
       setLoading(true);
       const response = await apiService.get('/product/review/get-all');
       if (response.success) {
-        const transformedReviews = response.data.map(review => ({
-          id: review.id,
-          rating: review.rating,
-          comment: review.comment || "",
-          date: new Date(review.createdAt).toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          }),
-          productName: review.Product?.name || "Unknown Product",
-          productImage: getProductImage(review.Product),
-          reviewImages: review.images?.map(img => getImageUrl(img)) || [],
-          orderId: review.OrderItem?.Order?.orderId || null
-        }));
+        const transformedReviews = response.data.map(review => {
+          // Handle images that might be JSON strings or arrays
+          let reviewImages = [];
+          try {
+            if (typeof review.images === "string") {
+              reviewImages = JSON.parse(review.images);
+            } else if (Array.isArray(review.images)) {
+              reviewImages = review.images;
+            }
+          } catch (e) {
+            console.error("Error parsing review images:", e);
+          }
+
+          return {
+            id: review.id,
+            rating: review.rating,
+            comment: review.comment || "",
+            reviewerName: review.Customer?.name || "You",
+            date: new Date(review.createdAt).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            }),
+            productName: review.Product?.name || "Unknown Product",
+            productImage: getProductImage(review.Product),
+            reviewImages: Array.isArray(reviewImages) ? reviewImages.map(img => getImageUrl(img)) : [],
+            orderId: review.OrderItem?.Order?.orderId || null
+          };
+        });
         setReviews(transformedReviews);
       }
     } catch (error) {
@@ -166,7 +167,7 @@ export default function ReviewTab() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!rating || !comment.trim() || !productId.trim()) {
-      alert("Please provide a rating, write your review, and select a product!");
+      showNotification("Please provide a rating, write your review, and select a product!");
       return;
     }
 
@@ -205,7 +206,7 @@ export default function ReviewTab() {
         // Add new review to the top of the list immediately
         setReviews(prevReviews => [newReview, ...prevReviews]);
 
-        alert("Thank you! Your review has been submitted successfully.");
+        showNotification("Thank you! Your review has been submitted successfully.", "success");
         
         // Reset form
         setRating(0);
@@ -235,16 +236,16 @@ export default function ReviewTab() {
         fetchUserReviews();
       } else {
         if (response.message && response.message.includes("You can only review products you have purchased and received")) {
-          alert("You can only review products from orders that have been delivered. Please wait for your order to be delivered before writing a review.");
+          showNotification("You can only review products from orders that have been delivered.");
         } else if (response.message && response.message.includes("already reviewed")) {
-          alert("You have already reviewed this product. Thank you for your feedback!");
+          showNotification("You have already reviewed this product.");
         } else {
-          alert(response.message || "We were unable to submit your review. Please try again.");
+          showNotification(response.message || "We were unable to submit your review. Please try again.");
         }
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert(error);
+      showNotification(error.message || "An unexpected error occurred.");
     } finally {
       setSubmitting(false);
     }
@@ -291,14 +292,35 @@ export default function ReviewTab() {
             <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
               {reviews.length} review{reviews.length !== 1 ? 's' : ''} submitted
             </span>
-            {orderHistory.length > 0 && (
-              <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
-                {orderHistory.length} eligible product{orderHistory.length !== 1 ? 's' : ''} for review
-              </span>
-            )}
           </div>
         )}
       </div>
+
+      {/* Notification Section */}
+      {notification && (
+        <div 
+          className={`mb-6 p-4 rounded-lg flex items-center justify-between animate-fadeIn ${
+            notification.type === 'success' 
+              ? 'bg-green-50 text-green-800 border border-green-200' 
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            ) : (
+              <X className="w-5 h-5 text-red-600" />
+            )}
+            <p className="text-sm font-medium">{notification.message}</p>
+          </div>
+          <button 
+            onClick={() => setNotification(null)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Eligibility Notice */}
       <div className="mb-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
@@ -595,7 +617,7 @@ export default function ReviewTab() {
                     )}
                   </div>
                   <p className="text-sm text-gray-500">
-                    Reviewed on {review.date}
+                    By {review.reviewerName} • Reviewed on {review.date}
                   </p>
                 </div>
               </div>

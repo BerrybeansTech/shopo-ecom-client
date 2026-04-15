@@ -109,6 +109,16 @@ export const materialApi = {
   },
 };
 
+// FIT TYPE API
+export const fitTypeApi = {
+  getAll: async () => {
+    const key = 'fitType-getAll';
+    return deduplicateRequest(key, async () => {
+      return await apiService.get("/product/fit-type/get-all");
+    });
+  },
+};
+
 // PRODUCT API
 export const productApi = {
   getAll: async (filters = {}) => {
@@ -248,7 +258,16 @@ export const productApi = {
 export const reviewApi = {
   create: async (reviewData) => {
     try {
-      return await apiService.post("/product/review/create", reviewData);
+      // Ensure images is always an array — backend expects images.map()
+      const normalizedData = {
+        ...reviewData,
+        images: Array.isArray(reviewData.images)
+          ? reviewData.images
+          : reviewData.images
+          ? [reviewData.images]
+          : [],
+      };
+      return await apiService.post("/product/review/create", normalizedData);
     } catch (error) {
       console.error("Error creating review:", error);
       throw error;
@@ -651,6 +670,7 @@ export default {
   colorApi,
   occasionApi,
   materialApi,
+  fitTypeApi,
   productApi,
   reviewApi,
   productDataApi,
