@@ -5,6 +5,7 @@ import {
   Heart,
   ShoppingCart,
   ChevronRight,
+  ChevronUp,
   X,
   Filter,
   SlidersHorizontal,
@@ -29,6 +30,7 @@ export default function AllProductPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [cartNotification, setCartNotification] = useState(null);
   const [filterToggle, setFilterToggle] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   
   // FIXED: Initialize sortOption from URL or use default
   const [sortOption, setSortOption] = useState(
@@ -308,6 +310,14 @@ export default function AllProductPage() {
     setSearchParams(newSearchParams, { replace: true });
   }, [buildQueryParams, setSearchParams, sortOption, newArrival, searchParams]);
 
+  // Centralized scroll-to-top for ANY parameter change (filters, sorting, pagination)
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }, [searchParams]);
+
   // Initialize product data
   useEffect(() => {
     const initializeData = async () => {
@@ -501,12 +511,6 @@ export default function AllProductPage() {
   // Handler for pagination changes - with scroll to top
   const handlePageChange = useCallback((page) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
-    
-    // Smooth scroll to top when page changes
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
   }, []);
 
   // Handler for filter changes
@@ -584,6 +588,7 @@ export default function AllProductPage() {
     setSortOption("default");
     setNewArrival(false);
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Body overflow management
@@ -605,6 +610,19 @@ export default function AllProductPage() {
     return () => {
       window.removeEventListener("toggle-product-filters", handleToggle);
     };
+  }, []);
+
+  // Handle scroll to show/hide back to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const breadcrumb = useMemo(() => {
@@ -1396,7 +1414,7 @@ export default function AllProductPage() {
                 </div>
 
                 {/* Product Grid Skeleton / Loading State */}
-                <div className="p-3 sm:p-4 lg:p-6">
+                <div className="p-3 sm:p-4 lg:p-6 min-h-[50vh] sm:min-h-[80vh]">
                   {productsLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
                       {[...Array(pagination.itemsPerPage)].map((_, i) => (
@@ -1720,6 +1738,17 @@ export default function AllProductPage() {
           </div>
         </div>
       </div>
+      
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-24 right-6 w-12 h-12 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center z-50 hover:bg-black transition-all transform hover:scale-110 active:scale-95"
+          aria-label="Back to top"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
+      )}
     </Layout>
   );
 }

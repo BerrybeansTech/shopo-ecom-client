@@ -317,6 +317,11 @@ export default function ProductView({ product, className, reportHandler, writeRe
     }
   }, [userMessage]);
 
+  // Handle main image change when clicking on thumbnails
+  const handleThumbnailClick = (img) => {
+    setMainImage(img);
+  };
+
   // Calculate rating distribution
   const calculateRatingDistribution = (reviews) => {
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -535,8 +540,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
       if (result.success) {
         setAddToCartSuccess(true);
-        // Show success alert
-        alert("✅ Successfully added to cart!");
+        setUserMessage("✅ Successfully added to cart!");
         // Refresh cart to get updated data
         await refreshCart();
         return true;
@@ -545,7 +549,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert(`❌ Failed to add product to cart\n\n${error.message}\n\nPlease try again or contact support.`);
+      setUserMessage(`❌ Failed to add: ${error.message}`);
       return false;
     } finally {
       setIsAddingToCart(false);
@@ -807,17 +811,10 @@ export default function ProductView({ product, className, reportHandler, writeRe
               )}
             </div>
 
-            {/* User Message Display */}
-            {userMessage && (
-              <div className={`mb-4 p-3 rounded text-sm font-medium ${userMessage.includes('✅')
-                ? 'bg-green-100 text-green-800 border border-green-300'
-                : userMessage.includes('❌')
-                  ? 'bg-red-100 text-red-800 border border-red-300'
-                  : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                }`}>
-                {userMessage}
-              </div>
-            )}
+            {/* Nector Earn Points Widget */}
+            <div className="mb-4">
+              <NectorEarnPoints price={calculatedPrice.sellingPrice} />
+            </div>
 
             {/* Color Selection */}
             <div className="colors mb-[30px]">
@@ -829,26 +826,11 @@ export default function ProductView({ product, className, reportHandler, writeRe
                   <button
                     key={color.id}
                     onClick={() => handleColorChange(color.id)}
-                    className={`px-4 py-2 border rounded transition-all duration-200 ${selectedColorId === color.id
-          {/* Nector Earn Points Widget */}
-          <NectorEarnPoints price={calculatedPrice.sellingPrice} />
-
-          {/* Color Selection */}
-          <div className="colors mb-[30px]">
-            <span className="text-sm font-normal uppercase text-gray-500 mb-[14px] inline-block">
-              COLOR
-            </span>
-            <div className="flex space-x-4 items-center">
-              {transformedProduct.colors.map((color) => (
-                <button
-                  key={color.id}
-                  onClick={() => handleColorChange(color.id)}
-                  className={`px-4 py-2 border rounded transition-all duration-200 ${
-                    selectedColorId === color.id
-                      ? "border-black bg-black text-white shadow-md transform scale-105"
-                      : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
-                      } ${color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""
-                      }`}
+                    className={`px-4 py-2 border rounded transition-all duration-200 ${
+                      selectedColorId === color.id
+                        ? "border-black bg-black text-white shadow-md transform scale-105"
+                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
+                    } ${color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
                     disabled={color.totalStock === 0}
                     title={color.totalStock === 0 ? "Out of stock" : `Select ${color.name}`}
                   >
@@ -1008,6 +990,35 @@ export default function ProductView({ product, className, reportHandler, writeRe
                 >
                   BUY NOW
                 </button>
+              </div>
+            </div>
+
+            {/* Inline Feedback Message - Premium UX */}
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${userMessage ? 'max-h-20 opacity-100 mb-6' : 'max-h-0 opacity-0'}`}>
+              <div className={`p-4 rounded-xl flex items-center gap-3 shadow-sm border ${userMessage && userMessage.includes('✅')
+                ? 'bg-green-50 border-green-100 text-green-800'
+                : userMessage && userMessage.includes('❌')
+                  ? 'bg-red-50 border-red-100 text-red-800'
+                  : 'bg-amber-50 border-amber-100 text-amber-800'
+                }`}>
+                <div className="flex-shrink-0">
+                  {userMessage && userMessage.includes('✅') ? (
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  ) : userMessage && userMessage.includes('❌') ? (
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <p className="text-sm font-semibold tracking-wide uppercase">
+                  {userMessage}
+                </p>
               </div>
             </div>
 
