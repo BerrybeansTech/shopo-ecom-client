@@ -1,4 +1,4 @@
-import { PUBLIC_URL } from '../constants';
+import { PUBLIC_URL, ASSET_URL } from '../constants';
 
 /**
  * Normalizes a list of product images, ensuring at least one image exists
@@ -50,11 +50,29 @@ export const getPlaceholderImage = (text = 'Product', size = '400x400') => {
  */
 export const getImageUrl = (path) => {
     if (!path) return '';
-    if (path.startsWith('http')) return path;
+    
+    // If it's a full URL
+    if (path.startsWith('http')) {
+        // If it's from our domain but missing the uploads prefix
+        if (path.includes('luxcycs.com') && !path.includes('rabbit-and-finch-uploads')) {
+            const parts = path.split('/');
+            const filename = parts[parts.length - 1];
+            if (filename) {
+                return `${ASSET_URL}/${filename}`;
+            }
+        }
+        return path;
+    }
 
-    // Remove leading slash if present to avoid double slashes
+    // For relative paths
     const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
-    return `${PUBLIC_URL}/${normalizedPath}`;
+    
+    // Ensure the uploads prefix is included for relative paths
+    if (normalizedPath.includes('rabbit-and-finch-uploads')) {
+        return `${PUBLIC_URL}/${normalizedPath}`;
+    }
+
+    return `${ASSET_URL}/${normalizedPath}`;
 };
 
 /**

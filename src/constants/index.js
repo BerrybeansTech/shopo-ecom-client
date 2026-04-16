@@ -12,6 +12,7 @@ export const API_CONFIG = {
   // Public URL for assets (images, etc.)
   // Priority: VITE_PUBLIC_URL env variable > same as BASE_URL
   PUBLIC_URL: 'http://luxcycs.com',
+  ASSET_URL: 'http://luxcycs.com/rabbit-and-finch-uploads',
 
   // Request timeout in milliseconds
   TIMEOUT: 30000,
@@ -52,4 +53,5 @@ export const ENV = {
 // Export BASE_URL for backward compatibility
 export const BASE_URL = API_CONFIG.BASE_URL;
 export const PUBLIC_URL = API_CONFIG.PUBLIC_URL;
+export const ASSET_URL = API_CONFIG.ASSET_URL;
 
