@@ -100,6 +100,21 @@ export const occasionApi = {
 };
 
 // MATERIAL API
+// SIZE CHART API
+export const sizeChartApi = {
+  getChartByCategory: async (categoryId) => {
+    try {
+      const key = `sizeChart-getByCategory-${categoryId}`;
+      return deduplicateRequest(key, async () => {
+        return await apiService.get(`/product/size-chart/get-size-chart/${categoryId}`);
+      });
+    } catch (error) {
+      console.error(`Error fetching size chart for category ${categoryId}:`, error);
+      throw error;
+    }
+  },
+};
+
 export const materialApi = {
   getAll: async () => {
     const key = 'material-getAll';
@@ -673,6 +688,7 @@ export default {
   fitTypeApi,
   productApi,
   reviewApi,
+  sizeChartApi,
   productDataApi,
   productUtils,
 };

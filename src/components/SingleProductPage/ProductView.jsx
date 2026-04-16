@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { reviewApi, fitTypeApi } from "../AllProductPage/productApi";
+import { reviewApi, fitTypeApi, sizeChartApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 import { getImageUrl, normalizeProductImages } from "../../utils/imageUtils";
 import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
@@ -187,6 +187,8 @@ export default function ProductView({ product, className, reportHandler, writeRe
   const [quantity, setQuantity] = useState(1);
   const [showPriceDetails, setShowPriceDetails] = useState(false);
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [sizeChart, setSizeChart] = useState(null);
+  const [isSizeChartModalOpen, setIsSizeChartModalOpen] = useState(false);
   const [pincode, setPincode] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [stockStatus, setStockStatus] = useState("");
@@ -419,6 +421,25 @@ export default function ProductView({ product, className, reportHandler, writeRe
     };
     return labels[rating] || "No Rating";
   };
+
+  // Fetch size chart based on category
+  useEffect(() => {
+    const fetchSizeChart = async () => {
+      const categoryId = product?.categoryId || product?.category?.id;
+      if (!categoryId) return;
+
+      try {
+        const response = await sizeChartApi.getChartByCategory(categoryId);
+        if (response.success && response.data) {
+          setSizeChart(response.data);
+        }
+      } catch (err) {
+        console.error("Error fetching size chart:", err);
+      }
+    };
+
+    fetchSizeChart();
+  }, [product?.categoryId, product?.category?.id]);
 
   // Format date
   const formatDate = (dateString) => {
@@ -868,9 +889,19 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
             {/* Size Selection */}
             <div className="product-size mb-[30px]">
-              <span className="text-sm font-normal uppercase text-gray-500 mb-[14px] inline-block">
-                SIZE
-              </span>
+              <div className="flex justify-between items-center mb-[14px]">
+                <span className="text-sm font-normal uppercase text-gray-500 inline-block">
+                  SIZE
+                </span>
+                {sizeChart && (
+                  <button
+                    onClick={() => setIsSizeChartModalOpen(true)}
+                    className="text-sm font-semibold text-qblack border-b border-qblack hover:text-blue-600 hover:border-blue-600 transition-all duration-200"
+                  >
+                    Size Chart
+                  </button>
+                )}
+              </div>
               {selectedColorId ? (
                 <div className="flex flex-wrap gap-2">
                   {availableSizesForSelectedColor.map((size) => (
@@ -1271,6 +1302,58 @@ export default function ProductView({ product, className, reportHandler, writeRe
           )}
         </div>
       </div>
+
+      {/* Size Chart Modal */}
+      {isSizeChartModalOpen && sizeChart && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-70 p-4 transition-all duration-300"
+          onClick={() => setIsSizeChartModalOpen(false)}
+        >
+          <div 
+            className="relative bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300"
+            onClick={(e) => e.stopPropagation()}
+            data-aos="zoom-in"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">
+                {sizeChart.category?.name} Size Chart
+              </h3>
+              <button 
+                onClick={() => setIsSizeChartModalOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all duration-200"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 sm:p-8 overflow-y-auto max-h-[calc(90vh-140px)] flex justify-center items-center bg-gray-50">
+              {sizeChart.image && sizeChart.image.length > 0 ? (
+                <img 
+                  src={sizeChart.image[0].startsWith('http') ? sizeChart.image[0] : `http://luxcycs.com/rabbit-and-finch-uploads/${sizeChart.image[0]}`} 
+                  alt={`${sizeChart.category?.name} size chart`}
+                  className="max-w-full h-auto rounded-lg shadow-sm"
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No size chart image available.</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 bg-white text-center">
+              <p className="text-xs text-gray-400">
+                * All dimensions are in inches. Please allow +/- 0.5 inch variance.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
