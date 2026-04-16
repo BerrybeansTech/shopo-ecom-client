@@ -95,6 +95,10 @@ if (result.success) {
 
   //  Handle OTP Login for phone users
   const handlePhoneOTPLogin = async () => {
+    setError("Sign in with OTP is currently not implemented. Please use your password.");
+    return;
+    
+    // Original code preserved below for future implementation
     if (!isPhoneNumber(identifier)) {
       setError("Invalid phone number");
       return;
@@ -317,6 +321,11 @@ if (result.success) {
                     Sign in with OTP
                   </span>
                 </button>
+                {error && error.includes("not implemented") && (
+                  <p className="mt-2 text-center text-xs font-semibold text-red-600 animate-bounce">
+                    {error}
+                  </p>
+                )}
               </>
             )}
 
