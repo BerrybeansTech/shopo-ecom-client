@@ -1110,6 +1110,12 @@ export default function ProductView({ product, className, reportHandler, writeRe
                     </span>
                   </div>
                   <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-500 text-sm font-medium w-1/3">Seasonal</span>
+                    <span className="text-gray-900 text-sm font-semibold flex-1">
+                      {transformedProduct.specifications.seasonal || "All Season"}
+                    </span>
+                  </div>
+                  <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
                     <span className="text-gray-500 text-sm font-medium w-1/3">Care</span>
                     <span className="text-gray-900 text-sm font-semibold flex-1">
                       {transformedProduct.specifications.careInstructions || "Not Specified"}

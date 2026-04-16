@@ -279,8 +279,8 @@ export const reviewApi = {
         images: Array.isArray(reviewData.images)
           ? reviewData.images
           : reviewData.images
-          ? [reviewData.images]
-          : [],
+            ? [reviewData.images]
+            : [],
       };
       return await apiService.post("/product/review/create", normalizedData);
     } catch (error) {
