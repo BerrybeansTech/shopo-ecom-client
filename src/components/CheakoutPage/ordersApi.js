@@ -43,7 +43,21 @@ export const ordersApi = {
 
   // Create new order
   createOrder: async (orderData) => {
-    return await apiService.post('/order/create-order', orderData);
+    return await apiService.post('/order/create-order', orderData, { skipDeduplication: true });
+  },
+
+  // Create Razorpay order (returns razorpay_order_id, amount, currency, key_id)
+  createRazorpayOrder: async ({ amount, currency = 'INR' }) => {
+    return await apiService.post('/payment/create-razorpay-order', { amount, currency }, { skipDeduplication: true });
+  },
+
+  // Verify Razorpay payment signature
+  verifyPayment: async ({ razorpay_payment_id, razorpay_order_id, razorpay_signature }) => {
+    return await apiService.post('/payment/verify-payment', {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature
+    }, { skipDeduplication: true });
   },
 
  // Cancel order using update-order endpoint
