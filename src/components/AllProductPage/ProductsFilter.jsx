@@ -688,6 +688,24 @@ const ProductsFilter = React.memo(
         }
       }
     }, [categoryTree, selectedSubCategories, selectedDetails, selectedCategoryId, categories]);
+    
+    // Unified Filter Skeleton Component
+    const FilterSkeleton = () => (
+      <div className="space-y-6 animate-pulse px-1">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="space-y-3">
+            <div className="flex items-center justify-between mb-3 px-3 py-2 bg-gray-100/50 rounded-lg">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+            </div>
+            <div className="space-y-2 px-3">
+              <div className="h-3 bg-gray-100 rounded w-full"></div>
+              <div className="h-3 bg-gray-100 rounded w-5/6"></div>
+              <div className="h-3 bg-gray-100 rounded w-4/6"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
 
     return (
       <>
@@ -749,17 +767,7 @@ const ProductsFilter = React.memo(
             </button>
           </div>
 
-          {/* Loading State */}
-          {isLoading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm font-medium text-blue-800">
-                  Loading filter options...
-                </span>
-              </div>
-            </div>
-          )}
+
 
           {/* Active Filters Bar */}
           {selectedFiltersCount > 0 && (
@@ -975,13 +983,14 @@ const ProductsFilter = React.memo(
 
           {/* Filter Content */}
           <div className="filter-content pb-24 lg:pb-0 space-y-5">
-            {/* 1. Category Filter */}
-            <div className="filter-section">
+            {isLoading ? (
+              <FilterSkeleton />
+            ) : (
+              <>
+                {/* 1. Category Filter */}
+                <div className="filter-section">
               <div className="flex items-center justify-between mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <h3 className="text-sm font-bold text-gray-900">Category</h3>
-                {isLoading && (
-                  <div className="ml-2 w-3 h-3 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                )}
               </div>
 
               {Object.keys(categoryTree).length > 0 ? (
@@ -1220,9 +1229,7 @@ const ProductsFilter = React.memo(
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  {isLoading
-                    ? "Loading categories..."
-                    : "No categories available"}
+                  No categories available
                 </div>
               )}
             </div>
@@ -1323,9 +1330,6 @@ const ProductsFilter = React.memo(
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <h3 className="text-sm font-bold text-gray-900">Colors</h3>
-                {isLoading && (
-                  <div className="ml-2 w-3 h-3 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                )}
               </div>
 
               {allColors.length > 0 ? (
@@ -1377,7 +1381,7 @@ const ProductsFilter = React.memo(
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  {isLoading ? "Loading colors..." : "No colors available"}
+                  No colors available
                 </div>
               )}
             </div>
@@ -1386,9 +1390,6 @@ const ProductsFilter = React.memo(
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <h3 className="text-sm font-bold text-gray-900">Size</h3>
-                {isLoading && (
-                  <div className="ml-2 w-3 h-3 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                )}
               </div>
               {Object.keys(allSizes).length > 0 ? (
                 <div className="space-y-4">
@@ -1427,7 +1428,7 @@ const ProductsFilter = React.memo(
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  {isLoading ? "Loading sizes..." : "No sizes available"}
+                  No sizes available
                 </div>
               )}
             </div>
@@ -1552,9 +1553,6 @@ const ProductsFilter = React.memo(
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <h3 className="text-sm font-bold text-gray-900">Occasion</h3>
-                {isLoading && (
-                  <div className="ml-2 w-3 h-3 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                )}
               </div>
               {allOccasions.length > 0 ? (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
@@ -1589,9 +1587,7 @@ const ProductsFilter = React.memo(
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  {isLoading
-                    ? "Loading occasions..."
-                    : "No occasions available"}
+                  No occasions available
                 </div>
               )}
             </div>
@@ -1601,9 +1597,6 @@ const ProductsFilter = React.memo(
             <div className="filter-section">
               <div className="flex items-center mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <h3 className="text-sm font-bold text-gray-900">Material</h3>
-                {isLoading && (
-                  <div className="ml-2 w-3 h-3 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                )}
               </div>
               {allMaterials.length > 0 ? (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
@@ -1638,13 +1631,13 @@ const ProductsFilter = React.memo(
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  {isLoading
-                    ? "Loading materials..."
-                    : "No materials available"}
+                  No materials available
                 </div>
               )}
             </div>
-          </div>
+          </>
+        )}
+      </div>
         </div>
 
         <style jsx="true">{`

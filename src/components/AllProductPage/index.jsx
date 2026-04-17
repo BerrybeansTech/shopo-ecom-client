@@ -818,7 +818,27 @@ export default function AllProductPage() {
     
     (apiProducts || []).forEach(product => {
       if (product && product.id && !seenIds.has(product.id)) {
-        uniqueApiProducts.push(product);
+        // ENRICHMENT: Map IDs to names using master lists if the objects are missing
+        const enrichedProduct = { ...product };
+        
+        // Map Material
+        if (!enrichedProduct.material && (enrichedProduct.productMaterialId || enrichedProduct.materialId)) {
+          const mId = enrichedProduct.productMaterialId || enrichedProduct.materialId;
+          const masterMaterial = materials.find(m => m.id === parseInt(mId));
+          if (masterMaterial) {
+            enrichedProduct.material = { id: masterMaterial.id, name: masterMaterial.name };
+          }
+        }
+        
+        // Map Occasion
+        if (!enrichedProduct.occasion && enrichedProduct.occasionId) {
+          const masterOccasion = occasions.find(o => o.id === parseInt(enrichedProduct.occasionId));
+          if (masterOccasion) {
+            enrichedProduct.occasion = { id: masterOccasion.id, name: masterOccasion.name };
+          }
+        }
+
+        uniqueApiProducts.push(enrichedProduct);
         seenIds.add(product.id);
       }
     });
