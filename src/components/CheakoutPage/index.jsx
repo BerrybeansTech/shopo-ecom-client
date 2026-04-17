@@ -12,6 +12,17 @@ import { addressApi } from '../Auth/addressApi';
 import { colorApi, sizeApi } from '../AllProductPage/productApi';
 import { trackNectorEvent } from '../NectorSDK/nectorEvents';
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function Checkout() {
   const [step, setStep] = useState(1);
   const [selectedBillingAddress, setSelectedBillingAddress] = useState(null);
@@ -536,14 +547,13 @@ export default function Checkout() {
     setIsPlacingOrder(true);
     setApiError(null);
 
-    try {
-      // Format addresses for order API
-      const formatAddressForOrder = (addr) => {
-        const customerName = addr.name || addr.customer?.name || addr.fullName || user.name;
-        const postalCode = addr.postalCode || addr.pincode;
-        return `${customerName}, ${addr.address}, ${addr.city}, ${addr.state} - ${postalCode}`;
-      };
+    const formatAddressForOrder = (addr) => {
+      const customerName = addr.name || addr.customer?.name || addr.fullName || user.name;
+      const postalCode = addr.postalCode || addr.pincode;
+      return `${customerName}, ${addr.address}, ${addr.city}, ${addr.state} - ${postalCode}`;
+    };
 
+    const submitOrder = async (extraPaymentFields = {}) => {
       const orderData = {
         customerId: user.id,
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -556,52 +566,125 @@ export default function Checkout() {
         finalAmount: finalTotal,
         paymentMethod: selectedPayment.toUpperCase(),
         orderNote: 'Urgent delivery',
-        productItems: formatCartItemsForAPI()
+        productItems: formatCartItemsForAPI(),
+        ...extraPaymentFields
       };
 
       const response = await ordersApi.createOrder(orderData);
+      if (!response.success) throw new Error(response.message || 'Failed to create order');
 
-      if (response.success) {
-        await clearCartAfterSuccessfulOrder();
+      await clearCartAfterSuccessfulOrder();
 
-        const orderDetailsData = {
-          orderId: response.data.id,
-          items: cartItems.map(item => ({
-            ...item,
-            colorName: getColorName(item.productColorVariationId),
-            sizeName: getSizeName(item.productSizeVariationId)
-          })),
-          billingAddress: billingAddressData,
-          shippingAddress: shippingAddressData,
-          paymentMethod: selectedPayment,
-          totalAmount: finalTotal,
-          savings: discount + couponDiscount,
-          apiResponse: response.data,
-          useSameAddress: useSameAddress
-        };
+      setOrderDetails({
+        orderId: response.data.id,
+        items: cartItems.map(item => ({
+          ...item,
+          colorName: getColorName(item.productColorVariationId),
+          sizeName: getSizeName(item.productSizeVariationId)
+        })),
+        billingAddress: billingAddressData,
+        shippingAddress: shippingAddressData,
+        paymentMethod: selectedPayment,
+        totalAmount: finalTotal,
+        savings: discount + couponDiscount,
+        apiResponse: response.data,
+        useSameAddress: useSameAddress
+      });
+      setShowThankYou(true);
 
-        setOrderDetails(orderDetailsData);
-        setShowThankYou(true);
-
-        // Track Order Completed in Nector
-        try {
-          await trackNectorEvent(user?._id || user?.id, 'order_completed', {
-            order_id: response.data.id || response.data._id,
-            amount: finalTotal,
-            currency: 'INR'
-          });
-        } catch (nectorError) {
-          console.error('Failed to track nector event:', nectorError);
-        }
-
-      } else {
-        throw new Error(response.message || 'Failed to create order');
+      // Track Order Completed in Nector
+      try {
+        await trackNectorEvent(user?._id || user?.id, 'order_completed', {
+          order_id: response.data.id || response.data._id,
+          amount: finalTotal,
+          currency: 'INR'
+        });
+      } catch (nectorError) {
+        console.error('Failed to track nector event:', nectorError);
       }
+    };
+
+    try {
+      // COD: skip Razorpay, place order directly
+      if (selectedPayment === 'cod') {
+        await submitOrder();
+        return;
+      }
+
+      // Online payment: go through Razorpay
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load payment gateway. Please check your connection.');
+      }
+
+      const rzpOrderRes = await ordersApi.createRazorpayOrder({
+        amount: finalTotal * 100, // paise
+        currency: 'INR'
+      });
+
+      if (!rzpOrderRes.success) {
+        throw new Error(rzpOrderRes.message || 'Failed to initiate payment');
+      }
+
+      const { razorpay_order_id, amount, currency, key_id } = rzpOrderRes.data;
+
+      const options = {
+        key: key_id || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount,
+        currency,
+        order_id: razorpay_order_id,
+        name: 'Shopo',
+        description: 'Order Payment',
+        prefill: {
+          name: user.name || '',
+          email: user.email || '',
+          contact: user.phone || ''
+        },
+        theme: { color: '#000000' },
+        handler: async (paymentResponse) => {
+          try {
+            const verifyRes = await ordersApi.verifyPayment({
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_signature: paymentResponse.razorpay_signature
+            });
+
+            if (!verifyRes.success) {
+              throw new Error(verifyRes.message || 'Payment verification failed');
+            }
+
+            await submitOrder({
+              razorpayPaymentId: paymentResponse.razorpay_payment_id,
+              razorpayOrderId: paymentResponse.razorpay_order_id
+            });
+          } catch (error) {
+            setApiError(error.message || 'Payment verification failed. Contact support.');
+            setIsPlacingOrder(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setApiError('Payment cancelled.');
+            setIsPlacingOrder(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response) => {
+        setApiError(response.error?.description || 'Payment failed. Please try again.');
+        setIsPlacingOrder(false);
+      });
+      rzp.open();
+
     } catch (error) {
-      console.error('Order creation failed:', error);
       setApiError(error.message || 'Failed to place order. Please try again.');
-    } finally {
       setIsPlacingOrder(false);
+    } finally {
+      // For COD only — online payments reset isPlacingOrder in modal callbacks
+      if (selectedPayment === 'cod') {
+        setIsPlacingOrder(false);
+      }
     }
   };
 
