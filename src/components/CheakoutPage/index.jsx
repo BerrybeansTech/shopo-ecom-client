@@ -10,6 +10,7 @@ import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
 import { addressApi } from '../Auth/addressApi';
 import { colorApi, sizeApi } from '../AllProductPage/productApi';
+import { trackNectorEvent } from '../NectorSDK/nectorEvents';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -590,6 +591,17 @@ export default function Checkout() {
         useSameAddress: useSameAddress
       });
       setShowThankYou(true);
+
+      // Track Order Completed in Nector
+      try {
+        await trackNectorEvent(user?._id || user?.id, 'order_completed', {
+          order_id: response.data.id || response.data._id,
+          amount: finalTotal,
+          currency: 'INR'
+        });
+      } catch (nectorError) {
+        console.error('Failed to track nector event:', nectorError);
+      }
     };
 
     try {

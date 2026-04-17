@@ -8,7 +8,6 @@ const STYLES = `
   .cat-img-wrap { 
     overflow: hidden; 
     border-radius: 24px;
-    position: relative;
     background: #f1f3f5;
   }
   
@@ -75,23 +74,23 @@ function SpotlightCard({ cat }) {
   return (
     <Link
       to={cat.link}
-      className="cat-img-wrap relative block rounded-[24px] shadow-2xl overflow-hidden h-full bg-gray-100"
+      className="cat-img-wrap relative block rounded-[24px] shadow-2xl overflow-hidden h-full w-full bg-gray-100"
       style={{ gridColumn: "1", gridRow: "1 / 3" }}
     >
       <img
         src={cat.image}
         alt={cat.name}
-        className="cat-img"
+        className="cat-img block w-full h-full object-cover"
         loading="lazy"
         onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
       />
 
       {/* Cinematic overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
       {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 p-7 lg:p-9 text-white">
-        <p className="text-xs font-semibold tracking-[0.15em] uppercase text-white/55 mb-2">
+      <div className="absolute bottom-0 left-0 right-0 p-7 lg:p-9 text-white z-10">
+        <p className="text-xs font-semibold tracking-[0.15em] uppercase text-white/70 mb-2">
           Shop the collection
         </p>
         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-5 drop-shadow-md">
@@ -118,11 +117,11 @@ function MiniCard({ cat, isActive, onClick }) {
       aria-label={`View ${cat.name}`}
     >
       {/* Background image */}
-      <div className="cat-img-wrap absolute inset-0 bg-gray-100">
+      <div className="absolute inset-0 bg-gray-100 overflow-hidden">
         <img
           src={cat.image}
           alt={cat.name}
-          className="cat-img"
+          className="cat-img w-full h-full object-cover"
           loading="lazy"
           onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
         />
@@ -130,9 +129,9 @@ function MiniCard({ cat, isActive, onClick }) {
 
       {/* Hover overlay */}
       <div className="mini-hover-layer">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
-        <div className="relative w-full px-4 py-3 text-white">
-          <p className="text-xs sm:text-sm font-semibold leading-snug line-clamp-1">{cat.name}</p>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+        <div className="relative w-full px-4 py-4 text-white z-10">
+          <p className="text-xs sm:text-sm font-bold leading-snug tracking-wide line-clamp-1 truncate">{cat.name}</p>
         </div>
       </div>
 
@@ -465,18 +464,18 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
                 style={{ width: "130px", height: "110px" }}
                 onClick={() => goTo(cat.colorIdx, true)}
               >
-                <div className="cat-img-wrap absolute inset-0 bg-gray-100">
+                <div className="absolute inset-0 bg-gray-100 overflow-hidden">
                   <img
                     src={cat.image}
                     alt={cat.name}
-                    className="cat-img"
+                    className="cat-img w-full h-full object-cover"
                     loading="lazy"
                     onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
                   />
                 </div>
                 <div className="mini-hover-layer">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                  <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2">{cat.name}</p>
+                  <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
                 </div>
               </div>
             ))}

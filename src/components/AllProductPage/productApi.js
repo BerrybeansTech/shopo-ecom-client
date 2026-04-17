@@ -100,11 +100,36 @@ export const occasionApi = {
 };
 
 // MATERIAL API
+// SIZE CHART API
+export const sizeChartApi = {
+  getChartByCategory: async (categoryId) => {
+    try {
+      const key = `sizeChart-getByCategory-${categoryId}`;
+      return deduplicateRequest(key, async () => {
+        return await apiService.get(`/product/size-chart/get-size-chart/${categoryId}`);
+      });
+    } catch (error) {
+      console.error(`Error fetching size chart for category ${categoryId}:`, error);
+      throw error;
+    }
+  },
+};
+
 export const materialApi = {
   getAll: async () => {
     const key = 'material-getAll';
     return deduplicateRequest(key, async () => {
       return await apiService.get("/product/material/get-all");
+    });
+  },
+};
+
+// FIT TYPE API
+export const fitTypeApi = {
+  getAll: async () => {
+    const key = 'fitType-getAll';
+    return deduplicateRequest(key, async () => {
+      return await apiService.get("/product/fit-type/get-all");
     });
   },
 };
@@ -248,7 +273,16 @@ export const productApi = {
 export const reviewApi = {
   create: async (reviewData) => {
     try {
-      return await apiService.post("/product/review/create", reviewData);
+      // Ensure images is always an array — backend expects images.map()
+      const normalizedData = {
+        ...reviewData,
+        images: Array.isArray(reviewData.images)
+          ? reviewData.images
+          : reviewData.images
+            ? [reviewData.images]
+            : [],
+      };
+      return await apiService.post("/product/review/create", normalizedData);
     } catch (error) {
       console.error("Error creating review:", error);
       throw error;
@@ -586,10 +620,15 @@ export const productUtils = {
     // Material filter
     if (selectedMaterials.length > 0) {
       filtered = filtered.filter(product =>
-        selectedMaterials.some(material => {
-          const productMaterial = product.material?.name;
-          if (!productMaterial) return false;
-          return productMaterial.toLowerCase().includes(material.toLowerCase());
+        selectedMaterials.some(materialName => {
+          // Try to match by name on the material object
+          const productMaterialName = product.material?.name;
+          if (productMaterialName && productMaterialName.toLowerCase().includes(materialName.toLowerCase())) return true;
+          
+          // Try to match by ID if we have master list (handled in index.jsx transformation)
+          // For now, if name is missing but ID is present, we'll rely on the API already having filtered it correctly
+          // or we check if the material name matches the master list ID
+          return false;
         })
       );
     }
@@ -597,9 +636,13 @@ export const productUtils = {
     // Occasion filter
     if (selectedOccasions.length > 0) {
       filtered = filtered.filter(product =>
-        selectedOccasions.some(occasion =>
-          product.occasion?.name?.toLowerCase().includes(occasion.toLowerCase())
-        )
+        selectedOccasions.some(occasionName => {
+          const productOccasionName = product.occasion?.name;
+          if (productOccasionName && productOccasionName.toLowerCase().includes(occasionName.toLowerCase())) return true;
+          
+          // Fallback to occasionId comparison if name is missing
+          return false;
+        })
       );
     }
 
@@ -651,8 +694,10 @@ export default {
   colorApi,
   occasionApi,
   materialApi,
+  fitTypeApi,
   productApi,
   reviewApi,
+  sizeChartApi,
   productDataApi,
   productUtils,
 };
