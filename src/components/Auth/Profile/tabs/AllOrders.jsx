@@ -70,9 +70,7 @@ export default function AllOrders() {
   };
 
   const handleTrackOrder = (order) => {
-    alert(
-      `Tracking for Order #${order.orderId || order.id}: Status - ${order.displayStatus}, Estimated Delivery - ${order.tracking?.estimatedDate || order.estimatedDelivery}`
-    );
+    navigate('/track-order', { state: { orderId: order.orderId || order.id } });
   };
 
   const handleReorder = (order) => {

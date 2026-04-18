@@ -9,6 +9,7 @@ import Signup from "./components/Auth/Signup";
 import BecomeSaller from "./components/BecomeSaller";
 import Blogs from "./components/Blogs/index.jsx";
 import Blogdetails from "./components/Blogs/Blog.jsx/blogdetails.jsx";
+import OrderDetails from "./components/OrderDetails";
 import CardPage from "./components/CartPage";
 import CheakoutPage from "./components/CheakoutPage";
 import Contact from "./components/Contact";
@@ -53,7 +54,8 @@ const router = createBrowserRouter([
   { path: "/about", element: <About /> },
   { path: "/blogs", element: <Blogs /> },
   { path: "/blogs/:slug", element: <Blogdetails /> }, // CORRECT
-  { path: "/tracking-order", element: <TrackingOrder /> },
+  { path: "/track-order", element: <TrackingOrder /> },
+  { path: "/orders/:orderId", element: <OrderDetails /> },
   { path: "/contact", element: <Contact /> },
   { path: "/faq", element: <Faq /> },
   { path: "/login", element: <Login /> },

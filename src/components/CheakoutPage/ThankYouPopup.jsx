@@ -1,6 +1,6 @@
 // components/Checkout/ThankYouPopup.js
 import React from 'react';
-import { Check, Download, Share2, Home, ShoppingBag, MapPin, Shield, Star, X, Copy } from 'lucide-react';
+import { Check, Download, Share2, Home, ShoppingBag, MapPin, Shield, Star, X, Copy, Truck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function ThankYouPopup({
@@ -144,6 +144,20 @@ export default function ThankYouPopup({
                 <button className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded text-black hover:bg-gray-50 transition-all font-medium text-xs">
                   <Share2 className="w-3 h-3" />
                   <span>Share</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    const idToTrack = orderDetails?.orderId || orderDetails?.apiResponse?.id;
+                    if(idToTrack) {
+                      navigate('/track-order', { state: { orderId: idToTrack } });
+                    } else {
+                      navigate('/track-order');
+                    }
+                  }}
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-blue-600 hover:bg-blue-100 transition-all font-semibold text-xs"
+                >
+                  <Truck className="w-3 h-3" />
+                  <span>Track Order</span>
                 </button>
               </div>
               

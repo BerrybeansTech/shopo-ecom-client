@@ -22,7 +22,7 @@ export default function TopBar({ className }) {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/tracking-order">
+                  <Link to="/track-order">
                     <span className="text-xs leading-6 text-qblack font-500">
                       Track Order
                     </span>
