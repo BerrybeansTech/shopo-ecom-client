@@ -17,7 +17,7 @@ const NectorEarnPoints = ({ price }) => {
                         customer_id: user?._id || user?.id || '',
                         customer_email: user?.email || '',
                         price: price,
-                        redirect_url: "https://rabbitandfinch.com/profile"
+                        redirect_url: "http://localhost:5173/profile"
                     },
                     containerId
                 );
