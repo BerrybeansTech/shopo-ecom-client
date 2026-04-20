@@ -18,6 +18,7 @@ import TabNavigation from "./TabNavigation";
 import { useOrders } from "../../../CheakoutPage/useOrders";
 import { useAuth } from "../../hooks/useAuth";
 import { getProductImage } from "../../../../utils/imageUtils";
+import PleaseLogin from "./PleaseLogin";
 
 export default function OrderTab() {
   const [activeTab, setActiveTab] = useState("Current");
@@ -39,6 +40,13 @@ export default function OrderTab() {
     };
     setActiveTab(tabMap[hash] || "Current");
   }, []);
+
+  // Load orders on mount for OrderTab
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadOrders();
+    }
+  }, [isAuthenticated, loadOrders]);
 
   // Handle show more functionality
   const handleShowMore = () => {
@@ -185,21 +193,7 @@ export default function OrderTab() {
           <p className="text-black-300">Track and manage your orders</p>
         </div>
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="flex flex-col items-center justify-center text-center py-12 bg-white-400 rounded-lg border border-black-300 shadow-sm">
-          <div className="w-16 h-16 bg-white-500 rounded-full flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8 text-black-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-black-900 mb-2">Please Login</h3>
-          <p className="text-sm text-black-600 mb-4 max-w-sm mx-auto">
-            You need to be logged in to view your current orders.
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-all duration-200 shadow-md font-medium"
-          >
-            Login Now
-          </button>
-        </div>
+        <PleaseLogin message="You need to be logged in to view your current orders." />
       </div>
     );
   }

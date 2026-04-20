@@ -5,6 +5,8 @@ import TabNavigation from "./TabNavigation";
 import { getWishlist, updateWishlist, clearWishlist, wishlistEvents } from "../../../../services/wishlistApi";
 import { apiService } from "../../../../services/apiservice";
 import { getProductImage } from "../../../../utils/imageUtils";
+import { useAuth } from "../../hooks/useAuth";
+import PleaseLogin from "./PleaseLogin";
 
 export default function WishlistTab({ className }) {
   const [activeTab, setActiveTab] = useState("Wishlist");
@@ -16,6 +18,7 @@ export default function WishlistTab({ className }) {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
 
   const fetchProductDetails = React.useCallback(async (productIds) => {
@@ -170,6 +173,21 @@ export default function WishlistTab({ className }) {
     }
     return product.inStock !== false;
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className={`w-full px-4 sm:px-6 lg:px-8 py-4 ${className || ""}`}>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-black-900 mb-2">My Wishlist</h2>
+          <p className="text-black-300">Save items you love for later</p>
+        </div>
+        <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className="mt-6">
+          <PleaseLogin message="You need to be logged in to view and manage your wishlist." />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full px-4 sm:px-6 lg:px-8 py-4 ${className || ""}`}>

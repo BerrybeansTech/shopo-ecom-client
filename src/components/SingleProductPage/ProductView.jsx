@@ -4,15 +4,18 @@ import { reviewApi, fitTypeApi, sizeChartApi } from "../AllProductPage/productAp
 import { useCart } from "../CartPage/useCart";
 import { getImageUrl, normalizeProductImages } from "../../utils/imageUtils";
 import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
+import useAuth from "../Auth/hooks/useAuth";
 
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
   const { items, addItemToCart, updateItemQuantity, refreshCart, isItemUpdating } = useCart();
+  const { isAuthenticated } = useAuth();
 
   // Add state for add to cart feedback
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addToCartSuccess, setAddToCartSuccess] = useState(false);
   const [userMessage, setUserMessage] = useState(""); // For showing messages to user
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Fit types — fetched once, used to resolve fitTypeId → name
   const [fitTypes, setFitTypes] = useState([]);
@@ -533,6 +536,13 @@ export default function ProductView({ product, className, reportHandler, writeRe
 
   // FIXED Add to Cart function with proper feedback
   const handleAddToCart = async () => {
+    // If not authenticated, show login prompt and stop
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      // Optional: scroll to it
+      return;
+    }
+
     // Validation
     if (!selectedColor || !selectedSize) {
       setUserMessage("⚠️ Please select both color and size");
@@ -603,6 +613,10 @@ export default function ProductView({ product, className, reportHandler, writeRe
   };
 
   const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      return;
+    }
     const success = await handleAddToCart();
     if (success) {
       navigate('/checkout');
@@ -1048,6 +1062,33 @@ export default function ProductView({ product, className, reportHandler, writeRe
                 </button>
               </div>
             </div>
+
+            {/* Premium Sign-in Prompt for Unauthenticated Users - Only shows on click */}
+            {showLoginPrompt && !isAuthenticated && (
+              <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center gap-3 animate-fadeIn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                  <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <p className="text-sm font-medium text-gray-600">
+                  Not signed in? <button 
+                    onClick={() => navigate('/login', { state: { from: window.location.pathname } })} 
+                    className="text-black font-bold underline hover:text-blue-600 transition-colors decoration-2 underline-offset-4"
+                  >
+                    Please sign in
+                  </button>
+                </p>
+                <button 
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* Inline Feedback Message - Premium UX */}
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${userMessage ? 'max-h-20 opacity-100 mb-6' : 'max-h-0 opacity-0'}`}>

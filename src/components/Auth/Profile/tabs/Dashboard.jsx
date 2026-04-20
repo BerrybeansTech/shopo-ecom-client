@@ -1,4 +1,6 @@
 import React from "react";
+import { useAuth } from "../../hooks/useAuth";
+import PleaseLogin from "./PleaseLogin";
 
 export default function Dashboard() {
   const quickAccessItems = [
@@ -70,6 +72,22 @@ export default function Dashboard() {
       link: "/profile#profile",
     },
   ];
+
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full">
+        <div className="mb-8">
+          <p className="text-black-300 text-base">Hello,</p>
+          <h1 className="font-bold text-3xl text-black-900 mt-1">
+            Welcome to your Profile
+          </h1>
+        </div>
+        <PleaseLogin message="You need to be logged in to access your dashboard and manage your account." />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

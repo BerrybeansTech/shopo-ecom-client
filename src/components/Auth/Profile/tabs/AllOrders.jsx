@@ -20,14 +20,17 @@ import TabNavigation from "./TabNavigation";
 import { useOrders } from "../../../CheakoutPage/useOrders";
 import { useAuth } from "../../hooks/useAuth";
 import { getProductImage } from "../../../../utils/imageUtils";
+import PleaseLogin from "./PleaseLogin";
 
 export default function AllOrders() {
   const [activeTab, setActiveTab] = useState("All orders");
   const [filteredOrders, setFilteredOrders] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const ORDER_LIMIT = 2;
 
-  const { orders, loading, error, loadOrders, dismissError, currentOrders } = useOrders();
+  const { orders, loading, error, loadOrders, dismissError, currentOrders, pagination } = useOrders();
   const { isAuthenticated } = useAuth();
 
   // Handle URL hash to set active tab on page load
@@ -39,7 +42,17 @@ export default function AllOrders() {
       "#wishlist": "Wishlist"
     };
     setActiveTab(tabMap[hash] || "All orders");
+    setCurrentPage(1); // Reset page on tab change
   }, [location]);
+
+  // Load orders when page or authentication changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadOrders({ page: currentPage, limit: ORDER_LIMIT });
+      // Smooth scroll to top when page changes
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [isAuthenticated, currentPage, loadOrders]);
 
   // Filter orders based on active tab
   useEffect(() => {
@@ -232,21 +245,7 @@ export default function AllOrders() {
           <p className="text-black-300">Track and manage your orders</p>
         </div>
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="text-center py-12 bg-white-50 rounded-lg border border-white-500">
-          <div className="w-16 h-16 bg-white-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-black-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-black-900 mb-2">Please Login</h3>
-          <p className="text-sm text-black-600 mb-4">
-            You need to be logged in to view your orders.
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-black-900 text-white-50 px-6 py-2 rounded-lg hover:bg-black-800 transition-colors"
-          >
-            Login Now
-          </button>
-        </div>
+        <PleaseLogin message="You need to be logged in to view your orders." />
       </div>
     );
   }
@@ -305,7 +304,7 @@ export default function AllOrders() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-black-900 mb-2">All Orders</h2>
         <p className="text-black-300">
-          {filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found
+          {pagination?.totalItems || filteredOrders.length} { (pagination?.totalItems || filteredOrders.length) === 1 ? "order" : "orders"} found
         </p>
       </div>
 
@@ -477,6 +476,58 @@ export default function AllOrders() {
           );
         })}
       </div>
+
+      {/* Pagination Controls */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-10 mb-6">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-1 px-3 py-2 border border-white-500 rounded-lg text-sm font-medium hover:bg-white-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => {
+              // Only show a limited number of page buttons
+              if (
+                pageNum === 1 || 
+                pageNum === pagination.totalPages || 
+                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-10 h-10 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${
+                      currentPage === pageNum 
+                        ? "bg-black-900 text-white-50" 
+                        : "border border-white-500 hover:bg-white-400"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              } else if (
+                (pageNum === 2 && currentPage > 3) || 
+                (pageNum === pagination.totalPages - 1 && currentPage < pagination.totalPages - 2)
+              ) {
+                return <span key={pageNum} className="px-1 text-black-300 text-xs">...</span>;
+              }
+              return null;
+            })}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+            disabled={currentPage === pagination.totalPages}
+            className="flex items-center gap-1 px-3 py-2 border border-white-500 rounded-lg text-sm font-medium hover:bg-white-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
