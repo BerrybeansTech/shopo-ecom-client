@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Trash2, Plus, User, MapPin, Phone, Globe, MapPinned, Check, Edit2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { addressApi } from "../../addressApi";
+import PleaseLogin from "./PleaseLogin";
 
 export default function AddressesTab() {
   const [addresses, setAddresses] = useState([]);
@@ -22,7 +23,7 @@ export default function AddressesTab() {
   const [loading, setLoading] = useState(false);
   const [fetchingAddresses, setFetchingAddresses] = useState(true);
 
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Fetch addresses from API on component mount
   useEffect(() => {
@@ -286,6 +287,18 @@ export default function AddressesTab() {
       setLoading(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-black-900 mb-2">Saved Addresses</h2>
+          <p className="text-black-300">Manage your delivery addresses</p>
+        </div>
+        <PleaseLogin message="You need to be logged in to view and manage your delivery addresses." />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

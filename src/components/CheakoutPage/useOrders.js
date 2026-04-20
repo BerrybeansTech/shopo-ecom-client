@@ -11,6 +11,12 @@ export const useOrders = () => {
   const { user, isAuthenticated } = useAuth();
   const [allColors, setAllColors] = useState([]);
   const [allSizes, setAllSizes] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    limit: 10
+  });
 
   // Fetch variations
   useEffect(() => {
@@ -156,6 +162,14 @@ export const useOrders = () => {
       if (response.success) {
         const formattedOrders = response.data.map(formatOrderFromAPI);
         setOrders(formattedOrders);
+        if (response.pagination) {
+          setPagination({
+            currentPage: parseInt(response.pagination.page),
+            totalPages: parseInt(response.pagination.totalPages),
+            totalItems: parseInt(response.pagination.total),
+            limit: parseInt(response.pagination.limit)
+          });
+        }
       } else {
         setError(response.message || 'Failed to load orders');
       }
@@ -216,12 +230,12 @@ export const useOrders = () => {
     setError(null);
   }, []);
 
-  // Load orders on mount
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadOrders();
-    }
-  }, [isAuthenticated, loadOrders]);
+  // Removed automatic load on mount to allow components to control pagination
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     loadOrders();
+  //   }
+  // }, [isAuthenticated, loadOrders]);
 
   return {
     // State
@@ -237,6 +251,7 @@ export const useOrders = () => {
     // Computed values
     currentOrders: getCurrentOrders(),
     getOrdersByStatus,
-    hasOrders: orders.length > 0
+    hasOrders: orders.length > 0,
+    pagination
   };
 };

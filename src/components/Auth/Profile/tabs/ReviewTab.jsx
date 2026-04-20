@@ -3,6 +3,8 @@ import { Star, Upload, X, Image as ImageIcon, ShoppingBag, CheckCircle } from "l
 import { useSearchParams } from "react-router-dom";
 import { apiService } from "../../../../services/apiservice";
 import { getProductImage, getImageUrl } from "../../../../utils/imageUtils";
+import { useAuth } from "../../hooks/useAuth";
+import PleaseLogin from "./PleaseLogin";
 
 const ratingLabels = {
   1: "Very Dissatisfied",
@@ -25,6 +27,7 @@ export default function ReviewTab() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [notification, setNotification] = useState(null);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchUserReviews();
@@ -263,6 +266,23 @@ export default function ReviewTab() {
     newParams.delete('productId');
     setSearchParams(newParams);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <ShoppingBag className="w-6 h-6 text-blue-600" />
+            <h2 className="text-2xl font-bold text-gray-900">My Reviews & Feedback</h2>
+          </div>
+          <p className="text-gray-600">
+            Share your experiences with products you've purchased.
+          </p>
+        </div>
+        <PleaseLogin message="You need to be logged in to view your reviews and submit new ones." />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
