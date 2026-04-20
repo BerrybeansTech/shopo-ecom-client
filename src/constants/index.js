@@ -7,12 +7,12 @@
 export const API_CONFIG = {
   // Base URL for API requests
   // Priority: VITE_API_BASE_URL env variable > fallback to production
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://luxcycs.com:5501',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://api.rabbitnfinch.com',
 
   // Public URL for assets (images, etc.)
   // Priority: VITE_PUBLIC_URL env variable > same as BASE_URL
-  PUBLIC_URL: 'http://luxcycs.com',
-  ASSET_URL: 'http://luxcycs.com/rabbit-and-finch-uploads',
+  PUBLIC_URL: 'https://api.rabbitnfinch.com',
+  ASSET_URL: 'https://api.rabbitnfinch.com/rabbit-and-finch-uploads',
 
   // Request timeout in milliseconds
   TIMEOUT: 30000,
