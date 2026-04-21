@@ -48,7 +48,7 @@ export const ordersApi = {
 
   // Create Razorpay order (returns razorpay_order_id, amount, currency, key_id)
   createRazorpayOrder: async ({ amount, currency = 'INR' }) => {
-    return await apiService.post('/payment/create-razorpay-order', { amount, currency }, { skipDeduplication: true });
+    return await apiService.post('/payment/create-order', { amount, currency }, { skipDeduplication: true });
   },
 
   // Verify Razorpay payment signature
