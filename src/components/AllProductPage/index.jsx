@@ -195,6 +195,9 @@ export default function AllProductPage() {
   const [newArrival, setNewArrival] = useState(
     searchParams.get("newArrival") === "true" || false
   );
+  const [bestSeller, setBestSeller] = useState(
+    searchParams.get("bestSeller") === "true" || false
+  );
 
   // Use products hook for filter data
   const {
@@ -237,6 +240,7 @@ export default function AllProductPage() {
         selectedAvailability,
         sortOption,
         newArrival, // FIXED: Pass newArrival state
+        bestSeller, // FIXED: Pass bestSeller state
         searchQuery,
         pagination,
       },
@@ -304,6 +308,11 @@ export default function AllProductPage() {
     // FIXED: Add newArrival to URL
     if (newArrival) {
       newSearchParams.set("newArrival", "true");
+    }
+    
+    // FIXED: Add bestSeller to URL
+    if (bestSeller) {
+      newSearchParams.set("bestSeller", "true");
     }
     
     console.log('🌐 Final URL search params:', newSearchParams.toString());
@@ -529,10 +538,22 @@ export default function AllProductPage() {
       setNewArrival(false);
     }
     
-    // Set newArrival only when "New Arrivals" is explicitly selected
+    // Reset bestSeller when sort changes
+    if (sortOption === "Best Sellers" && option !== "Best Sellers") {
+      console.log('Clearing bestSeller filter because sort changed from Best Sellers');
+      setBestSeller(false);
+    }
+    
     if (option === "New Arrivals") {
       console.log('Setting newArrival to true');
       setNewArrival(true);
+      setBestSeller(false); // Reset bestSeller when selecting New Arrivals
+    }
+    
+    if (option === "Best Sellers") {
+      console.log('Setting bestSeller to true');
+      setBestSeller(true);
+      setNewArrival(false); // Reset newArrival when selecting Best Sellers
     }
     
     setSortOption(option);
@@ -582,11 +603,14 @@ export default function AllProductPage() {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("name");
     newParams.delete("categoryId");
+    newParams.delete("newArrival");
+    newParams.delete("bestSeller");
     newParams.set("page", "1");
     setSearchParams(newParams);
     
     setSortOption("default");
     setNewArrival(false);
+    setBestSeller(false);
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -718,6 +742,16 @@ export default function AllProductPage() {
         setNewArrival(false);
         // Also reset sort option if it's set to New Arrivals
         if (sortOption === "New Arrivals") {
+          setSortOption("default");
+        }
+      });
+    }
+
+    if (bestSeller) {
+      pushFilter("Best Sellers", () => {
+        setBestSeller(false);
+        // Also reset sort option if it's set to Best Sellers
+        if (sortOption === "Best Sellers") {
           setSortOption("default");
         }
       });
