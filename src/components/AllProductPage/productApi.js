@@ -151,6 +151,7 @@ export const productApi = {
         ...(filters.productColor && { productColor: filters.productColor }),
         ...(filters.productSize && { productSize: filters.productSize }),
         ...(filters.newArrival && { newArrival: true }),
+        ...(filters.bestSeller && { bestSeller: true }),
       };
 
       // Handle multiple colors
@@ -401,6 +402,7 @@ export const productUtils = {
       selectedMaterials = [],
       selectedReviewThresholds = [],
       newArrival = false,
+      bestSeller = false,
       selectedAvailability = [],
       sortOption,
       searchQuery,
@@ -530,9 +532,12 @@ export const productUtils = {
       }
     }
 
-    // New Arrival mode based on sort option
-    if (sortOption === 'New Arrivals') {
+    if (sortOption === 'New Arrivals' || newArrival) {
       queryParams.newArrival = true;
+    }
+
+    if (sortOption === 'Best Sellers' || bestSeller) {
+      queryParams.bestSeller = true;
     }
 
     console.log('Transformed query params:', queryParams);
