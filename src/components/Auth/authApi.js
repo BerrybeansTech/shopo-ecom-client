@@ -92,6 +92,22 @@ export const loginCustomer = async (credentials) => {
   }
 };
 
+export const googleLogin = async (idToken) => {
+  try {
+    console.log('Logging in with Google...');
+    const response = await apiService.apiCall('/customer/google-login', {
+      method: 'POST',
+      body: { idToken },
+    });
+    
+    console.log('Google login response:', response);
+    return response;
+  } catch (error) {
+    console.error('Google login API error:', error);
+    throw error;
+  }
+};
+
 export const loginWithPhonePassword = async (phone, password) => {
   try {
     const cleanPhone = phone.replace('+91', '');

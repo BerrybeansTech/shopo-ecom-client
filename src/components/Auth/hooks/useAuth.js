@@ -13,7 +13,8 @@ import {
   loginWithPhoneOTP,
   loginWithPhonePassword,
   resetPassword,
-  getCustomerProfile
+  getCustomerProfile,
+  googleLogin
 } from '../authApi';
 
 import {
@@ -164,6 +165,35 @@ export const useAuth = () => {
         return { success: true, data: response };
       } else {
         dispatch(setError(response.message || 'Login failed'));
+        return { success: false, error: response.message };
+      }
+    } catch (error) {
+      const errorMsg = error.message || 'Network error occurred';
+      dispatch(setError(errorMsg));
+      return { success: false, error: errorMsg };
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
+
+  const handleGoogleLogin = useCallback(async (idToken) => {
+    try {
+      dispatch(setLoading(true));
+      dispatch(clearError());
+
+      const response = await googleLogin(idToken);
+      if (response.success) {
+        dispatch(loginSuccess({
+          user: response.user,
+          accessToken: response.accessToken,
+          message: response.message,
+        }));
+        
+        dispatch(setAuthStatus(true));
+        
+        return { success: true, data: response };
+      } else {
+        dispatch(setError(response.message || 'Google login failed'));
         return { success: false, error: response.message };
       }
     } catch (error) {
@@ -426,6 +456,7 @@ export const useAuth = () => {
     logout: handleLogout,
     clearError: handleClearError,
     clearMessage: handleClearMessage,
+    googleLogin: handleGoogleLogin
   };
 };
 
