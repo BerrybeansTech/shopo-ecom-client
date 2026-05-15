@@ -12,6 +12,7 @@
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
     "@hookform/resolvers": "^5.2.2",
+    "@react-oauth/google": "^0.13.5",
     "@reduxjs/toolkit": "^2.10.1",
     "antd": "^6.3.5",
     "aos": "^2.3.4",
