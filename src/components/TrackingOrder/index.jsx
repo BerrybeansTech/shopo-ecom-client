@@ -10,6 +10,7 @@ import {
   Search, Box, Clock, ChevronRight
 } from 'lucide-react';
 import { useOrders } from '../CheakoutPage/useOrders';
+import { downloadInvoicePDF } from '../../utils/invoiceHelper';
 
 export default function TrackingOrder() {
   const location = useLocation();
@@ -142,6 +143,7 @@ export default function TrackingOrder() {
                       <span>Refresh</span>
                     </button>
                     <button 
+                      onClick={() => downloadInvoicePDF({ id: orderId })}
                       className="flex items-center gap-2 px-5 py-2.5 bg-qblack text-white rounded-xl font-semibold hover:bg-black transition-all shadow-md shadow-black/10"
                     >
                       <Download className="h-4 w-4" />
