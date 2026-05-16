@@ -4,7 +4,11 @@ import Layout from "../Partials/Layout";
 import PageTitle from "../Helpers/PageTitle";
 import InputCom from "../Helpers/InputCom";
 import Thumbnail from "./Thumbnail";
-import { Check, Package, MapPin, Truck, RefreshCw, AlertCircle } from 'lucide-react';
+import { 
+  Check, Package, MapPin, Truck, RefreshCw, AlertCircle, 
+  Calendar, ExternalLink, Download, MessageSquare,
+  Search, Box, Clock, ChevronRight
+} from 'lucide-react';
 import { useOrders } from '../CheakoutPage/useOrders';
 
 export default function TrackingOrder() {
@@ -39,45 +43,24 @@ export default function TrackingOrder() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusConfig = (status) => {
     const s = status?.toLowerCase();
-    if (['delivered', 'completed'].includes(s)) return 'bg-green-500';
-    if (['shipped', 'in transit', 'out for delivery'].includes(s)) return 'bg-blue-500';
-    if (['cancelled', 'returned'].includes(s)) return 'bg-red-500';
-    return 'bg-gray-400';
+    if (['delivered', 'completed'].includes(s)) return { color: 'text-green-600', bg: 'bg-green-100', icon: Check, label: 'Delivered' };
+    if (['shipped', 'picked up', 'pickup_scheduled', 'shipped'].includes(s)) return { color: 'text-blue-600', bg: 'bg-blue-100', icon: Box, label: 'Shipped' };
+    if (['in transit', 'in_transit'].includes(s)) return { color: 'text-orange-600', bg: 'bg-orange-100', icon: Truck, label: 'In Transit' };
+    if (['out for delivery', 'out_for_delivery'].includes(s)) return { color: 'text-purple-600', bg: 'bg-purple-100', icon: MapPin, label: 'Out for Delivery' };
+    if (['cancelled', 'failed'].includes(s)) return { color: 'text-red-600', bg: 'bg-red-100', icon: AlertCircle, label: 'Cancelled' };
+    return { color: 'text-gray-600', bg: 'bg-gray-100', icon: Clock, label: 'Pending' };
   };
 
-  // Helper to get tracking info safely
-  const getTrackInfo = () => {
-    if (!trackingData) return null;
-    
-    // Shiprocket structure usually has tracking_data
-    const data = trackingData.tracking_data || trackingData;
-    const activities = data.shipment_track_activities || [];
-    const latest = activities[0] || {};
-    
-    return {
-      awb: data.awb_code || 'N/A',
-      courier: data.courier_name || 'Processing',
-      status: data.shipment_status || 'Pending',
-      estDelivery: data.expected_delivery_date || 'TBD',
-      activities: activities.map(act => ({
-        date: act.date,
-        status: act.status,
-        location: act.location,
-        description: act.activity
-      }))
-    };
-  };
-
-  const trackInfo = getTrackInfo();
+  const statusConfig = getStatusConfig(trackingData?.status);
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
-      <div className="tracking-page-wrapper w-full">
+      <div className="tracking-page-wrapper w-full bg-[#F8F9FA] min-h-screen">
         <div className="page-title mb-[40px]">
           <PageTitle
-            title="Track Order"
+            title="Track Your Order"
             breadcrumb={[
               { name: "home", path: "/" },
               { name: "Track Order", path: "/track-order" },
@@ -85,133 +68,203 @@ export default function TrackingOrder() {
           />
         </div>
         
-        <div className="content-wrapper w-full mb-[40px]">
-          <div className="container-x mx-auto px-4">
+        <div className="content-wrapper w-full pb-[80px]">
+          <div className="container-x mx-auto px-4 max-w-5xl">
             
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
-                <AlertCircle className="w-5 h-5" />
-                <p>{error}</p>
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700 animate-in fade-in slide-in-from-top-4">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p className="font-medium">{error}</p>
               </div>
             )}
 
             {!isTracking ? (
-              <div className="w-full bg-white lg:px-[30px] px-5 py-[23px] lg:flex items-center rounded shadow-sm border border-gray-100">
-                <div className="lg:w-[642px] w-full">
-                  <h1 className="text-[22px] text-qblack font-semibold leading-9">
-                    Track Your Order
+              <div className="w-full bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden flex flex-col lg:flex-row">
+                <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold mb-6 w-fit">
+                    <Search className="w-3 h-3" />
+                    SHIPROCKET TRACKING
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl text-qblack font-bold leading-tight mb-4">
+                    Track Your Package
                   </h1>
-                  <p className="text-[15px] text-gray-500 leading-8 mb-5">
-                    Enter your Order ID to see real-time updates from Shiprocket.
+                  <p className="text-[16px] text-gray-500 leading-relaxed mb-8">
+                    Enter your Order ID to see real-time updates. Stay informed about your delivery journey from our warehouse to your doorstep.
                   </p>
-                  <form onSubmit={handleTrack}>
-                    <div className="mb-3">
+                  <form onSubmit={handleTrack} className="relative">
+                    <div className="mb-4">
                       <InputCom
-                        placeholder="Order ID e.g 101"
+                        placeholder="Order ID e.g. RF1001"
                         label="Order ID*"
-                        inputClasses="w-full h-[50px]"
+                        inputClasses="w-full h-[60px] rounded-xl border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg"
                         value={orderId}
                         inputHandler={(e) => setOrderId(e.target.value)}
                       />
                     </div>
                     <button 
                       type="submit" 
-                      disabled={apiLoading}
-                      className="w-[142px] h-[50px] bg-black text-white flex justify-center items-center mt-5 rounded font-semibold transition hover:bg-gray-800 disabled:bg-gray-400"
+                      disabled={apiLoading || !orderId}
+                      className="w-full h-[60px] bg-qblack text-white flex justify-center items-center mt-6 rounded-xl font-bold text-lg transition-all hover:bg-black hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-black/10 disabled:opacity-50 disabled:scale-100"
                     >
-                      {apiLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <span>Track Now</span>}
+                      {apiLoading ? <RefreshCw className="w-6 h-6 animate-spin" /> : <span>Track Order</span>}
                     </button>
                   </form>
                 </div>
-                <div className="flex-1 flex justify-center mt-5 lg:mt-0">
-                  <Thumbnail />
+                <div className="lg:w-1/2 bg-gray-50 flex items-center justify-center p-8 lg:p-12 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                   <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl -ml-32 -mb-32"></div>
+                   <Thumbnail className="relative z-10 w-full max-w-[400px]" />
                 </div>
               </div>
             ) : (
-              <div className="w-full bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 md:p-8 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 inline-block pb-1">Tracking Results</h2>
-                    <p className="text-gray-500 mt-2 text-sm">Real-time status updates for your shipment.</p>
+              <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                {/* Header Actions */}
+                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => { setIsTracking(false); setTrackingData(null); }}
+                      className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-gray-200"
+                    >
+                      <ChevronRight className="w-6 h-6 rotate-180" />
+                    </button>
+                    <div>
+                      <h2 className="text-2xl font-bold text-qblack">Tracking Summary</h2>
+                      <p className="text-gray-500 text-sm">Updated just now</p>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => handleTrack(null)} 
-                    disabled={apiLoading}
-                    className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors bg-transparent disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${apiLoading ? 'animate-spin' : ''}`} />
-                    <span>Refresh</span>
-                  </button>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <button 
+                      onClick={() => handleTrack(null)} 
+                      disabled={apiLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${apiLoading ? 'animate-spin' : ''}`} />
+                      <span>Refresh</span>
+                    </button>
+                    <button 
+                      className="flex items-center gap-2 px-5 py-2.5 bg-qblack text-white rounded-xl font-semibold hover:bg-black transition-all shadow-md shadow-black/10"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Invoice</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="bg-gray-50 p-6 md:p-8">
-                  {trackInfo && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white p-6 rounded border border-gray-100 shadow-sm mb-10">
-                      <div>
-                        <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Order ID</span>
-                        <span className="font-bold text-gray-800">#{orderId}</span>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">AWB Code</span>
-                        <span className="font-bold text-gray-800">{trackInfo.awb}</span>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Courier</span>
-                        <span className="font-bold text-gray-800">{trackInfo.courier}</span>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</span>
-                        <span className={`font-bold px-2 py-0.5 rounded text-xs text-white ${getStatusColor(trackInfo.status)}`}>
-                          {trackInfo.status}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                {/* Top Card - Main Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                   {[
+                     { label: 'Order ID', value: `#${orderId}`, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+                     { label: 'AWB Number', value: trackingData?.awbCode || 'Pending', icon: Box, color: 'text-purple-600', bg: 'bg-purple-50' },
+                     { label: 'Courier', value: trackingData?.courier || 'Assigning...', icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+                     { label: 'Current Status', value: trackingData?.status || 'Processing', icon: statusConfig.icon, color: statusConfig.color, bg: statusConfig.bg },
+                     { label: 'Expected Delivery', value: trackingData?.estimatedDelivery || 'TBA', icon: Calendar, color: 'text-green-600', bg: 'bg-green-50' }
+                   ].map((stat, idx) => (
+                     <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-4`}>
+                          <stat.icon className="w-5 h-5" />
+                        </div>
+                        <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{stat.label}</span>
+                        <span className="text-[15px] font-bold text-qblack truncate block" title={stat.value}>{stat.value}</span>
+                     </div>
+                   ))}
+                </div>
 
-                  {/* Timeline UI */}
-                  <div className="relative max-w-3xl mx-auto px-4 py-8">
-                    {trackInfo?.activities && trackInfo.activities.length > 0 ? (
-                      <>
-                        <div className="absolute left-[39px] sm:left-1/2 sm:-ml-px top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                        
-                        {trackInfo.activities.map((activity, index) => (
-                          <div key={index} className="relative flex items-center justify-between sm:justify-normal sm:odd:flex-row-reverse group mb-8">
-                            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-gray-50 ${index === 0 ? 'bg-blue-600' : 'bg-green-500'} text-white shadow shrink-0 z-10 sm:mx-[-20px] ml-4`}>
-                              {index === 0 ? <Truck className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                            </div>
-                            <div className={`w-[calc(100%-4rem)] sm:w-[calc(50%-2.5rem)] ml-6 sm:ml-0 ${index % 2 === 0 ? 'sm:pr-8 text-left sm:text-right' : 'sm:pl-8 text-left'}`}>
-                              <h4 className="font-bold text-gray-800 text-lg">{activity.status}</h4>
-                              <p className="text-sm text-gray-500 mt-1">{activity.description}</p>
-                              <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 justify-start sm:justify-end">
-                                <MapPin className="w-3 h-3" />
-                                <span>{activity.location}</span>
-                                <span className="mx-1">•</span>
-                                <span>{activity.date}</span>
+                <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Timeline Section */}
+                  <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                      <h3 className="font-bold text-qblack flex items-center gap-2">
+                         <Clock className="w-5 h-5 text-blue-500" />
+                         Journey Timeline
+                      </h3>
+                    </div>
+                    <div className="p-8">
+                      {trackingData?.timeline && trackingData.timeline.length > 0 ? (
+                        <div className="relative">
+                          {/* Vertical Line */}
+                          <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-gradient-to-b from-blue-500 via-gray-200 to-gray-200"></div>
+                          
+                          <div className="space-y-10">
+                            {trackingData.timeline.map((item, index) => (
+                              <div key={index} className="relative pl-10 group">
+                                {/* Dot */}
+                                <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-white shadow-sm z-10 transition-transform group-hover:scale-125 ${index === 0 ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                                
+                                <div className="flex flex-col">
+                                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-1">
+                                      <h4 className={`font-bold text-lg ${index === 0 ? 'text-qblack' : 'text-gray-600'}`}>
+                                        {item.activity}
+                                      </h4>
+                                      <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                                        {item.time ? new Date(item.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                                      </span>
+                                   </div>
+                                   {item.location && (
+                                     <div className="flex items-center gap-1.5 mt-2 text-sm text-gray-500">
+                                       <MapPin className="w-3.5 h-3.5" />
+                                       <span>{item.location}</span>
+                                   </div>
+                                   )}
+                                </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="text-center py-10">
-                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">Tracking information is being updated. Please check back later.</p>
-                      </div>
-                    )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-16">
+                           <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                              <Package className="w-10 h-10 text-blue-200" />
+                           </div>
+                           <h4 className="text-xl font-bold text-qblack mb-2">Tracking data being prepared</h4>
+                           <p className="text-gray-500 max-w-[280px] mx-auto">Please have some patience. It usually takes a few hours for the courier to update the status.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-12 text-center border-t border-gray-200 pt-8">
-                     <button 
-                       onClick={() => {
-                         setIsTracking(false); 
-                         setOrderId('');
-                         setTrackingData(null);
-                         navigate('/track-order', { replace: true, state: {} });
-                       }} 
-                       className="text-blue-600 font-medium hover:underline inline-flex items-center gap-2"
-                     >
-                       Track Another Order
-                     </button>
+                  {/* Sidebar Actions */}
+                  <div className="lg:w-80 space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                       <h4 className="font-bold text-qblack mb-4 flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4 text-blue-500" />
+                          External Tracking
+                       </h4>
+                       <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                         Want more detailed info? You can track this package directly on the courier's official website.
+                       </p>
+                       <a 
+                         href={trackingData?.trackingUrl || '#'} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className={`w-full py-3 px-4 ${trackingData?.trackingUrl ? 'bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100' : 'bg-gray-50 text-gray-400 cursor-not-allowed'} rounded-xl font-bold flex items-center justify-center gap-2 transition-all group`}
+                       >
+                         <span>Track on {trackingData?.courier || 'Courier'}</span>
+                         <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                       </a>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-qblack to-gray-800 p-6 rounded-2xl shadow-lg text-white">
+                       <h4 className="font-bold mb-2 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-orange-400" />
+                          Need Help?
+                       </h4>
+                       <p className="text-gray-300 text-sm mb-6">
+                         Having issues with your delivery? Our support team is here to help you 24/7.
+                       </p>
+                       <button className="w-full py-3 px-4 bg-white text-qblack rounded-xl font-bold hover:bg-gray-100 transition-all">
+                         Contact Support
+                       </button>
+                    </div>
+
+                    <div className="text-center pt-4">
+                       <button 
+                         onClick={() => { setIsTracking(false); setOrderId(''); setTrackingData(null); }}
+                         className="text-gray-500 font-bold hover:text-qblack transition-colors flex items-center justify-center gap-2 mx-auto"
+                       >
+                         <Search className="w-4 h-4" />
+                         Track another package
+                       </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -223,4 +276,3 @@ export default function TrackingOrder() {
     </Layout>
   );
 }
-
