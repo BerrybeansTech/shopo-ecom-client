@@ -69,8 +69,11 @@ const Navbar = () => {
   const capitalizeFirstLetter = (text = "") =>
     text.charAt(0).toUpperCase() + text.slice(1);
 
+  const hasAttemptedFetch = useRef(false);
+
   useEffect(() => {
-    if ((!categories || categories.length === 0) && !loading) {
+    if (!hasAttemptedFetch.current && (!categories || categories.length === 0) && !loading) {
+      hasAttemptedFetch.current = true;
       fetchCategories();
     }
   }, [categories, loading, fetchCategories]);

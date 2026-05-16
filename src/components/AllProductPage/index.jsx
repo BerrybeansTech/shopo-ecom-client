@@ -327,9 +327,15 @@ export default function AllProductPage() {
     });
   }, [searchParams]);
 
+  // Add this ref to track if initialization has been attempted
+  const hasAttemptedInit = useRef(false);
+
   // Initialize product data
   useEffect(() => {
     const initializeData = async () => {
+      if (hasAttemptedInit.current) return;
+      hasAttemptedInit.current = true;
+      
       try {
         await fetchAllProductData();
       } catch (error) {
