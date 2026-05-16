@@ -162,10 +162,22 @@ export default function Checkout() {
     { id: 'cod', name: 'Cash on Delivery', icon: Package, subtitle: '₹50 handling fee' }
   ];
 
+  const currentShippingAddress = useSameAddress 
+    ? savedAddresses.find(addr => addr.id === selectedBillingAddress)
+    : savedAddresses.find(addr => addr.id === selectedShippingAddress);
+  
+  const isKarnataka = currentShippingAddress?.state?.toLowerCase().trim() === "karnataka";
+
+  const tax = cartItems.reduce((sum, item) => {
+    const itemGst = item.product?.gst || 0;
+    const itemPrice = item.product?.sellingPrice || item.price || 0;
+    return sum + Math.round((itemPrice * item.quantity * itemGst) / 100);
+  }, 0);
+
   const shipping = subtotal >= 999 ? 0 : 80;
   const codFee = selectedPayment === 'cod' ? 50 : 0;
   const couponDiscount = appliedCoupon ? 200 : 0;
-  const finalTotal = subtotal + shipping + codFee - couponDiscount;
+  const finalTotal = subtotal + tax + shipping + codFee - couponDiscount;
 
   const formatCartItemsForAPI = () => {
     return cartItems.map(item => ({
@@ -174,6 +186,7 @@ export default function Checkout() {
       quantity: item.quantity,
       unitPrice: item.product?.sellingPrice || item.price,
       totalPrice: (item.product?.sellingPrice || item.price) * item.quantity,
+      gst: item.product?.gst || 0,
       productColorId: item.productColorVariationId || null,
       productSizeId: item.productSizeVariationId || null
     }));
@@ -559,8 +572,9 @@ export default function Checkout() {
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
         billingAddress: formatAddressForOrder(billingAddressData),
         shippingAddress: formatAddressForOrder(shippingAddressData),
+        shippingState: shippingAddressData.state,
         subTotal: subtotal,
-        tax: Math.round(subtotal * 0.18),
+        tax: tax,
         shippingCharge: shipping,
         totalAmount: finalTotal,
         finalAmount: finalTotal,
@@ -1606,6 +1620,24 @@ export default function Checkout() {
                       <span className="text-gray-600">Subtotal ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
                       <span className="text-black font-medium">{formatINR(subtotal)}</span>
                     </div>
+
+                    {isKarnataka ? (
+                      <>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">CGST</span>
+                          <span className="text-black font-medium">{formatINR(tax / 2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">SGST</span>
+                          <span className="text-black font-medium">{formatINR(tax / 2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">IGST</span>
+                        <span className="text-black font-medium">{formatINR(tax)}</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Shipping</span>

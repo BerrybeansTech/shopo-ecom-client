@@ -395,7 +395,7 @@ export const productUtils = {
       selectedCategoryId = null,
       selectedSubCategories = [],
       selectedDetails = [],
-      priceRange = { min: 0, max: 10000 },
+      priceRange = { min: 0, max: 1000000 },
       selectedColors = [],
       selectedSizes = [],
       selectedOccasions = [],
@@ -551,7 +551,7 @@ export const productUtils = {
     const {
       selectedSubCategories = [],
       selectedDetails = [],
-      priceRange = { min: 0, max: 10000 },
+      priceRange = { min: 0, max: 1000000 },
       selectedColors = [],
       selectedSizes = [],
       selectedOccasions = [],

@@ -156,7 +156,7 @@ export default function AllProductPage() {
   const [selectedDetails, setSelectedDetails] = useState([]);
   const [priceRange, setPriceRange] = useState({
     min: parseInt(searchParams.get("minPrice")) || 0,
-    max: parseInt(searchParams.get("maxPrice")) || 10000,
+    max: parseInt(searchParams.get("maxPrice")) || 1000000,
   });
   const [selectedColors, setSelectedColors] = useState(
     searchParams.getAll("productColor") || []
@@ -591,7 +591,7 @@ export default function AllProductPage() {
     setSelectedCategoryId(null);
     setSelectedSubCategories([]);
     setSelectedDetails([]);
-    setPriceRange({ min: 0, max: 10000 });
+    setPriceRange({ min: 0, max: 1000000 });
     setSelectedColors([]);
     setSelectedSizes([]);
     setSelectedOccasions([]);
@@ -606,6 +606,7 @@ export default function AllProductPage() {
     newParams.delete("newArrival");
     newParams.delete("bestSeller");
     newParams.set("page", "1");
+    newParams.delete("maxPrice");
     setSearchParams(newParams);
     
     setSortOption("default");
@@ -684,9 +685,9 @@ export default function AllProductPage() {
       pushFilter(cat, () => setSelectedSubCategories([]))
     );
 
-    if (priceRange.min !== 0 || priceRange.max !== 10000) {
+    if (priceRange.min !== 0 || priceRange.max !== 1000000) {
       pushFilter(`Price ₹${priceRange.min}-₹${priceRange.max}`, () =>
-        setPriceRange({ min: 0, max: 10000 })
+        setPriceRange({ min: 0, max: 1000000 })
       );
     }
 

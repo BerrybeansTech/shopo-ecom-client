@@ -478,7 +478,7 @@ const ProductsFilter = React.memo(
         // Fallback if clearAllFilters prop not provided
         setSelectedSubCategories([]);
         setSelectedDetails([]);
-        setPriceRange({ min: 0, max: 10000 });
+        setPriceRange({ min: 0, max: 1000000 });
         setSelectedColors([]);
         setSelectedSizes([]);
         setSelectedReviewThresholds([]);
@@ -519,7 +519,7 @@ const ProductsFilter = React.memo(
           ? selectedDiscountRanges.length
           : 0,
         Array.isArray(selectedOccasions) ? selectedOccasions.length : 0,
-        priceRange?.min !== 0 || priceRange?.max !== 10000 ? 1 : 0,
+        priceRange?.min !== 0 || priceRange?.max !== 1000000 ? 1 : 0,
       ];
       return filters.reduce((count, filter) => count + filter, 0);
     }, [
@@ -536,7 +536,7 @@ const ProductsFilter = React.memo(
     ]);
 
     const isDefaultPriceRange = useMemo(
-      () => priceRange?.min === 0 && priceRange?.max === 10000,
+      () => priceRange?.min === 0 && priceRange?.max === 1000000,
       [priceRange]
     );
 

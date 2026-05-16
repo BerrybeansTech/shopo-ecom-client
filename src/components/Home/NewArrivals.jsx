@@ -16,7 +16,7 @@ export default function NewArrivals({ className = "" }) {
           page: 1,
           limit: 12,
           minPrice: 0,
-          maxPrice: 10000,
+          maxPrice: 1000000,
           newArrival: true
         });
 
