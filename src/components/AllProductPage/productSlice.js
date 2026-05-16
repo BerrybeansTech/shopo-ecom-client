@@ -23,7 +23,7 @@ const initialState = {
     material: null,
     priceRange: {
       min: 0,
-      max: 10000
+      max: 1000000
     },
     sortBy: 'newest'
   },

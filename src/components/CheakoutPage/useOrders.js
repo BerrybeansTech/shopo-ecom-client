@@ -120,6 +120,7 @@ export const useOrders = () => {
       }) || [],
 
       shippingAddress: apiOrder.shippingAddress || 'Address not available',
+      invoiceFile: apiOrder.invoice?.invoiceFile || null,
       deliveryDate: deliveryDate.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
@@ -179,6 +180,27 @@ export const useOrders = () => {
       setLoading(false);
     }
   }, [isAuthenticated, user?.id, formatOrderFromAPI]);
+
+  // Track order function
+  const trackOrderData = useCallback(async (orderId) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await ordersApi.trackOrder(orderId);
+      if (response.success) {
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.message || 'Failed to track order' };
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'Failed to track order';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Cancel order function
   const cancelOrder = useCallback(async (orderId) => {
@@ -246,6 +268,7 @@ export const useOrders = () => {
     // Actions
     loadOrders,
     cancelOrder,
+    trackOrderData,
     dismissError,
 
     // Computed values
@@ -254,4 +277,4 @@ export const useOrders = () => {
     hasOrders: orders.length > 0,
     pagination
   };
-};
+};

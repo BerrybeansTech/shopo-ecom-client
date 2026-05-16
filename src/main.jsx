@@ -10,13 +10,19 @@ import "./index.css";
 import { store } from "./app/store"; // ✅ Make sure your store file path is correct
 import App from "./App";
 
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 // ✅ Initialize animations
 AOS.init();
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </GoogleOAuthProvider>
   </React.StrictMode>
 );

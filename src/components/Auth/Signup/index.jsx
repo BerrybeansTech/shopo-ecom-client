@@ -4,6 +4,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Layout from "../../Partials/Layout";
 import { useAuth } from "../hooks/useAuth";
 import { OTP_TYPES } from "../authApi";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ export default function Signup() {
   });
   const [showPassword, setShowPassword] = useState(false);
   
-  const { sendOTP, loading, error, clearError } = useAuth();
+  const { sendOTP, loading, error, clearError, googleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = location;
@@ -118,6 +119,21 @@ export default function Signup() {
     } catch (error) {
       console.error("Signup error:", error);
     }
+  };
+
+  const onGoogleSuccess = async (credentialResponse) => {
+    try {
+      const result = await googleLogin(credentialResponse.credential);
+      if (result.success) {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("Google login failed:", err);
+    }
+  };
+
+  const onGoogleError = () => {
+    console.error("Google login error");
   };
 
   const togglePasswordVisibility = () => {
@@ -371,6 +387,27 @@ export default function Signup() {
               </p>
             </div>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-8 flex items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="mx-3 text-sm text-gray-500 bg-white px-2">or</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          {/* Google Sign-in Button */}
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={onGoogleSuccess}
+              onError={onGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              width="100%"
+              text="signup_with"
+              shape="rectangular"
+            />
+          </div>
         </div>
       </div>
     </Layout>

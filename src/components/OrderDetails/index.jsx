@@ -4,12 +4,45 @@ import Layout from "../Partials/Layout";
 import PageTitle from "../Helpers/PageTitle";
 import { CheckCircle, Truck, Package, Download, ArrowLeft } from 'lucide-react';
 import { useOrders } from '../CheakoutPage/useOrders';
+import { apiService } from '../../services/apiservice';
+import { toast } from 'react-toastify';
 
 export default function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { orders, loading, loadOrders } = useOrders();
   const [order, setOrder] = useState(null);
+
+  const handleDownloadInvoice = async () => {
+    try {
+      let invoiceFileName = order?.invoiceFile;
+
+      // If no invoice exists, generate it on the fly
+      if (!invoiceFileName) {
+        toast.info("Generating your invoice...");
+        
+        const response = await apiService.post('/order/invoices', {
+          orderId: order.id
+        });
+
+        if (response.success && response.data?.invoiceFile) {
+          invoiceFileName = response.data.invoiceFile;
+          // Update the local state so we don't generate it again
+          setOrder(prev => ({ ...prev, invoiceFile: invoiceFileName }));
+        } else {
+          throw new Error("Failed to generate invoice");
+        }
+      }
+
+      // Download the invoice
+      const downloadPath = `/order/invoices/download/${invoiceFileName}`;
+      await apiService.download(downloadPath, `Invoice-${order.orderId || order.id}.png`);
+      toast.success("Downloading invoice...");
+    } catch (error) {
+      console.error("Invoice error:", error);
+      toast.error(error.message || "Failed to download invoice.");
+    }
+  };
 
   useEffect(() => {
     if (orders.length === 0) {
@@ -87,7 +120,10 @@ export default function OrderDetails() {
                   <Truck className="w-4 h-4" />
                   Track Order
                 </button>
-                <button className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm font-semibold flex items-center gap-2">
+                <button 
+                  onClick={handleDownloadInvoice}
+                  className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm font-semibold flex items-center gap-2"
+                >
                   <Download className="w-4 h-4" />
                   Invoice
                 </button>
