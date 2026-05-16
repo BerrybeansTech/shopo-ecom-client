@@ -165,16 +165,22 @@ export const useProducts = () => {
   // Initialize data on mount
   useEffect(() => {
     const initializeData = async () => {
+      // Only fetch if we haven't attempted a fetch yet AND it's not currently fetching
+      // We check if we have data or if the cache is valid to decide if we need a fetch
       if (
         !hasFetchedRef.current && 
         !isFetchingRef.current &&
-        (!isCacheValid() || globalCache.error) &&
+        !isCacheValid() &&
         (!productState.categories || productState.categories.length === 0)
       ) {
         try {
           await fetchAllProductData();
         } catch (error) {
           console.error('Failed to initialize product data:', error);
+        } finally {
+          // Mark as fetched even on failure to prevent infinite retry loops
+          // The fetchAllProductData itself handles retries with backoff
+          hasFetchedRef.current = true;
         }
       }
     };
