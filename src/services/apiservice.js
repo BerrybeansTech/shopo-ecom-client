@@ -89,6 +89,7 @@ export const apiService = (() => {
 
     const config = {
       method: options.method || 'GET',
+      credentials: 'include', // Required to handle HttpOnly cookies
       headers: {
         // Don't set Content-Type for FormData, let browser set it with boundary
         ...(!isFormData && { 'Content-Type': 'application/json' }),
@@ -104,15 +105,48 @@ export const apiService = (() => {
     }
 
     try {
-      const response = await fetch(url, config);
+      let response = await fetch(url, config);
       
-      // Handle connection errors
-      if (!response.ok && response.status !== 304) {
-        if (response.status === 401) {
+      // Handle 401 Unauthorized (Token Expired)
+      if (response.status === 401 && !options._retry) {
+        try {
+          // Attempt to refresh token
+          const refreshUrl = `${baseURL}/customer/refresh-token`;
+          const refreshResponse = await fetch(refreshUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Credentials 'include' is required to send the refreshToken cookie
+            credentials: 'include' 
+          });
+
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            if (refreshData.success && refreshData.accessToken) {
+              // 1. Save new token
+              storage.setToken(refreshData.accessToken);
+              
+              // 2. Update headers for retry
+              config.headers['Authorization'] = `Bearer ${refreshData.accessToken}`;
+              
+              // 3. Mark as retry to prevent infinite loops
+              options._retry = true;
+              
+              // 4. Retry original request
+              response = await fetch(url, config);
+            }
+          } else {
+            // Refresh failed, logout user
+            storage.clearAuth();
+            throw new Error('Session expired. Please login again.');
+          }
+        } catch (refreshError) {
           storage.clearAuth();
-          throw new Error('Session expired. Please login again.');
+          throw refreshError;
         }
-        
+      }
+
+      // Handle other connection errors
+      if (!response.ok && response.status !== 304) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
@@ -203,6 +237,40 @@ export const apiService = (() => {
     }
   };
 
+  const download = async (endpoint, filename) => {
+    const url = `${baseURL}${endpoint}`;
+    const token = getToken();
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename || 'download');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Download Error:', error);
+      throw error;
+    }
+  };
+
   return { 
     apiCall, 
     get, 
@@ -210,6 +278,7 @@ export const apiService = (() => {
     put, 
     patch, 
     delete: del, 
+    download,
     getToken,
     getCurrentUserId,
     submitReview,
