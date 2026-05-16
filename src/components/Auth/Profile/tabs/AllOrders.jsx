@@ -21,6 +21,7 @@ import { useOrders } from "../../../CheakoutPage/useOrders";
 import { useAuth } from "../../hooks/useAuth";
 import { getProductImage } from "../../../../utils/imageUtils";
 import PleaseLogin from "./PleaseLogin";
+import { downloadInvoicePDF } from "../../../../utils/invoiceHelper";
 
 export default function AllOrders() {
   const [activeTab, setActiveTab] = useState("All orders");
@@ -91,52 +92,7 @@ export default function AllOrders() {
   };
 
   const downloadInvoice = async (order) => {
-    try {
-      const invoiceContent = `
-        Rabbit and Finch
-        ============
-        
-        Order #${order.orderId || order.id}
-        Date: ${order.date}
-        Status: ${order.displayStatus}
-        Payment Method: ${order.paymentMode}
-        Payment Status: ${order.paymentStatus}
-        Delivery Date: ${order.deliveryDate}
-        
-        Shipping Address:
-        ${order.shippingAddress}
-        
-        ${order.orderNote ? `Order Note: ${order.orderNote}\n` : ''}
-        
-        ORDER SUMMARY:
-        ${order.items.map((item, index) => 
-          `${index + 1}. ${item.name}
-           Quantity: ${item.quantity}
-           Color: ${item.color}
-           Size: ${item.size}
-           Price: ${item.price}
-           ${item.isReviewed ? 'Status: Reviewed' : 'Status: Not Reviewed'}
-          `
-        ).join('\n')}
-        
-        Total Amount: ${order.amount}
-        Discounts: ${order.discounts || '$0'}
-        Loyalty Points: ${order.loyaltyPoints || '0'}
-        
-        Thank you for shopping with us!
-      `;
-      
-      const blob = new Blob([invoiceContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `shopo-invoice-${order.orderId || order.id}.txt`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('Failed to download invoice. Please try again.');
-    }
+    await downloadInvoicePDF(order);
   };
 
   const getStatusConfig = (status) => {
