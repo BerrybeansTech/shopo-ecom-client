@@ -226,6 +226,7 @@ const Navbar = () => {
     setActiveSubcategory,
     setShowAccountDropdown,
     setShowSearchResults,
+    loading,
   };
 
   // Props for MobileNavbar
@@ -263,6 +264,7 @@ const Navbar = () => {
     setSearchQuery,
     showSearchResults,
     setShowSearchResults,
+    loading,
   };
 
   return (

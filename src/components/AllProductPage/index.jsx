@@ -1418,10 +1418,14 @@ export default function AllProductPage() {
                       <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                         Clothing And Accessories
                       </h2>
-                      <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium border border-gray-300">
-                        {sortedProducts.length}{" "}
-                        {sortedProducts.length === 1 ? "Product" : "Products"}
-                      </span>
+                      {productsLoading ? (
+                        <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                      ) : (
+                        <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium border border-gray-300">
+                          {sortedProducts.length}{" "}
+                          {sortedProducts.length === 1 ? "Product" : "Products"}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -1478,7 +1482,7 @@ export default function AllProductPage() {
                 <div className="p-3 sm:p-4 lg:p-6 min-h-[50vh] sm:min-h-[80vh]">
                   {productsLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
-                      {[...Array(pagination.itemsPerPage)].map((_, i) => (
+                      {[...Array(6)].map((_, i) => (
                         <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
                           <div className="aspect-square bg-gray-200"></div>
                           <div className="p-3 sm:p-4 space-y-3">
