@@ -111,6 +111,9 @@ export const useProducts = () => {
       
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current++;
+        // Keep loading true during retry delay
+        dispatch(setLoading(true));
+        setLocalLoading(true);
         setTimeout(() => fetchAllProductData(true), 2000 * retryCountRef.current);
       }
       

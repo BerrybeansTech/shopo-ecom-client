@@ -608,10 +608,8 @@ const MobileNavbar = ({
   handleSearch,
   handleLogout,
   navigateToProfile,
-  setShowAccountDropdown,
-  setSearchQuery,
-  showSearchResults,
   setShowSearchResults,
+  loading,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1191,6 +1189,18 @@ const MobileNavbar = ({
                       </div>
                     );
                   })}
+                </div>
+              ) : loading ? (
+                <div className="space-y-4 px-4 py-6">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="flex items-center gap-4 animate-pulse">
+                      <div className="w-12 h-12 bg-gray-100 rounded-xl"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-100 rounded w-1/2 mb-2"></div>
+                        <div className="h-3 bg-gray-100 rounded w-1/3"></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 px-10 text-center">

@@ -430,6 +430,7 @@ const DesktopNavbar = ({
   setActiveSubcategory,
   setShowAccountDropdown,
   setShowSearchResults,
+  loading,
 }) => {
   const navigate = useNavigate();
 
@@ -895,6 +896,15 @@ const DesktopNavbar = ({
                   </div>
                 );
               })
+            ) : loading ? (
+              <div className="flex items-center gap-6 py-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg"></div>
+                    <div className="w-16 h-3 bg-gray-100 rounded"></div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="text-gray-500 text-sm py-2">
                 No categories available
