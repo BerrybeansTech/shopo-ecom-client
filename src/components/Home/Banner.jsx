@@ -1,46 +1,38 @@
 import { useState, useEffect } from 'react';
+import { apiService } from '../../services/apiservice';
 
 export default function Banner({ className }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
-  const slides = [
-    {
-      id: 1,
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&q=80',
-      alt: 'Premium Electronics',
-      tag: 'NEW ARRIVAL',
-      title: 'Premium Headphones',
-      subtitle: 'Experience Superior Sound Quality'
-    },
-    {
-      id: 2,
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&q=80',
-      alt: 'Smart Watches',
-      tag: 'TRENDING',
-      title: 'Smart Watches',
-      subtitle: 'Technology Meets Style'
-    },
-    {
-      id: 3,
-      image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=1600&q=80',
-      alt: 'Designer Sunglasses',
-      tag: 'EXCLUSIVE',
-      title: 'Designer Eyewear',
-      subtitle: 'Elevate Your Look'
-    },
-    {
-      id: 4,
-      image: 'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=1600&q=80',
-      alt: 'Luxury Bags',
-      tag: 'BESTSELLER',
-      title: 'Premium Backpacks',
-      subtitle: 'Style & Functionality Combined'
-    }
-  ];
+  const [slides, setSlides] = useState([]);
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    const fetchBanners = async () => {
+      try {
+        const res = await apiService.get('/banner/get-active');
+        if (res.success && res.data && res.data.length > 0) {
+          const formattedSlides = res.data.map((banner, index) => ({
+            id: banner.id,
+            image: banner.image,
+            alt: banner.title || 'Promo Banner',
+            tag: index === 0 ? 'NEW ARRIVAL' : (index === 1 ? 'TRENDING' : (index === 2 ? 'EXCLUSIVE' : 'BESTSELLER')),
+            title: banner.title || 'Rabbit Finch Fashion',
+            subtitle: banner.subtitle || 'Shop Premium Styles',
+            link: banner.link || '/all-products'
+          }));
+          setSlides(formattedSlides);
+        }
+      } catch (e) {
+        console.error("Failed to load active banners from backend", e);
+      }
+    };
+
+    fetchBanners();
+  }, []);
+
+  useEffect(() => {
+    if (!isAutoPlaying || slides.length === 0) return;
 
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -92,9 +84,12 @@ export default function Banner({ className }) {
                       <p className="text-sm sm:text-sm md:text-base lg:text-lg text-gray-300 mb-4 sm:mb-6 md:mb-8 font-light">
                         {slide.subtitle}
                       </p>
-                      <button className="bg-white text-black px-8 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-3.5 text-xs sm:text-sm font-semibold uppercase tracking-wider hover:bg-black hover:text-white transition-all duration-300 border border-white hover:border-black">
+                      <a 
+                        href={slide.link || '/all-products'} 
+                        className="inline-block bg-white text-black px-8 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-3.5 text-xs sm:text-sm font-semibold uppercase tracking-wider hover:bg-black hover:text-white transition-all duration-300 border border-white hover:border-black text-center"
+                      >
                         Explore Now
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -102,28 +97,30 @@ export default function Banner({ className }) {
             </div>
           ))}
 
-          <div className="absolute bottom-8 sm:bottom-6 md:bottom-8 right-4 sm:right-6 lg:right-12 flex items-center gap-3 sm:gap-4 z-10">
-            <div className="flex gap-2 sm:gap-2">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={`transition-all duration-400 ${
-                    index === currentSlide
-                      ? 'bg-white w-10 sm:w-10 h-0.5'
-                      : 'bg-white/40 hover:bg-white/70 w-6 sm:w-6 h-0.5'
-                    }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
+          {slides.length > 1 && (
+            <div className="absolute bottom-8 sm:bottom-6 md:bottom-8 right-4 sm:right-6 lg:right-12 flex items-center gap-3 sm:gap-4 z-10">
+              <div className="flex gap-2 sm:gap-2">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`transition-all duration-400 ${
+                      index === currentSlide
+                        ? 'bg-white w-10 sm:w-10 h-0.5'
+                        : 'bg-white/40 hover:bg-white/70 w-6 sm:w-6 h-0.5'
+                      }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
 
-            <div className="text-white text-sm sm:text-sm font-light tracking-wider">
-              <span className="text-base sm:text-base font-medium">{String(currentSlide + 1).padStart(2, '0')}</span>
-              <span className="text-gray-400 mx-1 sm:mx-1">/</span>
-              <span className="text-gray-400 text-sm sm:text-sm">{String(slides.length).padStart(2, '0')}</span>
+              <div className="text-white text-sm sm:text-sm font-light tracking-wider">
+                <span className="text-base sm:text-base font-medium">{String(currentSlide + 1).padStart(2, '0')}</span>
+                <span className="text-gray-400 mx-1 sm:mx-1">/</span>
+                <span className="text-gray-400 text-sm sm:text-sm">{String(slides.length).padStart(2, '0')}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
