@@ -608,6 +608,7 @@ const MobileNavbar = ({
   handleSearch,
   handleLogout,
   navigateToProfile,
+  showSearchResults,
   setShowSearchResults,
   loading,
 }) => {
