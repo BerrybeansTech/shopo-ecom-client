@@ -148,6 +148,9 @@ export const apiService = (() => {
       // Handle other connection errors
       if (!response.ok && response.status !== 304) {
         const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          throw new Error("Too many requests. Please try again later.");
+        }
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 

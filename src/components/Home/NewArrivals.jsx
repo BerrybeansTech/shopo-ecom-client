@@ -2,11 +2,40 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { productApi } from "../AllProductPage/productApi";
 import { getProductImage } from "../../utils/imageUtils";
+import productsData from "../../data/products.json";
 
 export default function NewArrivals({ className = "" }) {
   const [hoveredProduct, setHoveredProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const mapLocalProductToApiProduct = (localProduct) => {
+    const parsePrice = (priceStr) => {
+      if (!priceStr) return 0;
+      const num = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+      return isNaN(num) ? 0 : num;
+    };
+
+    const mrp = parsePrice(localProduct.price);
+    const sellingPrice = parsePrice(localProduct.offer_price) || mrp;
+    
+    return {
+      id: localProduct.id,
+      name: localProduct.name,
+      category: { name: localProduct.mainCategory || "Uncategorized" },
+      averageRating: localProduct.review || 4.0,
+      reviewCount: localProduct.reviewCount || 10,
+      mrp: mrp,
+      sellingPrice: sellingPrice,
+      inventories: [
+        { availableQuantity: localProduct.stock || 10 }
+      ],
+      thumbnailImage: localProduct.image,
+      thumbnail: localProduct.image,
+      galleryImage: localProduct.image ? [localProduct.image] : [],
+      images: localProduct.image ? [localProduct.image] : []
+    };
+  };
 
   useEffect(() => {
     const fetchNewArrivals = async () => {
@@ -20,14 +49,26 @@ export default function NewArrivals({ className = "" }) {
           newArrival: true
         });
 
-        if (response.success && Array.isArray(response.data)) {
+        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
           setProducts(response.data.slice(0, 8));
+          return;
         }
       } catch (error) {
         console.error("Error fetching new arrivals:", error);
       } finally {
         setLoading(false);
       }
+
+      // Fallback: If no products returned or error occurred
+      const mockProducts = productsData.products
+        .filter((p) => p.product_type === "new")
+        .slice(0, 8);
+      
+      const fallbackProducts = mockProducts.length > 0
+        ? mockProducts
+        : productsData.products.slice(0, 8);
+        
+      setProducts(fallbackProducts.map(mapLocalProductToApiProduct));
     };
 
     fetchNewArrivals();

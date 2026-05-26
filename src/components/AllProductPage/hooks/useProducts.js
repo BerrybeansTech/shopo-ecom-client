@@ -102,14 +102,19 @@ export const useProducts = () => {
       const result = await globalFetchPromise;
       return result;
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch product data';
+      let errorMessage = error.response?.data?.message || error.message || 'Failed to fetch product data';
+      if (errorMessage.includes('429') || errorMessage.includes('Too many requests')) {
+        errorMessage = 'Too many requests. Please try again later.';
+      } else if (errorMessage.includes('HTTP error! status:')) {
+        errorMessage = 'Failed to fetch product data. Please try again later.';
+      }
       globalCache.error = errorMessage;
       globalCache.lastFetched = Date.now();
       
       dispatch(setError(errorMessage));
       setLocalError(errorMessage);
       
-      if (retryCountRef.current < maxRetries) {
+      if (errorMessage !== 'Too many requests. Please try again later.' && retryCountRef.current < maxRetries) {
         retryCountRef.current++;
         // Keep loading true during retry delay
         dispatch(setLoading(true));
@@ -152,7 +157,12 @@ export const useProducts = () => {
       
       return categories;
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch categories';
+      let errorMessage = error.response?.data?.message || error.message || 'Failed to fetch categories';
+      if (errorMessage.includes('429') || errorMessage.includes('Too many requests')) {
+        errorMessage = 'Too many requests. Please try again later.';
+      } else if (errorMessage.includes('HTTP error! status:')) {
+        errorMessage = 'Failed to fetch categories. Please try again later.';
+      }
       console.error('Error fetching categories:', errorMessage);
       globalCache.error = errorMessage;
       globalCache.lastFetched = Date.now();

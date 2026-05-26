@@ -9,7 +9,6 @@ import {
   X,
   Filter,
   SlidersHorizontal,
-  RefreshCw,
 } from "lucide-react";
 import Layout from "../Partials/Layout";
 import ProductsFilter from "./ProductsFilter";
@@ -23,6 +22,52 @@ import {
 } from "../../services/wishlistApi";
 import { useAuth } from "../../components/Auth/hooks/useAuth";
 import { getProductImage } from "../../utils/imageUtils";
+
+// Custom Component for Lazy Loading & Skeleton Loader
+const ProductImage = ({ src, alt, placeholder }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isError, setIsError] = useState(false);
+
+  const imageSrc = !src || isError ? placeholder : src;
+
+  return (
+    <div className="relative w-full h-full bg-gray-50 overflow-hidden">
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+          <div className="w-10 h-10 text-gray-300">
+            <svg
+              className="w-full h-full"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      <img
+        src={imageSrc}
+        alt={alt}
+        className={`w-full h-full object-cover transition-opacity duration-700 ease-out ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => {
+          setIsError(true);
+          setIsLoaded(true);
+        }}
+        loading="lazy"
+      />
+    </div>
+  );
+};
 
 export default function AllProductPage() {
   const { isAuthenticated } = useAuth();
@@ -493,12 +538,13 @@ export default function AllProductPage() {
           initialLoadDone.current = true;
         } catch (error) {
           console.error("Error fetching products:", error);
-          setProductsError(
-            error.message ===
-              "Unable to connect to server. Please check your connection."
+          const friendlyMessage =
+            error.message === "Unable to connect to server. Please check your connection."
               ? "Unable to load products. Please check your internet connection."
-              : "Failed to load products. Please try again later."
-          );
+              : error.message && !error.message.includes("HTTP error! status:")
+              ? error.message
+              : "Failed to load products. Please try again later.";
+          setProductsError(friendlyMessage);
           setApiProducts([]);
         } finally {
           setProductsLoading(false);
@@ -583,15 +629,6 @@ export default function AllProductPage() {
   );
   const wrappedSetPriceRange = handleFilterChange(setPriceRange);
   const wrappedSetSortOption = handleSortChange; // FIXED: Use new handler
-
-  const retryProductsFetch = () => {
-    setProductsError(null);
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
-  };
-
-  const retryFiltersFetch = () => {
-    fetchAllProductData(true);
-  };
 
   const clearAllFilters = () => {
     setSelectedCategoryId(null);
@@ -1248,24 +1285,13 @@ export default function AllProductPage() {
           {/* Error Display */}
           {(productsError || filtersError) && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center">
-                    <span className="text-red-600 text-sm font-bold">!</span>
-                  </div>
-                  <p className="text-red-800 text-sm font-medium">
-                    {productsError || filtersError}
-                  </p>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-red-600 text-sm font-bold">!</span>
                 </div>
-                <button
-                  onClick={
-                    productsError ? retryProductsFetch : retryFiltersFetch
-                  }
-                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Retry
-                </button>
+                <p className="text-red-800 text-sm font-medium">
+                  {productsError || filtersError}
+                </p>
               </div>
             </div>
           )}
@@ -1544,14 +1570,11 @@ export default function AllProductPage() {
                             >
                               {/* Image Section */}
                               <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-                                <Link to={`/single-product/${product.id}`}>
-                                  <img
+                                <Link to={`/single-product/${product.id}`} className="block w-full h-full">
+                                  <ProductImage
                                     src={product.image}
                                     alt={product.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.src = PLACEHOLDER_IMAGE;
-                                    }}
+                                    placeholder={PLACEHOLDER_IMAGE}
                                   />
                                 </Link>
 
