@@ -82,7 +82,10 @@ function SpotlightCard({ cat }) {
         alt={cat.name}
         className="cat-img block w-full h-full object-cover"
         loading="lazy"
-        onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = placeholderUrl(cat.name);
+        }}
       />
 
       {/* Cinematic overlay */}
@@ -123,7 +126,10 @@ function MiniCard({ cat, isActive, onClick }) {
           alt={cat.name}
           className="cat-img w-full h-full object-cover"
           loading="lazy"
-          onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = placeholderUrl(cat.name);
+          }}
         />
       </div>
 
@@ -435,7 +441,10 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
               alt={spotlight.name}
               className="cat-img"
               loading="lazy"
-              onError={(e) => { e.target.src = placeholderUrl(spotlight.name); }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = placeholderUrl(spotlight.name);
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
@@ -470,7 +479,10 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
                     alt={cat.name}
                     className="cat-img w-full h-full object-cover"
                     loading="lazy"
-                    onError={(e) => { e.target.src = placeholderUrl(cat.name); }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = placeholderUrl(cat.name);
+                    }}
                   />
                 </div>
                 <div className="mini-hover-layer">

@@ -268,6 +268,45 @@ export const productApi = {
       throw error;
     }
   },
+
+  getNewArrivals: async () => {
+    try {
+      const key = 'product-getNewArrivals';
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.get('/product/get-new-arrivals');
+        return response;
+      });
+    } catch (error) {
+      console.error("Error fetching new arrivals:", error);
+      throw error;
+    }
+  },
+
+  getTopSelling: async () => {
+    try {
+      const key = 'product-getTopSelling';
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.get('/product/get-top-selling');
+        return response;
+      });
+    } catch (error) {
+      console.error("Error fetching top selling products:", error);
+      throw error;
+    }
+  },
+
+  getAccessories: async () => {
+    try {
+      const key = 'product-getAccessories';
+      return deduplicateRequest(key, async () => {
+        const response = await apiService.get('/product/get-accessories');
+        return response;
+      });
+    } catch (error) {
+      console.error("Error fetching accessories products:", error);
+      throw error;
+    }
+  },
 };
 
 // REVIEW API

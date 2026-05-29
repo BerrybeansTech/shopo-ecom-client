@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { productApi } from "../AllProductPage/productApi";
-import { getProductImage } from "../../utils/imageUtils";
-import productsData from "../../data/products.json";
+import { getProductImage, getPlaceholderImage } from "../../utils/imageUtils";
 
 export default function NewArrivals({ className = "" }) {
   const [hoveredProduct, setHoveredProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const mapLocalProductToApiProduct = (localProduct) => {
     const parsePrice = (priceStr) => {
@@ -41,34 +41,21 @@ export default function NewArrivals({ className = "" }) {
     const fetchNewArrivals = async () => {
       try {
         setLoading(true);
-        const response = await productApi.getAll({
-          page: 1,
-          limit: 12,
-          minPrice: 0,
-          maxPrice: 1000000,
-          newArrival: true
-        });
+        setError(null);
+        const response = await productApi.getNewArrivals();
 
-        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-          setProducts(response.data.slice(0, 8));
-          return;
+        const arrivalsData = response?.data || response || [];
+        if (Array.isArray(arrivalsData) && arrivalsData.length > 0) {
+          setProducts(arrivalsData.slice(0, 8));
+        } else {
+          setError("No new arrivals available.");
         }
       } catch (error) {
         console.error("Error fetching new arrivals:", error);
+        setError("Failed to load new arrivals. Please try again later.");
       } finally {
         setLoading(false);
       }
-
-      // Fallback: If no products returned or error occurred
-      const mockProducts = productsData.products
-        .filter((p) => p.product_type === "new")
-        .slice(0, 8);
-      
-      const fallbackProducts = mockProducts.length > 0
-        ? mockProducts
-        : productsData.products.slice(0, 8);
-        
-      setProducts(fallbackProducts.map(mapLocalProductToApiProduct));
     };
 
     fetchNewArrivals();
@@ -111,6 +98,17 @@ export default function NewArrivals({ className = "" }) {
               <div key={i} className="bg-white border border-gray-200 rounded-lg h-80 animate-pulse"></div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`bg-[#f8f8f899] py-16 ${className}`}>
+        <div className="container-x mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold text-black mb-6">New Arrivals</h2>
+          <p className="text-red-500 text-sm font-semibold">{error}</p>
         </div>
       </div>
     );
@@ -165,7 +163,10 @@ export default function NewArrivals({ className = "" }) {
                           src={productImage}
                           alt={product.name}
                           className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                          onError={(e) => { e.target.src = "assets/images/placeholder.png" }}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = getPlaceholderImage(product.name);
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-200">
