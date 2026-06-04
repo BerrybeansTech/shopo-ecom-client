@@ -2,6 +2,9 @@ import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { NECTOR_API_KEY, NECTOR_PLATFORM } from './constants';
 
+// NectorLoader: loads the SDK script once and initializes the widget.
+// NectorProvider should be preferred for most use cases — this is kept
+// as a fallback for pages that don't use NectorProvider.
 const NectorLoader = () => {
     const { user } = useSelector((state) => state.auth);
 
@@ -9,9 +12,7 @@ const NectorLoader = () => {
         const scriptId = 'nector-sdk-script';
         const customerId = user?.customer_uuid || '';
 
-        const initWidget = () => {
-            if (!window.nector_sdk) return false;
-
+        function insertRewardsWidget() {
             window.nector_sdk.init_widget(
                 'widget',
                 {
@@ -21,35 +22,27 @@ const NectorLoader = () => {
                 },
                 document.body
             );
-            return true;
-        };
+        }
 
-        // Re-init immediately if SDK already loaded (user logged in/out)
         if (window.nector_sdk) {
-            initWidget();
-            return;
+            // SDK already loaded — init immediately
+            insertRewardsWidget();
+        } else {
+            // Load the SDK script if not yet present
+            if (!document.getElementById(scriptId)) {
+                const script = document.createElement('script');
+                script.id = scriptId;
+                script.src = 'https://cdn.nector.io/nector-static/no-cache/reward-widget/mainloader.min.js';
+                script.async = true;
+                document.body.appendChild(script);
+            }
+
+            // Wait for the SDK initialized event
+            window.addEventListener('nector_sdk_initialized', insertRewardsWidget);
         }
-
-        if (!document.getElementById(scriptId)) {
-            const script = document.createElement('script');
-            script.id = scriptId;
-            script.src = 'https://cdn.nector.io/nector-static/no-cache/reward-widget/mainloader.min.js';
-            script.async = true;
-            document.body.appendChild(script);
-
-            script.onload = () => {
-                const poll = setInterval(() => {
-                    if (initWidget()) clearInterval(poll);
-                }, 200);
-                setTimeout(() => clearInterval(poll), 10000);
-            };
-        }
-
-        const handleInitialized = () => initWidget();
-        window.addEventListener('nector_sdk_initialized', handleInitialized);
 
         return () => {
-            window.removeEventListener('nector_sdk_initialized', handleInitialized);
+            window.removeEventListener('nector_sdk_initialized', insertRewardsWidget);
         };
     }, [user?.customer_uuid]);
 
