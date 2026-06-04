@@ -1,17 +1,21 @@
-import { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { NECTOR_API_KEY, NECTOR_PLATFORM } from './constants';
 
-const NectorLoader = () => {
+const NectorProvider = ({ children }) => {
     const { user } = useSelector((state) => state.auth);
+    const initializedRef = useRef(false);
 
     useEffect(() => {
         const scriptId = 'nector-sdk-script';
         const customerId = user?.customer_uuid || '';
 
+        console.log('📡 [Nector] NectorProvider effect. customer_uuid:', customerId || 'Guest');
+
         const initWidget = () => {
             if (!window.nector_sdk) return false;
 
+            console.log('📡 [Nector] Calling init_widget with customer_id:', customerId || '(guest)');
             window.nector_sdk.init_widget(
                 'widget',
                 {
@@ -19,17 +23,19 @@ const NectorLoader = () => {
                     platform: NECTOR_PLATFORM,
                     customer_id: customerId,
                 },
-                document.body
+                'nector-widget-root'
             );
+            initializedRef.current = true;
             return true;
         };
 
-        // Re-init immediately if SDK already loaded (user logged in/out)
+        // If SDK already loaded, re-init immediately (handles user login/logout changes)
         if (window.nector_sdk) {
             initWidget();
             return;
         }
 
+        // Load SDK script once
         if (!document.getElementById(scriptId)) {
             const script = document.createElement('script');
             script.id = scriptId;
@@ -38,14 +44,21 @@ const NectorLoader = () => {
             document.body.appendChild(script);
 
             script.onload = () => {
+                // Poll until nector_sdk is ready (it may initialize asynchronously after script load)
                 const poll = setInterval(() => {
-                    if (initWidget()) clearInterval(poll);
+                    if (initWidget()) {
+                        clearInterval(poll);
+                    }
                 }, 200);
+                // Give up after 10 seconds
                 setTimeout(() => clearInterval(poll), 10000);
             };
         }
 
-        const handleInitialized = () => initWidget();
+        // Also listen for the SDK initialized event
+        const handleInitialized = () => {
+            initWidget();
+        };
         window.addEventListener('nector_sdk_initialized', handleInitialized);
 
         return () => {
@@ -53,7 +66,12 @@ const NectorLoader = () => {
         };
     }, [user?.customer_uuid]);
 
-    return null;
+    return (
+        <>
+            {children}
+            <div id="nector-widget-root"></div>
+        </>
+    );
 };
 
-export default NectorLoader;
+export default NectorProvider;
