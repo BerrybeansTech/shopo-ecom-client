@@ -26,7 +26,16 @@ const NectorProvider = ({ children }) => {
             // SDK already loaded (e.g. user logged in after page load)
             insertRewardsWidget();
         } else {
-            // SDK not yet loaded — wait for the initialized event
+            // Load SDK script if not yet in DOM
+            const scriptId = 'nector-sdk-script';
+            if (!document.getElementById(scriptId)) {
+                const script = document.createElement('script');
+                script.id = scriptId;
+                script.src = 'https://cdn.nector.io/nector-static/no-cache/reward-widget/mainloader.min.js';
+                script.async = true;
+                document.body.appendChild(script);
+            }
+            // Wait for the SDK initialized event
             window.addEventListener('nector_sdk_initialized', insertRewardsWidget);
         }
 
