@@ -8,10 +8,9 @@ const NectorProvider = ({ children }) => {
 
     useEffect(() => {
         // Use nector_lead_id as confirmation the customer exists in Nector.
-        // customer_uuid is our internal ID; nector_lead_id is set only after
-        // Nector has confirmed the customer (sync succeeded).
-        // Fall back to customer_uuid for existing synced users.
-        const nectorId = user?.nector_lead_id || user?.customer_uuid || '';
+        // Once synced, we pass the raw customer_uuid to the SDK because the SDK 
+        // automatically prepends the "custom-" platform prefix in the browser.
+        const nectorId = user?.nector_lead_id ? user.customer_uuid : '';
 
         console.log('📡 [Nector] Provider init. nector_id:', nectorId || '(guest)');
 

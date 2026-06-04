@@ -10,7 +10,7 @@ const NectorLoader = () => {
 
     useEffect(() => {
         const scriptId = 'nector-sdk-script';
-        const customerId = user?.customer_uuid || '';
+        const customerId = user?.nector_lead_id ? user?.customer_uuid : '';
 
         function insertRewardsWidget() {
             window.nector_sdk.init_widget(
@@ -44,7 +44,7 @@ const NectorLoader = () => {
         return () => {
             window.removeEventListener('nector_sdk_initialized', insertRewardsWidget);
         };
-    }, [user?.customer_uuid]);
+    }, [user?.customer_uuid, user?.nector_lead_id]);
 
     return null;
 };
