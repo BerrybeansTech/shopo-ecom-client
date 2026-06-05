@@ -16,8 +16,8 @@ const NectorEarnPoints = ({ price }) => {
                     redirect_url: `${window.location.origin}/rewards`
                 };
 
-                if (user?.customer_uuid && user?.nector_lead_id) {
-                    config.customer_id = user.customer_uuid;
+                if (user?.nector_lead_id) {
+                    config.customer_id = user.nector_lead_id;
                     config.customer_email = user.email || '';
                 }
 
@@ -39,7 +39,7 @@ const NectorEarnPoints = ({ price }) => {
         return () => {
             window.removeEventListener('nector_sdk_initialized', initEarnWidget);
         };
-    }, [price, user?.customer_uuid, user?.nector_lead_id]);
+    }, [price, user?.nector_lead_id]);
 
     // Handle price updates
     useEffect(() => {

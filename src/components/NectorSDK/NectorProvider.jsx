@@ -7,10 +7,9 @@ const NectorProvider = ({ children }) => {
     const retryTimerRef = useRef(null);
 
     useEffect(() => {
-        // Use nector_lead_id as confirmation the customer exists in Nector.
-        // Once synced, we pass the raw customer_uuid to the SDK because the SDK 
-        // automatically prepends the "custom-" platform prefix in the browser.
-        const nectorId = user?.nector_lead_id ? user.customer_uuid : '';
+        // Pass the nector_lead_id (which already has the custom- prefix)
+        // so that with custom_website platform, the SDK queries custom_website-custom-customer_uuid.
+        const nectorId = user?.nector_lead_id || '';
 
         console.log('📡 [Nector] Provider init. nector_id:', nectorId || '(guest)');
 

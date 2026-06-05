@@ -6,13 +6,13 @@ export default function LoyaltyTab() {
   const { user } = useSelector((state) => state.auth);
   const containerId = 'nector-loyalty-tab-container';
 
-  // Use nector_lead_id (confirmed sync) as the gate, but pass the raw customer_uuid.
-  // The SDK prepends "custom-" prefix in the browser.
-  const nectorId = user?.nector_lead_id ? user?.customer_uuid : '';
+  // Pass the nector_lead_id (which already has the custom- prefix)
+  // so that with custom_website platform, the SDK queries custom_website-custom-customer_uuid.
+  const nectorId = user?.nector_lead_id || '';
   const [sdkReady, setSdkReady] = useState(!!window.nector_sdk && !!nectorId);
 
   useEffect(() => {
-    const currentNectorId = user?.nector_lead_id ? user?.customer_uuid : '';
+    const currentNectorId = user?.nector_lead_id || '';
 
     function initRewardsPage() {
       if (window.nector_sdk && currentNectorId) {
@@ -38,7 +38,7 @@ export default function LoyaltyTab() {
     return () => {
       window.removeEventListener('nector_sdk_initialized', initRewardsPage);
     };
-  }, [user?.customer_uuid, user?.nector_lead_id]);
+  }, [user?.nector_lead_id]);
 
   return (
     <div className="loyalty-tab w-full">

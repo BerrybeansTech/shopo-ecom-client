@@ -10,7 +10,6 @@ import { useCart } from '../CartPage/useCart';
 import { useAuth } from '../Auth/hooks/useAuth';
 import { addressApi } from '../Auth/addressApi';
 import { colorApi, sizeApi } from '../AllProductPage/productApi';
-import { trackNectorEvent } from '../NectorSDK/nectorEvents';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -176,8 +175,12 @@ export default function Checkout() {
 
   const shipping = subtotal >= 999 ? 0 : 80;
   const codFee = selectedPayment === 'cod' ? 50 : 0;
-  const couponDiscount = appliedCoupon ? 200 : 0;
-  const finalTotal = subtotal + tax + shipping + codFee - couponDiscount;
+  const couponDiscount = appliedCoupon
+    ? (appliedCoupon.type === 'percent'
+        ? Math.round((subtotal * appliedCoupon.value) / 100)
+        : appliedCoupon.value)
+    : 0;
+  const finalTotal = Math.max(0, subtotal + tax + shipping + codFee - couponDiscount);
 
   const formatCartItemsForAPI = () => {
     return cartItems.map(item => ({
@@ -517,14 +520,21 @@ export default function Checkout() {
     }
   };
 
-  const handleApplyCoupon = () => {
-    if (couponCode.toUpperCase() === 'FIRST500') {
-      setAppliedCoupon({ code: 'FIRST500', discount: 200 });
-      setShowCoupon(false);
-      setCouponCode('');
-      setApiError(null);
-    } else {
-      setApiError('Invalid coupon code');
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setApiError(null);
+    try {
+      const response = await ordersApi.validateCoupon(couponCode, subtotal);
+      if (response.success && response.coupon) {
+        setAppliedCoupon(response.coupon);
+        setShowCoupon(false);
+        setCouponCode('');
+      } else {
+        setApiError(response.message || 'Invalid coupon code');
+      }
+    } catch (error) {
+      console.error('Apply coupon error:', error);
+      setApiError(error.response?.data?.message || error.message || 'Failed to apply coupon. Please try again.');
     }
   };
 
@@ -545,10 +555,26 @@ export default function Checkout() {
     }
 
     const billingAddressData = savedAddresses.find(addr => addr.id === selectedBillingAddress);
-    const shippingAddressData = useSameAddress ? billingAddressData : savedAddresses.find(addr => addr.id === selectedShippingAddress);
 
     if (!billingAddressData) {
       setApiError('Please select a billing address');
+      return;
+    }
+
+    const shippingAddressData = useSameAddress ? billingAddressData : savedAddresses.find(addr => addr.id === selectedShippingAddress);
+
+    if (!shippingAddressData) {
+      setApiError('Please select a shipping address');
+      return;
+    }
+
+    if (!billingAddressData.phone) {
+      setApiError('Billing address is missing a mobile number. Please edit or add a phone number before placing the order.');
+      return;
+    }
+
+    if (!shippingAddressData.phone) {
+      setApiError('Shipping address is missing a mobile number. Please edit or add a phone number before placing the order.');
       return;
     }
 
@@ -566,7 +592,7 @@ export default function Checkout() {
       return `${customerName}, ${addr.address}, ${addr.city}, ${addr.state} - ${postalCode}`;
     };
 
-    const submitOrder = async (extraPaymentFields = {}) => {
+    const submitOrder = async (extraPaymentFields = {}, isRazorpayPending = false) => {
       const orderData = {
         customerId: user.id,
         totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -581,11 +607,17 @@ export default function Checkout() {
         paymentMethod: selectedPayment.toUpperCase(),
         orderNote: 'Urgent delivery',
         productItems: formatCartItemsForAPI(),
+        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        couponDiscount: couponDiscount,
         ...extraPaymentFields
       };
 
       const response = await ordersApi.createOrder(orderData);
       if (!response.success) throw new Error(response.message || 'Failed to create order');
+
+      if (isRazorpayPending) {
+        return response.data;
+      }
 
       await clearCartAfterSuccessfulOrder();
 
@@ -606,16 +638,7 @@ export default function Checkout() {
       });
       setShowThankYou(true);
 
-      // Track Order Completed in Nector
-      try {
-        await trackNectorEvent(user?._id || user?.id, 'order_completed', {
-          order_id: response.data.id || response.data._id,
-          amount: finalTotal,
-          currency: 'INR'
-        });
-      } catch (nectorError) {
-        console.error('Failed to track nector event:', nectorError);
-      }
+      return response.data;
     };
 
     try {
@@ -631,9 +654,15 @@ export default function Checkout() {
         throw new Error('Failed to load payment gateway. Please check your connection.');
       }
 
+      // Step 1: Create the internal order in pending state FIRST!
+      const createdOrder = await submitOrder({}, true);
+      const internalOrderId = createdOrder.id;
+
+      // Step 2: Create the Razorpay Order linked to the internal Order ID!
       const rzpOrderRes = await ordersApi.createRazorpayOrder({
         amount: finalTotal * 100, // paise
-        currency: 'INR'
+        currency: 'INR',
+        orderId: internalOrderId // Linked to our newly saved order ID!
       });
 
       if (!rzpOrderRes.success) {
@@ -657,20 +686,39 @@ export default function Checkout() {
         theme: { color: '#000000' },
         handler: async (paymentResponse) => {
           try {
+            // Step 3: Verify payment signature and pass both the Razorpay details and the internal Order ID
             const verifyRes = await ordersApi.verifyPayment({
               razorpay_payment_id: paymentResponse.razorpay_payment_id,
               razorpay_order_id: paymentResponse.razorpay_order_id,
-              razorpay_signature: paymentResponse.razorpay_signature
+              razorpay_signature: paymentResponse.razorpay_signature,
+              orderId: internalOrderId
             });
 
             if (!verifyRes.success) {
               throw new Error(verifyRes.message || 'Payment verification failed');
             }
 
-            await submitOrder({
-              razorpayPaymentId: paymentResponse.razorpay_payment_id,
-              razorpayOrderId: paymentResponse.razorpay_order_id
+            // Step 4: Verification succeeded and backend triggered Shiprocket!
+            // Clean up cart, update state to show thank you screen
+            await clearCartAfterSuccessfulOrder();
+
+            setOrderDetails({
+              orderId: internalOrderId,
+              items: cartItems.map(item => ({
+                ...item,
+                colorName: getColorName(item.productColorVariationId),
+                sizeName: getSizeName(item.productSizeVariationId)
+              })),
+              billingAddress: billingAddressData,
+              shippingAddress: shippingAddressData,
+              paymentMethod: selectedPayment,
+              totalAmount: finalTotal,
+              savings: discount + couponDiscount,
+              apiResponse: createdOrder,
+              useSameAddress: useSameAddress
             });
+            setShowThankYou(true);
+
           } catch (error) {
             setApiError(error.message || 'Payment verification failed. Contact support.');
             setIsPlacingOrder(false);

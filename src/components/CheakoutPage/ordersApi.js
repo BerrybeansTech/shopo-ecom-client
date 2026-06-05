@@ -47,16 +47,17 @@ export const ordersApi = {
   },
 
   // Create Razorpay order (returns razorpay_order_id, amount, currency, key_id)
-  createRazorpayOrder: async ({ amount, currency = 'INR' }) => {
-    return await apiService.post('/payment/create-razorpay-order', { amount, currency }, { skipDeduplication: true });
+  createRazorpayOrder: async ({ amount, currency = 'INR', orderId }) => {
+    return await apiService.post('/payment/create-razorpay-order', { amount, currency, orderId }, { skipDeduplication: true });
   },
 
   // Verify Razorpay payment signature
-  verifyPayment: async ({ razorpay_payment_id, razorpay_order_id, razorpay_signature }) => {
+  verifyPayment: async ({ razorpay_payment_id, razorpay_order_id, razorpay_signature, orderId }) => {
     return await apiService.post('/payment/verify-payment', {
       razorpay_payment_id,
       razorpay_order_id,
-      razorpay_signature
+      razorpay_signature,
+      orderId
     }, { skipDeduplication: true });
   },
 
@@ -72,5 +73,10 @@ export const ordersApi = {
   // Track order
   trackOrder: async (orderId) => {
     return await apiService.get(`/order/track-order/${orderId}`);
+  },
+
+  // Validate coupon code
+  validateCoupon: async (code, subtotal) => {
+    return await apiService.post('/nector/validate-coupon', { code, subtotal });
   }
 };

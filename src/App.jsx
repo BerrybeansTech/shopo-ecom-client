@@ -1,15 +1,14 @@
 import Routers from "./Routers";
-import NectorLoader from "./components/NectorSDK/NectorLoader";
+import NectorProvider from "./components/NectorSDK/NectorProvider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   return (
-    <>
-      <NectorLoader />
+    <NectorProvider>
       <Routers />
       <ToastContainer position="bottom-right" autoClose={3000} />
-    </>
+    </NectorProvider>
   );
 }
 

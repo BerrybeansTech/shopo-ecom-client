@@ -151,7 +151,17 @@ export const apiService = (() => {
         if (response.status === 429) {
           throw new Error("Too many requests. Please try again later.");
         }
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        
+        let errorMsg = errorData.message || `HTTP error! status: ${response.status}`;
+        if (errorData.details && errorData.details.errors) {
+          const detailMsgs = Object.entries(errorData.details.errors)
+            .map(([field, msgs]) => `${field.replace('_', ' ')}: ${msgs.join(', ')}`)
+            .join(' | ');
+          if (detailMsgs) {
+            errorMsg = `${errorMsg} (${detailMsgs})`;
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       const contentType = response.headers.get('content-type');

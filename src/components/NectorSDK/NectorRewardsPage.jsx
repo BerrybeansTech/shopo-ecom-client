@@ -9,23 +9,29 @@ const NectorRewardsPage = () => {
     const { user } = useSelector((state) => state.auth);
     const containerId = 'rewards-page-container';
 
+    // Log the user's Nector-related fields
+    console.log({
+        customer_uuid: user?.customer_uuid,
+        nector_lead_id: user?.nector_lead_id
+    });
+
     useEffect(() => {
         function initRewardsPage() {
-            if (window.nector_sdk && user?.customer_uuid && user?.nector_lead_id) {
-                console.log("📡 [Nector] Initializing Rewards Page for User:", user.customer_uuid);
+            if (window.nector_sdk && user?.nector_lead_id) {
+                console.log("📡 [Nector] Initializing Rewards Page for User:", user.nector_lead_id);
                 window.nector_sdk.init_widget(
                     'reward',
                     {
                         api_key: NECTOR_API_KEY,
                         platform: NECTOR_PLATFORM,
-                        customer_id: user.customer_uuid
+                        customer_id: user.nector_lead_id
                     },
                     containerId
                 );
             }
         }
 
-        if (user?.customer_uuid && user?.nector_lead_id) {
+        if (user?.nector_lead_id) {
             if (window.nector_sdk) {
                 initRewardsPage();
             } else {
@@ -36,7 +42,7 @@ const NectorRewardsPage = () => {
         return () => {
             window.removeEventListener('nector_sdk_initialized', initRewardsPage);
         };
-    }, [user?.customer_uuid, user?.nector_lead_id]);
+    }, [user?.nector_lead_id]);
 
     return (
         <Layout>
