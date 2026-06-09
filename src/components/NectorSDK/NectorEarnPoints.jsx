@@ -8,17 +8,23 @@ const NectorEarnPoints = ({ price }) => {
 
     useEffect(() => {
         function initEarnWidget() {
-            if (window.nector_sdk && (user?.id || user?._id)) {
+            if (window.nector_sdk) {
+                const config = {
+                    api_key: NECTOR_API_KEY,
+                    platform: NECTOR_PLATFORM,
+                    price: price,
+                    redirect_url: `${window.location.origin}/rewards`
+                };
+
+                if (user?.nector_lead_id) {
+                    config.customer_id = user.nector_lead_id;
+                    config.customer_email = user.email || '';
+                }
+
+                console.log("📡 [Nector] Initializing PDP Earn Points Widget. User logged in & synced:", !!(user?.customer_uuid && user?.nector_lead_id));
                 window.nector_sdk.init_widget(
                     'customerearn',
-                    {
-                        api_key: NECTOR_API_KEY,
-                        platform: NECTOR_PLATFORM,
-                        customer_id: user?._id || user?.id || '',
-                        customer_email: user?.email || '',
-                        price: price,
-                        redirect_url: "http://localhost:5173/profile"
-                    },
+                    config,
                     containerId
                 );
             }
@@ -33,7 +39,7 @@ const NectorEarnPoints = ({ price }) => {
         return () => {
             window.removeEventListener('nector_sdk_initialized', initEarnWidget);
         };
-    }, [price]);
+    }, [price, user?.nector_lead_id]);
 
     // Handle price updates
     useEffect(() => {

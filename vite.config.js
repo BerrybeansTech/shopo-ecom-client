@@ -47,4 +47,9 @@ const pwaConfig = {
 export default defineConfig({
   basename: "/",
   plugins: [react(), VitePWA(pwaConfig), tailwind()],
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
 });
+

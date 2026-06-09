@@ -27,7 +27,7 @@ export default function ReviewTab() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [notification, setNotification] = useState(null);
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchUserReviews();

@@ -146,6 +146,12 @@ export default function OrderDetails() {
                       <span className="text-gray-500">Status</span>
                       <span className="font-medium text-green-600 capitalize">{order.paymentStatus}</span>
                     </div>
+                    {order.couponCode && (
+                      <div className="flex justify-between text-emerald-600 font-medium">
+                        <span>Coupon ({order.couponCode})</span>
+                        <span>-₹{parseFloat(order.couponDiscount).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="border-t border-gray-200 my-2 pt-3 flex justify-between">
                       <span className="text-gray-700 font-semibold">Total Amount</span>
                       <span className="font-bold text-gray-900 text-base">{order.amount}</span>
