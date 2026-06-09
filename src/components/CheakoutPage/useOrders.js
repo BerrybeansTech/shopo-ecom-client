@@ -133,6 +133,8 @@ export const useOrders = () => {
         year: 'numeric'
       }),
       discounts: `₹${apiOrder.discount || 0}`,
+      couponCode: apiOrder.couponCode || null,
+      couponDiscount: apiOrder.couponDiscount || 0,
       loyaltyPoints: '0',
       canReturn: apiOrder.status === 'delivered' || apiOrder.status === 'complete',
       canReview: canReview,

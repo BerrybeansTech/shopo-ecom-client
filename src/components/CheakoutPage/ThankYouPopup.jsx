@@ -49,6 +49,11 @@ export default function ThankYouPopup({
               <div className="text-right">
                 <p className="text-sm text-gray-600">Total Amount</p>
                 <p className="text-lg font-bold text-black">₹{orderDetails?.totalAmount}</p>
+                {orderDetails?.apiResponse?.couponCode && (
+                  <p className="text-xs text-green-600 font-medium mt-1">
+                    Coupon: {orderDetails.apiResponse.couponCode} (-₹{parseFloat(orderDetails.apiResponse.couponDiscount || 0).toFixed(2)})
+                  </p>
+                )}
               </div>
             </div>
           </div>
