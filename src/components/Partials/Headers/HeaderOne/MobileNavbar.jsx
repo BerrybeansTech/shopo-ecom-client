@@ -596,6 +596,7 @@ const MobileNavbar = ({
   searchLoading,
   searchRef,
   showAccountDropdown,
+  setShowAccountDropdown,
   isAuthenticated,
   itemCount,
   profileMenuItems,
@@ -617,7 +618,9 @@ const MobileNavbar = ({
   
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showBottomNav, setShowBottomNav] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [showTopNav, setShowTopNav] = useState(true);
+  const lastScrollYRef = useRef(0);
+  const scrollTimeoutRef = useRef(null);
   const [showInlineSearch, setShowInlineSearch] = useState(false);
   const [showCategoriesDrawer, setShowCategoriesDrawer] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState(null);
@@ -735,23 +738,68 @@ const MobileNavbar = ({
     </svg>
   );
 
-  // Handle scroll to hide/show bottom nav
+  // Handle scroll to hide/show top and bottom navbars (hides on scroll down, shows on scroll up or scroll stop)
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      const lastScrollY = lastScrollYRef.current;
+
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Check if any drawer/dropdown/search overlay is open
+      const isAnyDropdownOpen = 
+        showAccountDropdown || 
+        showCategoriesDrawer || 
+        showMoreOptions || 
+        showInlineSearch || 
+        showSearchResults;
+
+      if (isAnyDropdownOpen) {
+        setShowTopNav(true);
+        setShowBottomNav(true);
+        lastScrollYRef.current = currentScrollY;
+        return;
+      }
+
       if (currentScrollY < 50) {
+        // Always show when near the top of the page
+        setShowTopNav(true);
         setShowBottomNav(true);
       } else if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide both navbars
+        setShowTopNav(false);
         setShowBottomNav(false);
       } else {
+        // Scrolling up - show both navbars
+        setShowTopNav(true);
         setShowBottomNav(true);
       }
-      setLastScrollY(currentScrollY);
+
+      lastScrollYRef.current = currentScrollY;
+
+      // Set timeout to show ONLY the top navbar when scrolling stops
+      scrollTimeoutRef.current = setTimeout(() => {
+        setShowTopNav(true);
+      }, 150); // Show 150ms after scrolling stops
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [
+    showAccountDropdown, 
+    showCategoriesDrawer, 
+    showMoreOptions, 
+    showInlineSearch, 
+    showSearchResults
+  ]);
 
   // Close more options when clicking outside
   useEffect(() => {
@@ -785,12 +833,14 @@ const MobileNavbar = ({
     <div className="lg:hidden">
       {/* ===== TOP FIXED HEADER ===== */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 bg-white transform transition-all duration-300 ease-in-out ${
+          showTopNav ? "translate-y-0" : "-translate-y-full"
+        } ${
           isScrolled ? "shadow-lg" : "shadow-md"
         }`}
       >
         {/* Logo and Account/Cart Icons */}
-        <div className="px-4 py-4 flex items-center justify-between gap-3">
+        <div className="px-4 py-2 flex items-center justify-between gap-3">
           <Link to="/" className="flex-shrink-0">
             <img
               src="/assets/images/logo.png"

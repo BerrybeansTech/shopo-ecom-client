@@ -408,6 +408,7 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
         </div>
 
         {/* ── Bento Grid (desktop) / Stack (mobile) ───────────────── */}
+        {/* Bento Grid (desktop) */}
         <div className="hidden md:grid gap-3" style={{ gridTemplateColumns: "1.55fr 1fr 1fr", gridTemplateRows: "1fr 1fr", height: GRID_H }}>
           {/* Spotlight */}
           <SpotlightCard cat={spotlight} />
@@ -456,42 +457,44 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
           </Link>
 
           {/* Minis – infinite horizontal scroll sync */}
-          <div
-            ref={scrollRef}
-            onScroll={handleScroll}
-            className="flex gap-5 overflow-x-auto pt-4 pb-8 snap-x snap-mandatory scrollbar-hide no-scrollbar"
-            style={{ 
-              paddingLeft: 'calc(50% - 65px)', 
-              paddingRight: 'calc(50% - 65px)', 
-              scrollPadding: '0 calc(50% - 65px)' 
-            }}
-          >
-            {[...displayCategories, ...displayCategories, ...displayCategories].map((cat, i) => (
-              <div
-                key={`${cat.id}-${i}`}
-                className={`mini-card flex-shrink-0 snap-center ${cat.colorIdx === activeIdx ? "ring-active" : ""}`}
-                style={{ width: "130px", height: "110px" }}
-                onClick={() => goTo(cat.colorIdx, true)}
-              >
-                <div className="absolute inset-0 bg-gray-100 overflow-hidden">
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="cat-img w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = placeholderUrl(cat.name);
-                    }}
-                  />
+          {displayCategories.length > 1 && (
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex gap-5 overflow-x-auto pt-4 pb-8 snap-x snap-mandatory scrollbar-hide no-scrollbar"
+              style={{ 
+                paddingLeft: 'calc(50% - 65px)', 
+                paddingRight: 'calc(50% - 65px)', 
+                scrollPadding: '0 calc(50% - 65px)' 
+              }}
+            >
+              {[...displayCategories, ...displayCategories, ...displayCategories].map((cat, i) => (
+                <div
+                  key={`${cat.id}-${i}`}
+                  className={`mini-card flex-shrink-0 snap-center ${cat.colorIdx === activeIdx ? "ring-active" : ""}`}
+                  style={{ width: "130px", height: "110px" }}
+                  onClick={() => goTo(cat.colorIdx, true)}
+                >
+                  <div className="absolute inset-0 bg-gray-100 overflow-hidden">
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="cat-img w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = placeholderUrl(cat.name);
+                      }}
+                    />
+                  </div>
+                  <div className="mini-hover-layer">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                    <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
+                  </div>
                 </div>
-                <div className="mini-hover-layer">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                  <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Dot Navigation ───────────────────────────────────────── */}
