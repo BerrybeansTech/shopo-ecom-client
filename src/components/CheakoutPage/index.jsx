@@ -798,7 +798,7 @@ export default function Checkout() {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Cart is Empty</h2>
             <p className="text-gray-600 mb-6">Add some items to your cart before proceeding to checkout.</p>
             <Link
-              to="/products"
+              to="/all-products"
               className="inline-block bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
             >
               Continue Shopping

@@ -64,7 +64,8 @@ export const categoryIconMap = {
 export const getCategoryIcon = (categoryName = '') => {
   if (!categoryName) return categoryIconMap.default;
 
-  const normalized = categoryName.toLowerCase().trim();
+  // Normalize by converting to lowercase and stripping all non-alphanumeric characters (spaces, dashes, etc.)
+  const normalized = categoryName.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   // Direct match
   if (categoryIconMap[normalized]) {
@@ -87,32 +88,24 @@ export const getCategoryIcon = (categoryName = '') => {
  */
 export const categoryImageMap = {
   topwear: {
-    default: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=128&h=128&fit=crop",
-    hover: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=256&h=256&fit=crop",
+    default: "/assets/icon/Half%20Sleeves%20Shirt%20.jpeg",
+    hover: "/assets/icon/Half%20Sleeves%20Shirt%20.jpeg",
   },
   bottomwear: {
-    default: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=128&h=128&fit=crop",
-    hover: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=256&h=256&fit=crop",
+    default: "/assets/icon/Gurkha%20Pants.jpeg",
+    hover: "/assets/icon/Gurkha%20Pants.jpeg",
   },
-  footwear: {
-    default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/69c6589653afdb9a.png",
-    hover: "https://rukminim2.flixcart.com/fk-p-flap/256/256/image/69c6589653afdb9a.png",
+  towel: {
+    default: "/assets/icon/Towels.jpeg",
+    hover: "/assets/icon/Towels.jpeg",
   },
-  accessories: {
-    default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/f15c02bfeb02d15d.png",
-    hover: "https://rukminim2.flixcart.com/fk-p-flap/256/256/image/f15c02bfeb02d15d.png",
-  },
-  ethnic: {
-    default: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=128&h=128&fit=crop",
-    hover: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=256&h=256&fit=crop",
-  },
-  western: {
-    default: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=128&h=128&fit=crop",
-    hover: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=256&h=256&fit=crop",
+  towels: {
+    default: "/assets/icon/Towels.jpeg",
+    hover: "/assets/icon/Towels.jpeg",
   },
   default: {
-    default: "https://rukminim2.flixcart.com/fk-p-flap/128/128/image/0d75b34f7d8fbcb3.png",
-    hover: "https://rukminim2.flixcart.com/fk-p-flap/256/256/image/0d75b34f7d8fbcb3.png",
+    default: "https://placehold.co/128x128/f3f4f6/9ca3af?text=No+Image",
+    hover: "https://placehold.co/128x128/f3f4f6/9ca3af?text=No+Image",
   },
 };
 
@@ -124,7 +117,8 @@ export const categoryImageMap = {
 export const getCategoryImages = (categoryName = '') => {
   if (!categoryName) return categoryImageMap.default;
 
-  const normalized = categoryName.toLowerCase().trim();
+  // Normalize by converting to lowercase and stripping all non-alphanumeric characters (spaces, dashes, etc.)
+  const normalized = categoryName.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   // Direct match
   if (categoryImageMap[normalized]) {

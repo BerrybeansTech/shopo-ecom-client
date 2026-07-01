@@ -696,7 +696,7 @@ export default function AllProductPage() {
   const breadcrumb = useMemo(() => {
     const base = [
       { name: "Home", path: "/" },
-      { name: "Clothing and Accessories", path: "/products" },
+      { name: "Clothing and Accessories", path: "/all-products" },
     ];
 
     const activeFilters = [];
