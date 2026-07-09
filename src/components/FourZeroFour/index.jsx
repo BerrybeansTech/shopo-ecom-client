@@ -25,7 +25,7 @@ export default function FourZeroFour() {
                     <div className="flex justify-center w-full ">
                       <div className="w-[180px] h-[50px] ">
                         <span type="button" className="yellow-btn flex items-center justify-center w-full h-full">
-                          Back to Shop
+                          Back to Home
                         </span>
                       </div>
                     </div>

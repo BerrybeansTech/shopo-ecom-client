@@ -433,6 +433,15 @@ const DesktopNavbar = ({
   loading,
 }) => {
   const navigate = useNavigate();
+  const timeoutRef = React.useRef(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Check if we're on the shop/all-products page
   const isShopPage = isActiveRoute("/all-products") || isActiveRoute("/category");
@@ -788,13 +797,22 @@ const DesktopNavbar = ({
                     key={category.id}
                     className="relative group"
                     onMouseEnter={() => {
+                      if (timeoutRef.current) {
+                        clearTimeout(timeoutRef.current);
+                        timeoutRef.current = null;
+                      }
                       setActiveCategory(index);
                       if (category.subcategories.length > 0)
                         setActiveSubcategory(0);
                     }}
                     onMouseLeave={() => {
-                      setActiveCategory(null);
-                      setActiveSubcategory(null);
+                      if (timeoutRef.current) {
+                        clearTimeout(timeoutRef.current);
+                      }
+                      timeoutRef.current = setTimeout(() => {
+                        setActiveCategory(null);
+                        setActiveSubcategory(null);
+                      }, 200);
                     }}
                   >
                     <button className="flex flex-col items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg transition-all">
@@ -825,7 +843,7 @@ const DesktopNavbar = ({
 
                     {/* Mega Menu Dropdown */}
                     {isActive && category.subcategories.length > 0 && (
-                      <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-200 rounded-lg z-50 flex overflow-hidden">
+                      <div className="absolute top-full left-0 mt-1 bg-white shadow-lg border border-gray-200 rounded-lg z-50 flex overflow-hidden before:absolute before:-top-4 before:left-0 before:w-full before:h-4 before:content-['']">
                         {/* Subcategories */}
                         <div className="min-w-[240px] bg-gray-50 border-r border-gray-200 py-4">
                           <div className="space-y-1 px-2">
@@ -850,6 +868,10 @@ const DesktopNavbar = ({
                                         : "text-gray-700 hover:text-gray-900"
                                     }`}
                                     onClick={() => {
+                                      if (timeoutRef.current) {
+                                        clearTimeout(timeoutRef.current);
+                                        timeoutRef.current = null;
+                                      }
                                       setActiveCategory(null);
                                       setActiveSubcategory(null);
                                     }}
@@ -881,6 +903,10 @@ const DesktopNavbar = ({
                                   to={`/all-products?categoryId=${category.id}&subcategoryId=${category.subcategories[activeSubcategory].id}&childCategoryId=${childCategory.id}`}
                                   className="block text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
                                   onClick={() => {
+                                    if (timeoutRef.current) {
+                                      clearTimeout(timeoutRef.current);
+                                      timeoutRef.current = null;
+                                    }
                                     setActiveCategory(null);
                                     setActiveSubcategory(null);
                                   }}
