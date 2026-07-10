@@ -104,7 +104,6 @@ export default function CategoryMenu() {
     <nav className="category-menu bg-white shadow-md">
         <div className="container-x mx-auto">
           <div
-            data-aos="fade-down"
             className="best-services w-full bg-qyellow flex flex-col space-y-10 lg:space-y-0 lg:flex-row lg:justify-between lg:items-center lg:h-[110px] px-10 lg:py-0 py-10"
           >
             <div className="item">
