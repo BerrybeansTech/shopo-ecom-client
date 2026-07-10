@@ -6,6 +6,66 @@ import { getImageUrl, normalizeProductImages } from "../../utils/imageUtils";
 import NectorEarnPoints from "../NectorSDK/NectorEarnPoints";
 import useAuth from "../Auth/hooks/useAuth";
 
+const parseColor = (colorStr) => {
+  if (!colorStr || typeof colorStr !== 'string') return { name: 'N/A', code: '#E5E7EB' };
+  
+  // Capitalize helper
+  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  
+  // Match hex code with optional hyphen prefix
+  const hexRegex = /-?#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/g;
+  const match = colorStr.match(hexRegex);
+  if (match) {
+    const hex = match[0].replace('-', '');
+    const rawName = colorStr.replace(match[0], '').trim();
+    return { name: capitalize(rawName), code: hex };
+  }
+  
+  const nameLower = colorStr.trim().toLowerCase();
+  const standardColors = {
+    red: '#EF4444',
+    blue: '#3B82F6',
+    'premium black': '#0B0B0B',
+    grey: '#808080',
+    white: '#FFFFFF',
+    beige: '#F5F5DC',
+    wine: '#722F37',
+    'deep burgundy': '#5C1A1B',
+    'plum wine': '#6E2142',
+    'deep magenta': '#8B004B',
+    'navy blue with golden beadwork': '#1F3A93',
+    'sage green': '#9CAF88',
+    'charcoal grey': '#36454F',
+    'steel grey': '#71797E',
+  };
+  
+  return { 
+    name: capitalize(colorStr), 
+    code: standardColors[nameLower] || '#E5E7EB'
+  };
+};
+
+const getContrastColor = (hexColor) => {
+  if (!hexColor) return '#000000';
+  const hex = hexColor.replace('#', '');
+  if (hex.length !== 6 && hex.length !== 3) return '#000000';
+  
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 6) {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  } else if (hex.length === 3) {
+    r = parseInt(hex.substring(0, 1) + hex.substring(0, 1), 16);
+    g = parseInt(hex.substring(1, 2) + hex.substring(1, 2), 16);
+    b = parseInt(hex.substring(2, 3) + hex.substring(2, 3), 16);
+  }
+  
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#000000' : '#FFFFFF';
+};
+
+
 export default function ProductView({ product, className, reportHandler, writeReview }) {
   const navigate = useNavigate();
   const { items, addItemToCart, updateItemQuantity, refreshCart, isItemUpdating } = useCart();
@@ -106,7 +166,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
         // Process sizes - handle array of sizes
         if (inv.productSize && inv.productSize.size && Array.isArray(inv.productSize.size)) {
           inv.productSize.size.forEach(sizeName => {
-            const sizeKey = `${inv.productSize.id}-${sizeName}`;
+            const sizeKey = `${inv.productColor?.id || 'any'}-${inv.productSize.id}-${sizeName}`;
             if (!sizeMap.has(sizeKey)) {
               sizeMap.set(sizeKey, {
                 id: sizeKey,
@@ -300,14 +360,56 @@ export default function ProductView({ product, className, reportHandler, writeRe
     return isOutOfStock || !isOptionsSelected || isAddingToCart;
   }, [isOutOfStock, isOptionsSelected, isAddingToCart]);
 
-  // Initialize states when product changes - REMOVED AUTO-SELECTION
+  // Filter images based on selected color name (or first color name on mount)
+  const filteredImages = useMemo(() => {
+    if (!transformedProduct) return [];
+    
+    // Find the currently selected color object or first color object if not selected
+    const activeColorId = selectedColorId || transformedProduct.colors[0]?.id;
+    const activeColorObj = transformedProduct.colors.find(c => c.id === activeColorId);
+    
+    if (!activeColorObj || activeColorObj.name === 'Not available') {
+      return transformedProduct.images;
+    }
+    
+    const parsed = parseColor(activeColorObj.name);
+    // Sanitize clean color name by removing non-alphanumeric chars
+    const cleanColorName = parsed.name.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // Filter images that contain "_color_ColorName" case-insensitively
+    const colorSpecificImages = transformedProduct.images.filter(img => {
+      if (typeof img === 'string') {
+        const lowerImg = img.toLowerCase();
+        return lowerImg.includes(`_color_${cleanColorName.toLowerCase()}`);
+      }
+      return false;
+    });
+    
+    // Fall back to all images if none match specifically
+    if (colorSpecificImages.length === 0) {
+      return transformedProduct.images;
+    }
+    
+    return colorSpecificImages;
+  }, [transformedProduct, selectedColorId]);
+
+  // Sync main image with filtered images when selection changes
+  useEffect(() => {
+    if (filteredImages && filteredImages.length > 0) {
+      setMainImage(filteredImages[0]);
+    }
+  }, [filteredImages]);
+
+  // Initialize states when product changes - AUTO-SELECT FIRST COLOR
   useEffect(() => {
     if (transformedProduct) {
-      setMainImage(transformedProduct.images[0] || null);
-
-      // REMOVED: Auto-selection of first color and size
-      // Let user manually select both color and size
-      setSelectedColorId(null);
+      // Pick first color by default
+      const firstColor = transformedProduct.colors[0];
+      if (firstColor && firstColor.name !== 'Not available') {
+        setSelectedColorId(firstColor.id);
+      } else {
+        setSelectedColorId(null);
+      }
       setSelectedSizeId(null);
       setQuantity(1);
     }
@@ -696,7 +798,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
               }
             `}</style>
 
-              {transformedProduct.images.map((img, index) => (
+              {filteredImages.map((img, index) => (
                 <div
                   key={index}
                   onClick={() => setMainImage(img)}
@@ -769,7 +871,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
               onMouseLeave={handleMouseLeave}
             >
               <img
-                src={mainImage || transformedProduct.images[0]}
+                src={mainImage || filteredImages[0]}
                 alt={transformedProduct.name}
                 className={`w-full h-full object-contain transition-transform duration-150 ease-out ${showZoom ? "scale-150" : "scale-100"
                   }`}
@@ -882,22 +984,35 @@ export default function ProductView({ product, className, reportHandler, writeRe
                 COLOR
               </span>
               <div className="flex space-x-4 items-center">
-                {transformedProduct.colors.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => handleColorChange(color.id)}
-                    className={`px-4 py-2 border rounded transition-all duration-200 ${
-                      selectedColorId === color.id
-                        ? "border-black bg-black text-white shadow-md transform scale-105"
-                        : "border-gray-300 bg-white text-gray-800 hover:border-gray-500 hover:shadow-sm"
-                    } ${color.totalStock === 0 ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
-                    disabled={color.totalStock === 0}
-                    title={color.totalStock === 0 ? "Out of stock" : `Select ${color.name}`}
-                  >
-                    {color.name}
-                    {color.totalStock === 0 && " (X)"}
-                  </button>
-                ))}
+                {transformedProduct.colors.map((color) => {
+                  const parsed = parseColor(color.name);
+                  return (
+                    <button
+                      key={color.id}
+                      onClick={() => handleColorChange(color.id)}
+                      className={`px-4 py-2 border font-medium text-sm rounded-lg transition-all duration-200 ${
+                        selectedColorId === color.id
+                          ? "ring-2 ring-offset-2 ring-black shadow-md transform scale-105"
+                          : "hover:shadow-sm"
+                      } ${
+                        parsed.code.toLowerCase() === "#ffffff" 
+                          ? "border-gray-300" 
+                          : "border-transparent"
+                      } ${color.totalStock === 0 ? "opacity-40 cursor-not-allowed grayscale" : ""}`}
+                      style={{ 
+                        backgroundColor: parsed.code, 
+                        color: getContrastColor(parsed.code) 
+                      }}
+                      disabled={color.totalStock === 0}
+                      title={color.totalStock === 0 ? "Out of stock" : `Select ${parsed.name}`}
+                    >
+                      <span className="flex items-center justify-center gap-1">
+                        <span>{parsed.name}</span>
+                        {color.totalStock === 0 && <span className="text-[10px] opacity-75">(X)</span>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -930,7 +1045,7 @@ export default function ProductView({ product, className, reportHandler, writeRe
                       disabled={size.totalStock === 0}
                       title={size.totalStock === 0 ? "Out of stock" : `Select ${size.name}`}
                     >
-                      {size.name}
+                      {size.name.charAt(0).toUpperCase() + size.name.slice(1)}
                       {size.totalStock === 0 && " (X)"}
                     </button>
                   ))}
@@ -973,9 +1088,9 @@ export default function ProductView({ product, className, reportHandler, writeRe
               <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
                 <p className="text-sm text-qblack font-medium">
                   Selected Combination:{" "}
-                  {selectedColor && <span className="font-semibold text-blue-600">{selectedColor.name}</span>}
+                  {selectedColor && <span className="font-semibold text-blue-600">{parseColor(selectedColor.name).name}</span>}
                   {selectedColor && selectedSize && " - "}
-                  {selectedSize && <span className="font-semibold text-blue-600">{selectedSize.name}</span>}
+                  {selectedSize && <span className="font-semibold text-blue-600">{selectedSize.name.charAt(0).toUpperCase() + selectedSize.name.slice(1)}</span>}
                 </p>
               </div>
             )}

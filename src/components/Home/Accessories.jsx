@@ -148,7 +148,7 @@ export default function Accessories({ className = "" }) {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-black">Accessories</h2>
           <Link 
-            to="/products" 
+            to="/all-products" 
             className="text-black font-semibold hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1 border-b border-black pb-1"
           >
             <span>View More</span>
@@ -289,7 +289,7 @@ export default function Accessories({ className = "" }) {
         {/* Mobile View More Button */}
         <div className="mt-8 text-center lg:hidden">
           <Link
-            to="/products"
+            to="/all-products"
             className="inline-block bg-black text-white px-8 py-3 rounded text-base font-semibold hover:bg-gray-800 transition-colors duration-200 border border-black"
           >
             View More Products

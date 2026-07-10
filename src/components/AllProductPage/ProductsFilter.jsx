@@ -3,6 +3,38 @@ import RangeSlider from "react-range-slider-input";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { useProducts } from "../AllProductPage/hooks/useProducts";
 
+// Parse color strings like "Black-#242424" or "Green-#209400" or just "Blue"
+const parseColor = (colorStr) => {
+  if (!colorStr || typeof colorStr !== 'string') return { name: 'N/A', code: '#E5E7EB' };
+  // Capitalize helper
+  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  // Match hex code with optional hyphen prefix e.g. "-#242424" or "#242424"
+  const hexMatch = colorStr.match(/-?(#[A-Fa-f0-9]{6}|#[A-Fa-f0-9]{3})/);
+  if (hexMatch) {
+    const code = hexMatch[1] || hexMatch[0].replace('-', '');
+    const rawName = colorStr.replace(hexMatch[0], '').trim() || colorStr;
+    return { name: capitalize(rawName), code };
+  }
+  // Fallback: standard named colors
+  const standardColors = {
+    red: '#EF4444',
+    blue: '#3B82F6',
+    'premium black': '#0B0B0B',
+    grey: '#808080',
+    white: '#FFFFFF',
+    beige: '#F5F5DC',
+    wine: '#722F37',
+    'deep burgundy': '#5C1A1B',
+    'plum wine': '#6E2142',
+    'deep magenta': '#8B004B',
+    'navy blue with golden beadwork': '#1F3A93',
+    'sage green': '#9CAF88',
+    'charcoal grey': '#36454F',
+    'steel grey': '#71797E',
+  };
+  return { name: capitalize(colorStr), code: standardColors[colorStr.toLowerCase().trim()] || '#E5E7EB' };
+};
+
 // Memoized filter component to prevent unnecessary re-renders
 const ProductsFilter = React.memo(
   ({
@@ -104,19 +136,37 @@ const ProductsFilter = React.memo(
 
     // Combine colors from API and products
     const allColors = useMemo(() => {
-      const colorSet = new Set();
+      // Use a map keyed by normalized color name to deduplicate
+      // e.g. "Black-#242424" and "black-#242424" both → key "black"
+      const colorByNormalizedName = new Map();
 
-      // Add colors from API
+      const addColor = (rawColor) => {
+        if (!rawColor) return;
+        const { name } = parseColor(rawColor);
+        const key = name.toLowerCase().trim();
+        if (!colorByNormalizedName.has(key)) {
+          colorByNormalizedName.set(key, rawColor);
+        }
+      };
+
+      // Add colors from API first (authoritative source)
       if (colors && Array.isArray(colors)) {
         colors.forEach((color) => {
-          if (color.color) colorSet.add(color.color);
+          if (color.color) addColor(color.color);
         });
       }
 
-      // Add colors from products
-      availableColors.forEach(color => colorSet.add(color));
+      // Add colors from products (may contain additional ones)
+      availableColors.forEach(color => addColor(color));
 
-      return Array.from(colorSet).filter(Boolean).sort();
+      // Return deduplicated list sorted by clean name
+      return Array.from(colorByNormalizedName.values())
+        .filter(Boolean)
+        .sort((a, b) => {
+          const nameA = parseColor(a).name.toLowerCase();
+          const nameB = parseColor(b).name.toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
     }, [colors, availableColors]);
 
     // Combine sizes from API and products
@@ -834,7 +884,9 @@ const ProductsFilter = React.memo(
 
                 {/* Color Chips */}
                 {(Array.isArray(selectedColors) ? selectedColors : []).map(
-                  (color) => (
+                  (color) => {
+                    const { name: colorName, code: colorCode } = parseColor(color);
+                    return (
                     <div
                       key={`color-${color}`}
                       className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200"
@@ -842,12 +894,9 @@ const ProductsFilter = React.memo(
                       <div className="flex items-center gap-1.5">
                         <div
                           className="w-3 h-3 rounded-full border border-gray-300"
-                          style={{
-                            backgroundColor:
-                              colorMap[color] || color.toLowerCase(),
-                          }}
+                          style={{ backgroundColor: colorCode }}
                         />
-                        <span className="text-xs font-medium">{color}</span>
+                        <span className="text-xs font-medium">{colorName}</span>
                       </div>
                       <button
                         onClick={() => removeColor(color)}
@@ -856,7 +905,8 @@ const ProductsFilter = React.memo(
                         ×
                       </button>
                     </div>
-                  )
+                    );
+                  }
                 )}
 
                 {/* Size Chips */}
@@ -1339,7 +1389,7 @@ const ProductsFilter = React.memo(
                       ? selectedColors.includes(color)
                       : false;
 
-                    const colorValue = colorMap[color] || color.toLowerCase();
+                    const { name: colorName, code: colorCode } = parseColor(color);
 
                     return (
                       <div
@@ -1359,21 +1409,21 @@ const ProductsFilter = React.memo(
                             className={`rounded-full ${
                               isChecked ? "w-3 h-3" : "w-5 h-5"
                             } ${
-                              color.toLowerCase() === "white"
+                              colorName.toLowerCase() === "white"
                                 ? "border border-gray-300"
                                 : ""
                             }`}
-                            style={{ backgroundColor: colorValue }}
+                            style={{ backgroundColor: colorCode }}
                           />
                         </div>
 
-                        {/* Color Name */}
+                        {/* Color Name - show clean name only */}
                         <span
                           className={`text-sm font-medium ${
                             isChecked ? "text-gray-900" : "text-gray-600"
                           }`}
                         >
-                          {color}
+                          {colorName}
                         </span>
                       </div>
                     );

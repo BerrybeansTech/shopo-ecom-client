@@ -65,7 +65,6 @@ export default function Banner({ className }) {
               </div>
             </div>
             <div
-              data-aos="fade-up"
               style={{
                 backgroundImage: `url(${
                   import.meta.env.VITE_PUBLIC_URL

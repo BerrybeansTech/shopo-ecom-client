@@ -233,7 +233,6 @@ export default function Banner({ className }) {
       </div>
       <div className="container-x mx-auto mb-[60px]">
         <div
-          data-aos="fade-up"
           style={{
             backgroundImage: `url(/assets/images/service-bg.png)`,
             backgroundRepeat: "no-repeat",
