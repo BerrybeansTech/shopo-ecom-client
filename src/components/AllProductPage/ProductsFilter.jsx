@@ -6,24 +6,36 @@ import { useProducts } from "../AllProductPage/hooks/useProducts";
 // Parse color strings like "Black-#242424" or "Green-#209400" or just "Blue"
 const parseColor = (colorStr) => {
   if (!colorStr || typeof colorStr !== 'string') return { name: 'N/A', code: '#E5E7EB' };
+  
   // Capitalize helper
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
-  // Match hex code with optional hyphen prefix e.g. "-#242424" or "#242424"
-  const hexMatch = colorStr.match(/-?(#[A-Fa-f0-9]{6}|#[A-Fa-f0-9]{3})/);
-  if (hexMatch) {
-    const code = hexMatch[1] || hexMatch[0].replace('-', '');
-    const rawName = colorStr.replace(hexMatch[0], '').trim() || colorStr;
-    return { name: capitalize(rawName), code };
+  
+  // Match hex code with optional hyphen prefix
+  const hexRegex = /-?#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/g;
+  const match = colorStr.match(hexRegex);
+  if (match) {
+    const hex = match[0].replace('-', '');
+    const rawName = colorStr.replace(match[0], '').trim();
+    return { name: capitalize(rawName), code: hex };
   }
-  // Fallback: standard named colors
+  
+  const nameLower = colorStr.trim().toLowerCase();
   const standardColors = {
     red: '#EF4444',
     blue: '#3B82F6',
-    'premium black': '#0B0B0B',
-    grey: '#808080',
+    yellow: '#FBBF24',
+    green: '#10B981',
+    black: '#000000',
     white: '#FFFFFF',
+    grey: '#808080',
+    gray: '#808080',
+    pink: '#EC4899',
+    purple: '#A855F7',
+    orange: '#F97316',
+    brown: '#92400E',
     beige: '#F5F5DC',
     wine: '#722F37',
+    'premium black': '#0B0B0B',
     'deep burgundy': '#5C1A1B',
     'plum wine': '#6E2142',
     'deep magenta': '#8B004B',
@@ -31,8 +43,29 @@ const parseColor = (colorStr) => {
     'sage green': '#9CAF88',
     'charcoal grey': '#36454F',
     'steel grey': '#71797E',
+    'dark brown': '#654321',
+    'light grey': '#D3D3D3',
+    'olive green': '#808000',
+    'sand beige': '#D4BDA8',
+    'steel blue grey': '#436175',
+    'light silver gray': '#D9DBD9',
+    'navy blue': '#000080',
+    'dark grey': '#A9A9A9',
+    'dark navy': '#0B0B45',
+    'slate blue': '#6A5ACD',
+    'stone grey': '#918E85',
+    'sage grey': '#A29C95',
+    'wine burgundy': '#542A38',
+    'espresso brown': '#4A403F',
+    'silver grey': '#A5A1A0',
+    'pure white': '#F4F4F2',
+    'off white': '#E9E4D8'
   };
-  return { name: capitalize(colorStr), code: standardColors[colorStr.toLowerCase().trim()] || '#E5E7EB' };
+  
+  return { 
+    name: capitalize(colorStr), 
+    code: standardColors[nameLower] || '#E5E7EB'
+  };
 };
 
 // Memoized filter component to prevent unnecessary re-renders

@@ -23,6 +23,70 @@ import {
 import { useAuth } from "../../components/Auth/hooks/useAuth";
 import { getProductImage } from "../../utils/imageUtils";
 
+const parseColor = (colorStr) => {
+  if (!colorStr || typeof colorStr !== 'string') return { name: 'N/A', code: '#E5E7EB' };
+  
+  // Capitalize helper
+  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  
+  // Match hex code with optional hyphen prefix
+  const hexRegex = /-?#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/g;
+  const match = colorStr.match(hexRegex);
+  if (match) {
+    const hex = match[0].replace('-', '');
+    const rawName = colorStr.replace(match[0], '').trim();
+    return { name: capitalize(rawName), code: hex };
+  }
+  
+  const nameLower = colorStr.trim().toLowerCase();
+  const standardColors = {
+    red: '#EF4444',
+    blue: '#3B82F6',
+    yellow: '#FBBF24',
+    green: '#10B981',
+    black: '#000000',
+    white: '#FFFFFF',
+    grey: '#808080',
+    gray: '#808080',
+    pink: '#EC4899',
+    purple: '#A855F7',
+    orange: '#F97316',
+    brown: '#92400E',
+    beige: '#F5F5DC',
+    wine: '#722F37',
+    'premium black': '#0B0B0B',
+    'deep burgundy': '#5C1A1B',
+    'plum wine': '#6E2142',
+    'deep magenta': '#8B004B',
+    'navy blue with golden beadwork': '#1F3A93',
+    'sage green': '#9CAF88',
+    'charcoal grey': '#36454F',
+    'steel grey': '#71797E',
+    'dark brown': '#654321',
+    'light grey': '#D3D3D3',
+    'olive green': '#808000',
+    'sand beige': '#D4BDA8',
+    'steel blue grey': '#436175',
+    'light silver gray': '#D9DBD9',
+    'navy blue': '#000080',
+    'dark grey': '#A9A9A9',
+    'dark navy': '#0B0B45',
+    'slate blue': '#6A5ACD',
+    'stone grey': '#918E85',
+    'sage grey': '#A29C95',
+    'wine burgundy': '#542A38',
+    'espresso brown': '#4A403F',
+    'silver grey': '#A5A1A0',
+    'pure white': '#F4F4F2',
+    'off white': '#E9E4D8'
+  };
+  
+  return { 
+    name: capitalize(colorStr), 
+    code: standardColors[nameLower] || '#E5E7EB'
+  };
+};
+
 // Custom Component for Lazy Loading & Skeleton Loader
 const ProductImage = ({ src, alt, placeholder }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -1680,28 +1744,15 @@ export default function AllProductPage() {
                                     <span className="text-xs text-gray-500">Colors:</span>
                                     <div className="flex items-center gap-1">
                                       {product.colors.slice(0, 4).map((color, idx) => {
-                                        const colorMap = {
-                                          'Red': '#EF4444',
-                                          'Blue': '#3B82F6',
-                                          'Yellow': '#FBBF24',
-                                          'Green': '#10B981',
-                                          'Black': '#000000',
-                                          'White': '#FFFFFF',
-                                          'Grey': '#9CA3AF',
-                                          'Gray': '#9CA3AF',
-                                          'Pink': '#EC4899',
-                                          'Purple': '#A855F7',
-                                          'Orange': '#F97316',
-                                          'Brown': '#92400E'
-                                        };
+                                        const parsed = parseColor(color);
                                         return (
                                           <div
                                             key={idx}
                                             className="w-3 h-3 rounded-full border border-gray-300"
                                             style={{
-                                              backgroundColor: colorMap[color] || '#E5E7EB'
+                                              backgroundColor: parsed.code
                                             }}
-                                            title={color}
+                                            title={parsed.name}
                                           />
                                         );
                                       })}
