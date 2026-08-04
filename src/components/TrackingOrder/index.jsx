@@ -144,10 +144,10 @@ export default function TrackingOrder() {
                     </button>
                     <button
                       onClick={() => downloadInvoicePDF({ id: orderId })}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-qblack text-white rounded-xl font-semibold hover:bg-black transition-all shadow-md shadow-black/10"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-black rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm"
                     >
-                      <Download className="h-4 w-4" />
-                      <span>Invoice</span>
+                      <Download className="h-4 w-4 text-black" />
+                      <span className="text-black font-semibold">Invoice</span>
                     </button>
                   </div>
                 </div>

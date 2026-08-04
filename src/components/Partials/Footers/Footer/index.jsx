@@ -52,26 +52,26 @@ export default function Footer({ type }) {
               </p>
               <div className="space-y-2">
                 <a
-                  href="mailto:atcarabia21@gmail.com"
+                  href="mailto:rabbitandfinch@gmail.com"
                   className="block text-[15px] text-gray-300 hover:text-white transition-colors"
                 >
-                  atcarabia21@gmail.com
+                  rabbitandfinch@gmail.com
                 </a>
                 <a
-                  href="mailto:sales@atc-arabia.com"
+                  href="mailto:sales@rabbitandfinch.com"
                   className="block text-[15px] text-gray-300 hover:text-white transition-colors"
                 >
-                  sales@atc-arabia.com
+                  sales@rabbitandfinch.com
                 </a>
               </div>
               <p className="text-[15px] mt-6">
                 Have questions? We're here to help!
               </p>
               <a
-                href="mailto:contact@atc-arabia.com"
+                href="mailto:contact@rabbitandfinch.com"
                 className="block text-[15px] text-gray-300 hover:text-white transition-colors font-medium"
               >
-                contact@atc-arabia.com
+                contact@rabbitandfinch.com
               </a>
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function Footer({ type }) {
         <div className="border-t border-gray-700 pt-5">
           <div className="lg:flex justify-between items-center text-sm text-gray-400">
             <span className="block lg:inline">
-              ©2025
+              ©{new Date().getFullYear()}
               <a
                 href="/"
                 rel="noreferrer"

@@ -254,15 +254,131 @@ export default function AllProductPage() {
     lastKey: null,
     timeoutId: null,
   });
+  const lastResolvedSearchRef = useRef(null);
 
-  // Filter States - Initialize from URL
-  const [selectedCategoryId, setSelectedCategoryId] = useState(
-    searchParams.get("categoryId") || null
+  // Fetch products metadata
+  const {
+    categories,
+    occasions,
+    materials,
+    loading: filtersLoading,
+    error: filtersError,
+    fetchAllProductData,
+  } = useProducts();
+
+  // Derive category filters directly from URL searchParams + categories (Single Source of Truth)
+  const selectedCategoryId = useMemo(() => {
+    return searchParams.get("categoryId") || searchParams.get("category") || null;
+  }, [searchParams]);
+
+  const setSelectedCategoryId = useCallback(
+    (valOrUpdater) => {
+      const nextVal =
+        typeof valOrUpdater === "function"
+          ? valOrUpdater(selectedCategoryId)
+          : valOrUpdater;
+      const newParams = new URLSearchParams(searchParams);
+      if (nextVal) {
+        newParams.set("categoryId", nextVal);
+      } else {
+        newParams.delete("categoryId");
+        newParams.delete("category");
+      }
+      newParams.set("page", "1");
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, selectedCategoryId, setSearchParams]
   );
-  const [selectedSubCategories, setSelectedSubCategories] = useState(
-    searchParams.getAll("subCategory") || []
+
+  const selectedSubCategories = useMemo(() => {
+    const raw = [
+      ...searchParams.getAll("subCategory"),
+      ...searchParams.getAll("subcategoryId"),
+    ].filter(Boolean);
+
+    if (!categories || categories.length === 0) {
+      return raw.filter((item) => isNaN(Number(item)));
+    }
+
+    const resolved = new Set();
+    raw.forEach((val) => {
+      categories.forEach((cat) => {
+        cat.ProductSubCategories?.forEach((sc) => {
+          if (String(sc.id) === String(val) || sc.name === val) {
+            resolved.add(sc.name);
+          }
+        });
+      });
+    });
+
+    return Array.from(resolved);
+  }, [searchParams, categories]);
+
+  const setSelectedSubCategories = useCallback(
+    (valOrUpdater) => {
+      const nextArr =
+        typeof valOrUpdater === "function"
+          ? valOrUpdater(selectedSubCategories)
+          : valOrUpdater;
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("subCategory");
+      newParams.delete("subcategoryId");
+      if (Array.isArray(nextArr)) {
+        nextArr.forEach((sc) => newParams.append("subCategory", sc));
+      }
+      newParams.set("page", "1");
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, selectedSubCategories, setSearchParams]
   );
-  const [selectedDetails, setSelectedDetails] = useState([]);
+
+  const selectedDetails = useMemo(() => {
+    const raw = [
+      ...searchParams.getAll("childCategory"),
+      ...searchParams.getAll("childCategoryId"),
+    ].filter(Boolean);
+
+    if (!categories || categories.length === 0) {
+      return raw.filter((item) => isNaN(Number(item)));
+    }
+
+    const resolved = new Set();
+    raw.forEach((val) => {
+      categories.forEach((cat) => {
+        cat.ProductSubCategories?.forEach((sc) => {
+          sc.ProductChildCategories?.forEach((cc) => {
+            if (String(cc.id) === String(val) || cc.name === val) {
+              resolved.add(`${sc.name}||${cc.name}`);
+            }
+          });
+        });
+      });
+    });
+
+    return Array.from(resolved);
+  }, [searchParams, categories]);
+
+  const setSelectedDetails = useCallback(
+    (valOrUpdater) => {
+      const nextArr =
+        typeof valOrUpdater === "function"
+          ? valOrUpdater(selectedDetails)
+          : valOrUpdater;
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("childCategory");
+      newParams.delete("childCategoryId");
+      if (Array.isArray(nextArr)) {
+        nextArr.forEach((dt) => {
+          const [, detailName] = dt.split("||");
+          newParams.append("childCategory", detailName || dt);
+        });
+      }
+      newParams.set("page", "1");
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, selectedDetails, setSearchParams]
+  );
+
   const [priceRange, setPriceRange] = useState({
     min: parseInt(searchParams.get("minPrice")) || 0,
     max: parseInt(searchParams.get("maxPrice")) || 1000000,
@@ -279,28 +395,20 @@ export default function AllProductPage() {
   const [selectedMaterials, setSelectedMaterials] = useState(
     searchParams.getAll("material") || []
   );
-  
-  // FIXED: Initialize rating filter from URL
   const [selectedReviewThresholds, setSelectedReviewThresholds] = useState(() => {
     const minAvgRating = searchParams.get("minAvgRating");
-    console.log('🎯 Initializing selectedReviewThresholds from URL minAvgRating:', minAvgRating);
-    if (minAvgRating) {
-      return [minAvgRating];
-    }
+    if (minAvgRating) return [minAvgRating];
     return [];
   });
-
   const [selectedAvailability, setSelectedAvailability] = useState(() => {
     const inStockParam = searchParams.get("inStock");
     if (inStockParam === "true") return ["in"];
     if (inStockParam === "false") return ["out"];
     return [];
   });
-  
-  // Derive searchQuery directly from URL to avoid race conditions
+
   const searchQuery = useMemo(() => searchParams.get("name") || "", [searchParams]);
 
-  // FIXED: Initialize newArrival from URL
   const [newArrival, setNewArrival] = useState(
     searchParams.get("newArrival") === "true" || false
   );
@@ -308,33 +416,7 @@ export default function AllProductPage() {
     searchParams.get("bestSeller") === "true" || false
   );
 
-  // Use products hook for filter data
-  const {
-    categories,
-    occasions,
-    materials,
-    loading: filtersLoading,
-    error: filtersError,
-    fetchAllProductData,
-  } = useProducts();
-
-  // Subscribe to wishlist changes
-  useEffect(() => {
-    const unsubscribe = wishlistEvents.subscribe((wishlistData) => {
-      const wishlistArray = wishlistData.wishList || [];
-      setWishlistItems(new Set(wishlistArray));
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Build query params from filters
   const buildQueryParams = useCallback(() => {
-    console.log('🔧 buildQueryParams called with selectedReviewThresholds:', selectedReviewThresholds);
-    console.log('🔧 sortOption:', sortOption);
-    console.log('🔧 newArrival:', newArrival);
-    console.log('🔧 selectedCategoryId:', selectedCategoryId);
-    
     const params = productUtils.transformFiltersToQueryParams(
       {
         selectedCategoryId,
@@ -348,8 +430,8 @@ export default function AllProductPage() {
         selectedReviewThresholds,
         selectedAvailability,
         sortOption,
-        newArrival, // FIXED: Pass newArrival state
-        bestSeller, // FIXED: Pass bestSeller state
+        newArrival,
+        bestSeller,
         searchQuery,
         pagination,
       },
@@ -357,8 +439,6 @@ export default function AllProductPage() {
       occasions,
       materials
     );
-    
-    console.log('🔧 buildQueryParams result:', params);
     return params;
   }, [
     selectedCategoryId,
@@ -372,153 +452,14 @@ export default function AllProductPage() {
     selectedReviewThresholds,
     selectedAvailability,
     sortOption,
-    newArrival, // FIXED: Add dependency
+    newArrival,
+    bestSeller,
     searchQuery,
     pagination,
     categories,
     occasions,
     materials,
   ]);
-
-  // Update URL when filters change
-  useEffect(() => {
-    const queryParams = buildQueryParams();
-    console.log('🌐 Updating URL with queryParams:', queryParams);
-    
-    // Convert arrays to query string format
-    const newSearchParams = new URLSearchParams();
-    Object.keys(queryParams).forEach(key => {
-      const value = queryParams[key];
-      if (value !== null && value !== undefined && value !== '') {
-        if (Array.isArray(value)) {
-          value.forEach(item => {
-            if (item !== null && item !== undefined && item !== '') {
-              newSearchParams.append(key, item);
-            }
-          });
-        } else {
-          newSearchParams.append(key, value);
-        }
-      }
-    });
-    
-    // CRITICAL FIX: Preserve categoryId from URL if it exists
-    const currentCategoryId = searchParams.get("categoryId");
-    if (currentCategoryId && !newSearchParams.has("categoryId")) {
-      newSearchParams.set("categoryId", currentCategoryId);
-      console.log('🌐 Preserving categoryId in URL:', currentCategoryId);
-    }
-    
-    // FIXED: Add sort to URL
-    if (sortOption && sortOption !== "default") {
-      newSearchParams.set("sort", sortOption);
-    }
-    
-    // FIXED: Add newArrival to URL
-    if (newArrival) {
-      newSearchParams.set("newArrival", "true");
-    }
-    
-    // FIXED: Add bestSeller to URL
-    if (bestSeller) {
-      newSearchParams.set("bestSeller", "true");
-    }
-    
-    console.log('🌐 Final URL search params:', newSearchParams.toString());
-    setSearchParams(newSearchParams, { replace: true });
-  }, [buildQueryParams, setSearchParams, sortOption, newArrival, searchParams]);
-
-  // Centralized scroll-to-top for ANY parameter change (filters, sorting, pagination)
-  useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  }, [searchParams]);
-
-  // Add this ref to track if initialization has been attempted
-  const hasAttemptedInit = useRef(false);
-
-  // Initialize product data
-  useEffect(() => {
-    const initializeData = async () => {
-      if (hasAttemptedInit.current) return;
-      hasAttemptedInit.current = true;
-      
-      try {
-        await fetchAllProductData();
-      } catch (error) {
-        console.error("Failed to initialize product data:", error);
-      }
-    };
-
-    if (filtersError || !categories.length) {
-      initializeData();
-    }
-  }, [fetchAllProductData, filtersError, categories.length]);
-
-  // Handle category parameters from URL
-  useEffect(() => {
-    // Only run after categories are loaded
-    if (categories.length === 0) return;
-
-    const categoryId = searchParams.get("categoryId");
-    const subcategoryId = searchParams.get("subcategoryId");
-    const childCategoryId = searchParams.get("childCategoryId");
-
-    // Update selectedCategoryId state only if categoryId exists
-    if (categoryId) {
-      setSelectedCategoryId(categoryId);
-    } else if (!subcategoryId && !childCategoryId) {
-      // Only clear if there are no category-related params at all
-      setSelectedCategoryId(null);
-    }
-
-    // If no category params, nothing to do
-    if (!categoryId && !subcategoryId && !childCategoryId) return;
-
-    console.log("📍 Category navigation detected:", { categoryId, subcategoryId, childCategoryId });
-
-    // Find the category data
-    const category = categories.find(c => c.id === parseInt(categoryId));
-    if (!category) {
-      console.warn("Category not found:", categoryId);
-      return;
-    }
-
-    // If only categoryId is provided, don't auto-select subcategories
-    // The backend API will filter by categoryId, and subcategories will show as available options
-    if (categoryId && !subcategoryId && !childCategoryId) {
-      console.log("📍 Category navigation for:", category.name, "- showing all subcategories as filter options");
-      // Don't set any filters - let the backend handle categoryId filtering
-      // and show all subcategories as available (not selected) filter options
-    }
-
-    // If subcategoryId is provided, set it as filter
-    if (subcategoryId) {
-      const subcategory = category.ProductSubCategories?.find(
-        sc => sc.id === parseInt(subcategoryId)
-      );
-      
-      if (subcategory) {
-        console.log("📍 Setting subcategory filter:", subcategory.name);
-        setSelectedSubCategories([subcategory.name]);
-        
-        // If childCategoryId is provided, set it as detail filter
-        if (childCategoryId) {
-          const childCategory = subcategory.ProductChildCategories?.find(
-            cc => cc.id === parseInt(childCategoryId)
-          );
-          
-          if (childCategory) {
-            console.log("📍 Setting child category filter:", childCategory.name);
-            // Use the same format as ProductsFilter: "subcategoryName||childCategoryName"
-            setSelectedDetails([`${subcategory.name}||${childCategory.name}`]);
-          }
-        }
-      }
-    }
-  }, [categories, searchParams]);
 
   // Fetch user's wishlist on mount and auth change
   useEffect(() => {
@@ -706,15 +647,11 @@ export default function AllProductPage() {
     setSelectedReviewThresholds([]);
     setSelectedAvailability([]);
     
-    // Update URL to clear search query and category
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete("name");
-    newParams.delete("categoryId");
-    newParams.delete("newArrival");
-    newParams.delete("bestSeller");
-    newParams.set("page", "1");
-    newParams.delete("maxPrice");
-    setSearchParams(newParams);
+    // Completely reset searchParams URL to clean page=1&limit=12
+    const cleanParams = new URLSearchParams();
+    cleanParams.set("page", "1");
+    cleanParams.set("limit", "12");
+    setSearchParams(cleanParams, { replace: true });
     
     setSortOption("default");
     setNewArrival(false);
@@ -757,10 +694,17 @@ export default function AllProductPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const currentCategory = useMemo(() => {
+    if (!selectedCategoryId || !categories || categories.length === 0) return null;
+    return categories.find((c) => String(c.id) === String(selectedCategoryId));
+  }, [selectedCategoryId, categories]);
+
+  const categoryHeaderTitle = currentCategory?.name || "Clothing And Accessories";
+
   const breadcrumb = useMemo(() => {
     const base = [
       { name: "Home", path: "/" },
-      { name: "Clothing and Accessories", path: "/all-products" },
+      { name: categoryHeaderTitle, path: "/all-products" },
     ];
 
     const activeFilters = [];
@@ -788,9 +732,11 @@ export default function AllProductPage() {
       );
     });
 
-    selectedSubCategories.forEach((cat) =>
-      pushFilter(cat, () => setSelectedSubCategories([]))
-    );
+    selectedSubCategories
+      .filter((cat) => isNaN(Number(cat)))
+      .forEach((cat) =>
+        pushFilter(cat, () => setSelectedSubCategories([]))
+      );
 
     if (priceRange.min !== 0 || priceRange.max !== 1000000) {
       pushFilter(`Price ₹${priceRange.min}-₹${priceRange.max}`, () =>
@@ -1506,7 +1452,7 @@ export default function AllProductPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-                        Clothing And Accessories
+                        {categoryHeaderTitle}
                       </h2>
                       {productsLoading ? (
                         <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>

@@ -252,12 +252,12 @@ export default function ProductView({ product, className, reportHandler, writeRe
       inventories: product.inventories || [],
       inventoryMap: inventoryMap,
       specifications: {
-        fabric: product.material?.name || 'Not specified',
-        fitType: fitTypeName || product.fitType || '',
-        occasion: product.occasion?.name || '',
-        careInstructions: product.careInstructions || 'Machine wash cold',
-        description: product.description || '',
-        seasonal: product.seasonal || 'All Season'
+        fabric: product.material?.name || 'Not Specified',
+        fitType: fitTypeName || product.fitType || 'Not Specified',
+        occasion: product.occasion?.name || 'Not Specified',
+        careInstructions: product.careInstructions || 'Not Specified',
+        description: product.description || 'Not Specified',
+        seasonal: product.seasonal || 'Not Specified'
       },
       rating: parseFloat(product.averageRating || 0),
       reviewCount: product.reviewCount || 0,
@@ -1290,23 +1290,21 @@ export default function ProductView({ product, className, reportHandler, writeRe
                   <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
                     <span className="text-gray-500 text-sm font-medium w-1/3">Seasonal</span>
                     <span className="text-gray-900 text-sm font-semibold flex-1">
-                      {transformedProduct.specifications.seasonal || "All Season"}
+                      {transformedProduct.specifications.seasonal || "Not Specified"}
                     </span>
                   </div>
                   <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
-                    <span className="text-gray-500 text-sm font-medium w-1/3">Care</span>
+                    <span className="text-gray-500 text-sm font-medium w-1/3">Care Instructions</span>
                     <span className="text-gray-900 text-sm font-semibold flex-1">
                       {transformedProduct.specifications.careInstructions || "Not Specified"}
                     </span>
                   </div>
-                  {transformedProduct.specifications.description && (
-                    <div className="flex py-2.5 border-b border-gray-100 last:border-0">
-                      <span className="text-gray-500 text-sm font-medium w-1/3">Description</span>
-                      <span className="text-gray-900 text-sm font-medium flex-1 leading-relaxed">
-                        {transformedProduct.specifications.description}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex py-2.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-500 text-sm font-medium w-1/3">Description</span>
+                    <span className="text-gray-900 text-sm font-medium flex-1 leading-relaxed">
+                      {transformedProduct.specifications.description || "Not Specified"}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

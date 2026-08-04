@@ -1201,7 +1201,7 @@ const MobileNavbar = ({
                                       {isSubExpanded && (
                                         <div className="px-3 pb-3 space-y-1 animate-slide-down">
                                           <Link
-                                            to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}`}
+                                            to={`/all-products?subcategoryId=${subcategory.id}`}
                                             className="flex items-center gap-3 px-8 py-2.5 text-[13px] font-extrabold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                             onClick={() => setShowCategoriesDrawer(false)}
                                           >
@@ -1211,7 +1211,7 @@ const MobileNavbar = ({
                                           {subcategory.childCategories.map((childCategory) => (
                                             <Link
                                               key={childCategory.id}
-                                              to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}&childCategoryId=${childCategory.id}`}
+                                              to={`/all-products?childCategoryId=${childCategory.id}`}
                                               className="flex items-center gap-3 px-8 py-2.5 text-[13px] font-medium text-gray-500 hover:text-black hover:bg-white rounded-lg transition-all group/child"
                                               onClick={() => setShowCategoriesDrawer(false)}
                                             >
@@ -1224,7 +1224,7 @@ const MobileNavbar = ({
                                     </div>
                                   ) : (
                                     <Link
-                                      to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}`}
+                                      to={`/all-products?subcategoryId=${subcategory.id}`}
                                       className="flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-gray-600 hover:text-black hover:bg-gray-50 rounded-xl transition-all group/link"
                                       onClick={() => setShowCategoriesDrawer(false)}
                                     >

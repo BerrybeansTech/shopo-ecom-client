@@ -472,7 +472,6 @@ export const productUtils = {
         category.ProductSubCategories?.forEach(subCategory => {
           if (selectedSubCategories.includes(subCategory.name)) {
             subCategoryIds.push(subCategory.id);
-            if (category.id) categoryIds.add(category.id);
           }
         });
       });
@@ -491,7 +490,6 @@ export const productUtils = {
               const [, detailName] = detailKey.split("||");
               if (childCategory.name === detailName) {
                 childCategoryIds.push(childCategory.id);
-                if (category.id) categoryIds.add(category.id);
               }
             });
           });

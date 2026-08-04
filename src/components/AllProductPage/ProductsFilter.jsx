@@ -864,7 +864,9 @@ const ProductsFilter = React.memo(
                 {(Array.isArray(selectedSubCategories)
                   ? selectedSubCategories
                   : []
-                ).map((subCategory) => (
+                )
+                  .filter((subCat) => isNaN(Number(subCat)))
+                  .map((subCategory) => (
                   <div
                     key={`subcategory-${subCategory}`}
                     className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200"
