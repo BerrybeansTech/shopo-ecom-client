@@ -861,7 +861,7 @@ const DesktopNavbar = ({
                                   }
                                 >
                                   <Link
-                                    to={`/all-products?categoryId=${category.id}&subcategoryId=${subcategory.id}`}
+                                    to={`/all-products?subcategoryId=${subcategory.id}`}
                                     className={`flex items-center justify-between px-4 py-2 text-sm font-medium transition-colors ${
                                       activeSubcategory === subIndex
                                         ? "text-gray-900"
@@ -900,7 +900,7 @@ const DesktopNavbar = ({
                               ].childCategories.map((childCategory) => (
                                 <Link
                                   key={childCategory.id}
-                                  to={`/all-products?categoryId=${category.id}&subcategoryId=${category.subcategories[activeSubcategory].id}&childCategoryId=${childCategory.id}`}
+                                  to={`/all-products?childCategoryId=${childCategory.id}`}
                                   className="block text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-2 py-1.5 rounded font-medium transition-colors"
                                   onClick={() => {
                                     if (timeoutRef.current) {

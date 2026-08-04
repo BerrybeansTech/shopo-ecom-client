@@ -69,7 +69,7 @@ export default function Banner({ className }) {
 
   if (isLoading) {
     return (
-      <div className={`w-full bg-gray-50 flex items-center justify-center h-[518px] sm:h-[380px] md:h-[420px] lg:h-[500px] ${className || ''}`}>
+      <div className={`w-full bg-gray-50 flex items-center justify-center min-h-[250px] aspect-[16/6] ${className || ''}`}>
         <div className="animate-pulse flex flex-col items-center">
           <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
           <span className="text-gray-400 text-sm">Loading promotions...</span>
@@ -85,23 +85,25 @@ export default function Banner({ className }) {
   return (
     <div className={`w-full bg-white ${className || ''}`}>
       <div className="relative w-full border-b border-gray-200">
-        <div className="relative w-full h-[518px] sm:h-[380px] md:h-[420px] lg:h-[530px] overflow-hidden bg-gray-200">
+        <div className="relative w-full overflow-hidden bg-gray-200">
           {slides.map((slide, index) => {
             const bannerImage = isMobile && slide.mobileImage ? slide.mobileImage : slide.image;
 
             return (
               <div
                 key={slide.id}
-                className={`absolute inset-0 transition-all duration-[800ms] ease-out ${
-                  index === currentSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
+                className={`transition-all duration-[800ms] ease-out ${
+                  index === currentSlide
+                    ? 'relative z-10 opacity-100 scale-100'
+                    : 'absolute inset-0 z-0 opacity-0 scale-[1.02] pointer-events-none'
                 }`}
               >
-                <div className="relative w-full h-full group">
-                  <div className="relative w-full h-full overflow-hidden">
+                <div className="relative w-full group">
+                  <div className="relative w-full overflow-hidden">
                     <img
                       src={bannerImage}
                       alt={slide.alt}
-                      className="w-full h-full object-cover object-center sm:object-cover transition-all duration-700 group-hover:scale-105"
+                      className="w-full h-auto block"
                     />
                   </div>
 

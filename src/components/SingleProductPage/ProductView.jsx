@@ -25,11 +25,19 @@ const parseColor = (colorStr) => {
   const standardColors = {
     red: '#EF4444',
     blue: '#3B82F6',
-    'premium black': '#0B0B0B',
-    grey: '#808080',
+    yellow: '#FBBF24',
+    green: '#10B981',
+    black: '#000000',
     white: '#FFFFFF',
+    grey: '#808080',
+    gray: '#808080',
+    pink: '#EC4899',
+    purple: '#A855F7',
+    orange: '#F97316',
+    brown: '#92400E',
     beige: '#F5F5DC',
     wine: '#722F37',
+    'premium black': '#0B0B0B',
     'deep burgundy': '#5C1A1B',
     'plum wine': '#6E2142',
     'deep magenta': '#8B004B',
@@ -37,6 +45,23 @@ const parseColor = (colorStr) => {
     'sage green': '#9CAF88',
     'charcoal grey': '#36454F',
     'steel grey': '#71797E',
+    'dark brown': '#654321',
+    'light grey': '#D3D3D3',
+    'olive green': '#808000',
+    'sand beige': '#D4BDA8',
+    'steel blue grey': '#436175',
+    'light silver gray': '#D9DBD9',
+    'navy blue': '#000080',
+    'dark grey': '#A9A9A9',
+    'dark navy': '#0B0B45',
+    'slate blue': '#6A5ACD',
+    'stone grey': '#918E85',
+    'sage grey': '#A29C95',
+    'wine burgundy': '#542A38',
+    'espresso brown': '#4A403F',
+    'silver grey': '#A5A1A0',
+    'pure white': '#F4F4F2',
+    'off white': '#E9E4D8'
   };
   
   return { 
@@ -227,12 +252,12 @@ export default function ProductView({ product, className, reportHandler, writeRe
       inventories: product.inventories || [],
       inventoryMap: inventoryMap,
       specifications: {
-        fabric: product.material?.name || 'Not specified',
-        fitType: fitTypeName || product.fitType || '',
-        occasion: product.occasion?.name || '',
-        careInstructions: product.careInstructions || 'Machine wash cold',
-        description: product.description || '',
-        seasonal: product.seasonal || 'All Season'
+        fabric: product.material?.name || 'Not Specified',
+        fitType: fitTypeName || product.fitType || 'Not Specified',
+        occasion: product.occasion?.name || 'Not Specified',
+        careInstructions: product.careInstructions || 'Not Specified',
+        description: product.description || 'Not Specified',
+        seasonal: product.seasonal || 'Not Specified'
       },
       rating: parseFloat(product.averageRating || 0),
       reviewCount: product.reviewCount || 0,
@@ -992,12 +1017,8 @@ export default function ProductView({ product, className, reportHandler, writeRe
                       onClick={() => handleColorChange(color.id)}
                       className={`px-4 py-2 border font-medium text-sm rounded-lg transition-all duration-200 ${
                         selectedColorId === color.id
-                          ? "ring-2 ring-offset-2 ring-black shadow-md transform scale-105"
-                          : "hover:shadow-sm"
-                      } ${
-                        parsed.code.toLowerCase() === "#ffffff" 
-                          ? "border-gray-300" 
-                          : "border-transparent"
+                          ? "border-gray-400 shadow-md transform scale-105"
+                          : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
                       } ${color.totalStock === 0 ? "opacity-40 cursor-not-allowed grayscale" : ""}`}
                       style={{ 
                         backgroundColor: parsed.code, 
@@ -1006,7 +1027,8 @@ export default function ProductView({ product, className, reportHandler, writeRe
                       disabled={color.totalStock === 0}
                       title={color.totalStock === 0 ? "Out of stock" : `Select ${parsed.name}`}
                     >
-                      <span className="flex items-center justify-center gap-1">
+                      <span className="flex items-center justify-center gap-1.5">
+                        {selectedColorId === color.id && <span className="text-xs font-bold">✓</span>}
                         <span>{parsed.name}</span>
                         {color.totalStock === 0 && <span className="text-[10px] opacity-75">(X)</span>}
                       </span>
@@ -1268,23 +1290,21 @@ export default function ProductView({ product, className, reportHandler, writeRe
                   <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
                     <span className="text-gray-500 text-sm font-medium w-1/3">Seasonal</span>
                     <span className="text-gray-900 text-sm font-semibold flex-1">
-                      {transformedProduct.specifications.seasonal || "All Season"}
+                      {transformedProduct.specifications.seasonal || "Not Specified"}
                     </span>
                   </div>
                   <div className="flex items-center py-2.5 border-b border-gray-100 last:border-0">
-                    <span className="text-gray-500 text-sm font-medium w-1/3">Care</span>
+                    <span className="text-gray-500 text-sm font-medium w-1/3">Care Instructions</span>
                     <span className="text-gray-900 text-sm font-semibold flex-1">
                       {transformedProduct.specifications.careInstructions || "Not Specified"}
                     </span>
                   </div>
-                  {transformedProduct.specifications.description && (
-                    <div className="flex py-2.5 border-b border-gray-100 last:border-0">
-                      <span className="text-gray-500 text-sm font-medium w-1/3">Description</span>
-                      <span className="text-gray-900 text-sm font-medium flex-1 leading-relaxed">
-                        {transformedProduct.specifications.description}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex py-2.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-500 text-sm font-medium w-1/3">Description</span>
+                    <span className="text-gray-900 text-sm font-medium flex-1 leading-relaxed">
+                      {transformedProduct.specifications.description || "Not Specified"}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
