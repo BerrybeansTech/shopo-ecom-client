@@ -1,5 +1,6 @@
 // src/Routers.jsx
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import About from "./components/About";
 import AllProductPage from "./components/AllProductPage";
 import Login from "./components/Auth/Login/index";
@@ -36,43 +37,58 @@ import ShippingPolicy from "./components/ShippingPolicy/index.jsx";
 import ReturnOrExchangePolicy from "./components/ReturnOrExchangePolicy/indesx.jsx";
 import NectorRewardsPage from "./components/NectorSDK/NectorRewardsPage";
 
+function RootLayout() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname, search]);
+
+  return <Outlet />;
+}
+
 const router = createBrowserRouter([
-  { path: "/", element: <Home /> },
-  { path: "/home-two", element: <HomeTwo /> },
-  { path: "/home-three", element: <HomeThree /> },
-  { path: "/home-four", element: <HomeFour /> },
-  { path: "/home-five", element: <HomeFive /> },
-  { path: "/all-products", element: <AllProductPage /> },
-  { path: "/single-product/:id", element: <SingleProductPage /> },
-  { path: "/cart", element: <CardPage /> },
-  { path: "/checkout", element: <CheakoutPage /> },
-  { path: "/wishlist", element: <Wishlist /> },
-  { path: "/flash-sale", element: <FlashSale /> },
-  { path: "/saller-page", element: <SallerPage /> },
-  { path: "/products-compaire", element: <ProductsCompaire /> },
-  { path: "/sallers", element: <Sallers /> },
-  { path: "/about", element: <About /> },
-  { path: "/blogs", element: <Blogs /> },
-  { path: "/blogs/:slug", element: <Blogdetails /> }, // CORRECT
-  { path: "/track-order", element: <TrackingOrder /> },
-  { path: "/orders/:orderId", element: <OrderDetails /> },
-  { path: "/contact", element: <Contact /> },
-  { path: "/faq", element: <Faq /> },
-  { path: "/login", element: <Login /> },
-  { path: "/signin", element: <SignIn /> },
-  { path: "/verify-otp", element: <VerifyOTP /> },
-  { path: "/signup", element: <Signup /> },
-  { path: "/profile", element: <Profile /> },
-  { path: "/become-saller", element: <BecomeSaller /> },
-  { path: "/privacy-policy", element: <PrivacyPolicy /> },
-  { path: "/terms-condition", element: <TermsCondition /> },
-  { path: "shipping-policy", element: <ShippingPolicy /> },
-  { path: "return-policy", element: <ReturnOrExchangePolicy/>},
-  { path: "/rewards", element: <NectorRewardsPage /> },
-  { path: "/lander", element: <NectorRewardsPage /> },
-  { path: "/forgot-password", element: <ForgotPassword /> },
-  { path: "/reset-password", element: <ResetPassword /> },
-  { path: "*", element: <FourZeroFour /> },
+  {
+    element: <RootLayout />,
+    children: [
+      { path: "/", element: <Home /> },
+      { path: "/home-two", element: <HomeTwo /> },
+      { path: "/home-three", element: <HomeThree /> },
+      { path: "/home-four", element: <HomeFour /> },
+      { path: "/home-five", element: <HomeFive /> },
+      { path: "/all-products", element: <AllProductPage /> },
+      { path: "/single-product/:id", element: <SingleProductPage /> },
+      { path: "/cart", element: <CardPage /> },
+      { path: "/checkout", element: <CheakoutPage /> },
+      { path: "/wishlist", element: <Wishlist /> },
+      { path: "/flash-sale", element: <FlashSale /> },
+      { path: "/saller-page", element: <SallerPage /> },
+      { path: "/products-compaire", element: <ProductsCompaire /> },
+      { path: "/sallers", element: <Sallers /> },
+      { path: "/about", element: <About /> },
+      { path: "/blogs", element: <Blogs /> },
+      { path: "/blogs/:slug", element: <Blogdetails /> },
+      { path: "/track-order", element: <TrackingOrder /> },
+      { path: "/orders/:orderId", element: <OrderDetails /> },
+      { path: "/contact", element: <Contact /> },
+      { path: "/faq", element: <Faq /> },
+      { path: "/login", element: <Login /> },
+      { path: "/signin", element: <SignIn /> },
+      { path: "/verify-otp", element: <VerifyOTP /> },
+      { path: "/signup", element: <Signup /> },
+      { path: "/profile", element: <Profile /> },
+      { path: "/become-saller", element: <BecomeSaller /> },
+      { path: "/privacy-policy", element: <PrivacyPolicy /> },
+      { path: "/terms-condition", element: <TermsCondition /> },
+      { path: "/shipping-policy", element: <ShippingPolicy /> },
+      { path: "/return-policy", element: <ReturnOrExchangePolicy /> },
+      { path: "/rewards", element: <NectorRewardsPage /> },
+      { path: "/lander", element: <NectorRewardsPage /> },
+      { path: "/forgot-password", element: <ForgotPassword /> },
+      { path: "/reset-password", element: <ResetPassword /> },
+      { path: "*", element: <FourZeroFour /> },
+    ],
+  },
 ]);
 
 function Routers() {

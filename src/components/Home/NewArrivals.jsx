@@ -169,8 +169,9 @@ export default function NewArrivals({ className = "" }) {
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                          <span className="text-gray-500 text-sm">No Image</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-200 animate-pulse">
+                          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mb-1" />
+                          <span className="text-gray-500 text-xs font-medium">Loading...</span>
                         </div>
                       )}
                     </Link>

@@ -109,14 +109,11 @@ function SpotlightCard({ cat }) {
 }
 
 /* ─── Mini Card ───────────────────────────────────────────────────────── */
-function MiniCard({ cat, isActive, onClick }) {
+function MiniCard({ cat, isActive }) {
   return (
-    <div
-      className={`mini-card ${isActive ? "ring-active" : ""} h-full`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
+    <Link
+      to={cat.link}
+      className={`mini-card ${isActive ? "ring-active" : ""} h-full block`}
       aria-label={`View ${cat.name}`}
     >
       {/* Background image */}
@@ -152,7 +149,7 @@ function MiniCard({ cat, isActive, onClick }) {
       {isActive && (
         <div className="absolute inset-0 bg-white/10 pointer-events-none" />
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -211,7 +208,7 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
       };
     });
 
-  /* Auto-advance */
+  /* Auto-advance with smooth infinite transition */
   const goTo = useCallback((idx, isManual = false) => {
     setActiveIdx(idx);
     setAnimKey((k) => k + 1);
@@ -220,8 +217,14 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
       const container = scrollRef.current;
       const items = container.children;
       const total = displayCategories.length;
+      if (!items || items.length < total * 3) return;
 
-      // Find current centered index
+      const firstItem = items[0];
+      const secondItem = items[1];
+      const itemW = firstItem && secondItem ? secondItem.offsetLeft - firstItem.offsetLeft : 150;
+      const sectorW = itemW * total;
+
+      // Find current center item
       const center = container.scrollLeft + container.offsetWidth / 2;
       let currentChildIdx = 0;
       let minD = Infinity;
@@ -230,17 +233,20 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
         if (d < minD) { minD = d; currentChildIdx = i; }
       }
 
-      // For auto-advance (not manual), always find the NEXT occurrence of 'idx'
       let targetChildIdx;
       if (isManual) {
-        // Go to nearest version of this index in the middle sector
         targetChildIdx = idx + total;
       } else {
-        // Find forward-only occurrence
         targetChildIdx = currentChildIdx + 1;
         while (targetChildIdx % total !== idx) {
           targetChildIdx++;
         }
+      }
+
+      // If target reaches upper boundary (Set 3), silently reset to Set 2 before scrolling
+      if (targetChildIdx >= total * 2) {
+        container.scrollLeft -= sectorW;
+        targetChildIdx -= total;
       }
 
       if (targetChildIdx < items.length) {
@@ -253,32 +259,35 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
           behavior: "smooth"
         });
         
-        setTimeout(() => { isInternalScroll.current = false; }, 600);
+        setTimeout(() => { isInternalScroll.current = false; }, 550);
       }
     }
   }, [displayCategories.length]);
 
-  /* Infinite Scroll Sync for mobile */
+  /* Infinite Scroll Sync for mobile - Smooth Edge Wrapping */
   const handleScroll = (e) => {
     const container = e.target;
     const items = container.children;
     const total = displayCategories.length;
-    if (total === 0 || items.length < total * 3) return;
+    if (total === 0 || !items || items.length < total * 3) return;
 
-    // Precise Loop jump calculation
-    const sectorW = items[total].offsetLeft - items[0].offsetLeft;
+    const firstItem = items[0];
+    const secondItem = items[1];
+    const itemW = firstItem && secondItem ? secondItem.offsetLeft - firstItem.offsetLeft : 150;
+    const sectorW = itemW * total;
 
-    // Keep scroll within the infinite loop boundaries at ALL times
-    if (container.scrollLeft < sectorW * 0.2) {
-      container.scrollLeft += sectorW;
-    } else if (container.scrollLeft > sectorW * 1.8) {
-      container.scrollLeft -= sectorW;
+    // Silent seamless wrap when touching outer bounds
+    if (!isInternalScroll.current) {
+      if (container.scrollLeft <= 5) {
+        container.scrollLeft += sectorW;
+      } else if (container.scrollLeft >= sectorW * 2 - 5) {
+        container.scrollLeft -= sectorW;
+      }
     }
 
     if (isInternalScroll.current || !scrollRef.current) return;
     
     const center = container.scrollLeft + container.offsetWidth / 2;
-
     let closestIdx = -1;
     let minDistance = Infinity;
 
@@ -293,14 +302,6 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
 
     if (closestIdx !== -1) {
       const realIdx = closestIdx % total;
-      
-      // Auto-recenter: Keep the scroll within the middle group (Set 2 of 3)
-      if (closestIdx < total) {
-        container.scrollLeft += sectorW;
-      } else if (closestIdx >= total * 2) {
-        container.scrollLeft -= sectorW;
-      }
-
       if (realIdx !== activeIdx) {
         setActiveIdx(realIdx);
         setAnimKey((k) => k + 1);
@@ -316,8 +317,10 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
         const total = displayCategories.length;
         const target = container.children[total + activeIdx];
         if (target) {
-          const sectorW = container.children[total].offsetLeft - container.children[0].offsetLeft;
-          // Direct assignment is more reliable on mount than scrollIntoView
+          const firstItem = container.children[0];
+          const secondItem = container.children[1];
+          const itemW = firstItem && secondItem ? secondItem.offsetLeft - firstItem.offsetLeft : 150;
+          const sectorW = itemW * total;
           container.scrollLeft = sectorW + (target.offsetLeft - container.children[total].offsetLeft);
         }
       }
@@ -420,7 +423,6 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
                 key={cat.id}
                 cat={cat}
                 isActive={cat.id === spotlight.id}
-                onClick={() => goTo(cat.colorIdx, true)}
               />
             ) : (
               /* Empty filler slot */
@@ -469,11 +471,11 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
               }}
             >
               {[...displayCategories, ...displayCategories, ...displayCategories].map((cat, i) => (
-                <div
+                <Link
                   key={`${cat.id}-${i}`}
+                  to={cat.link}
                   className={`mini-card flex-shrink-0 snap-center ${cat.colorIdx === activeIdx ? "ring-active" : ""}`}
                   style={{ width: "130px", height: "110px" }}
-                  onClick={() => goTo(cat.colorIdx, true)}
                 >
                   <div className="absolute inset-0 bg-gray-100 overflow-hidden">
                     <img
@@ -491,7 +493,7 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
                     <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
