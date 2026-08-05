@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { reviewApi, fitTypeApi, sizeChartApi } from "../AllProductPage/productApi";
 import { useCart } from "../CartPage/useCart";
 import { getImageUrl, normalizeProductImages } from "../../utils/imageUtils";
@@ -289,6 +290,11 @@ export default function ProductView({ product, className, reportHandler, writeRe
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [ratingDistribution, setRatingDistribution] = useState({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+  const [activeReviewImageModal, setActiveReviewImageModal] = useState({
+    isOpen: false,
+    images: [],
+    currentIndex: 0,
+  });
 
   const thumbnailRef = useRef(null);
 
@@ -1422,24 +1428,43 @@ export default function ProductView({ product, className, reportHandler, writeRe
                     </span>
                   </div>
 
-                  {/* Review Images - normalize to array to handle string/null from DB */}
+                  {/* Review Images - normalize to array and resolve URLs */}
                   {(() => {
                     const imgs = Array.isArray(review.images)
                       ? review.images
                       : review.images
                       ? [review.images]
                       : [];
-                    return imgs.length > 0 ? (
+                    const resolvedImgs = imgs.map((img) => getImageUrl(img));
+
+                    return resolvedImgs.length > 0 ? (
                       <div className="mt-4 flex flex-wrap gap-3">
-                        {imgs.map((image, index) => (
-                          <div key={index} className="relative group">
+                        {resolvedImgs.map((imageSrc, index) => (
+                          <div key={index} className="relative group overflow-hidden rounded-xl">
                             <img
-                              src={image.startsWith('http') ? image : `http://luxcycs.com/rabbit-and-finch-uploads/${image}`}
+                              src={imageSrc}
                               alt={`Review image ${index + 1}`}
-                              className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
-                              onClick={() => window.open(image.startsWith('http') ? image : `http://luxcycs.com/rabbit-and-finch-uploads/${image}`, '_blank')}
+                              className="w-20 h-20 object-cover rounded-xl border border-gray-200 cursor-pointer hover:scale-105 transition-transform duration-300 shadow-sm"
+                              onClick={() =>
+                                setActiveReviewImageModal({
+                                  isOpen: true,
+                                  images: resolvedImgs,
+                                  currentIndex: index,
+                                })
+                              }
                             />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg cursor-pointer"></div>
+                            <div
+                              onClick={() =>
+                                setActiveReviewImageModal({
+                                  isOpen: true,
+                                  images: resolvedImgs,
+                                  currentIndex: index,
+                                })
+                              }
+                              className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all rounded-xl cursor-pointer flex items-center justify-center"
+                            >
+                              <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1534,6 +1559,100 @@ export default function ProductView({ product, className, reportHandler, writeRe
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Review Image Lightbox Preview Modal ── */}
+      {activeReviewImageModal.isOpen && activeReviewImageModal.images.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn"
+          onClick={() => setActiveReviewImageModal((prev) => ({ ...prev, isOpen: false }))}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setActiveReviewImageModal((prev) => ({ ...prev, isOpen: false }))}
+            className="absolute top-5 right-5 text-white/80 hover:text-white bg-black/50 hover:bg-black p-3 rounded-full transition-all z-50 shadow-lg border border-white/10"
+            aria-label="Close Preview"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Image Counter Badge */}
+          {activeReviewImageModal.images.length > 1 && (
+            <div className="absolute top-5 left-5 text-white/90 text-sm font-semibold bg-black/60 px-4 py-2 rounded-full backdrop-blur-md z-50 border border-white/10">
+              {activeReviewImageModal.currentIndex + 1} / {activeReviewImageModal.images.length}
+            </div>
+          )}
+
+          {/* Main Image View */}
+          <div
+            className="relative max-w-4xl max-h-[82vh] w-full flex items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={activeReviewImageModal.images[activeReviewImageModal.currentIndex]}
+              alt={`Review preview ${activeReviewImageModal.currentIndex + 1}`}
+              className="max-w-full max-h-[78vh] object-contain rounded-2xl shadow-2xl transition-all duration-300 transform scale-100"
+            />
+
+            {/* Prev & Next Controls */}
+            {activeReviewImageModal.images.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveReviewImageModal((prev) => ({
+                      ...prev,
+                      currentIndex:
+                        (prev.currentIndex - 1 + prev.images.length) % prev.images.length,
+                    }));
+                  }}
+                  className="absolute left-2 sm:-left-12 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white p-3 rounded-full shadow-xl transition-all border border-white/10"
+                  aria-label="Previous Image"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveReviewImageModal((prev) => ({
+                      ...prev,
+                      currentIndex: (prev.currentIndex + 1) % prev.images.length,
+                    }));
+                  }}
+                  className="absolute right-2 sm:-right-12 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white p-3 rounded-full shadow-xl transition-all border border-white/10"
+                  aria-label="Next Image"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Bottom Thumbnail Selector Strip */}
+          {activeReviewImageModal.images.length > 1 && (
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 p-2 rounded-2xl backdrop-blur-md max-w-[90vw] overflow-x-auto border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {activeReviewImageModal.images.map((imgSrc, idx) => (
+                <button
+                  key={idx}
+                  onClick={() =>
+                    setActiveReviewImageModal((prev) => ({ ...prev, currentIndex: idx }))
+                  }
+                  className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                    idx === activeReviewImageModal.currentIndex
+                      ? "border-white scale-105 shadow-md"
+                      : "border-transparent opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>

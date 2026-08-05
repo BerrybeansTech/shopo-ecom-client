@@ -102,6 +102,19 @@ const ProductsFilter = React.memo(
     const [openSubAccordions, setOpenSubAccordions] = useState({});
     const [isMobile, setIsMobile] = useState(false);
 
+    // Text state for price inputs to allow typing leading zeros/empty strings while editing
+    const [minInputText, setMinInputText] = useState(
+      String(priceRange?.min ?? 0)
+    );
+    const [maxInputText, setMaxInputText] = useState(
+      String(priceRange?.max ?? 50000)
+    );
+
+    useEffect(() => {
+      setMinInputText(String(priceRange?.min ?? 0));
+      setMaxInputText(String(priceRange?.max ?? 50000));
+    }, [priceRange?.min, priceRange?.max]);
+
     // Use the products hook to get data from cache/Redux
     const {
       categories,
@@ -602,7 +615,7 @@ const ProductsFilter = React.memo(
           ? selectedDiscountRanges.length
           : 0,
         Array.isArray(selectedOccasions) ? selectedOccasions.length : 0,
-        priceRange?.min !== 0 || priceRange?.max !== 1000000 ? 1 : 0,
+        priceRange?.min !== 0 || priceRange?.max !== 50000 ? 1 : 0,
       ];
       return filters.reduce((count, filter) => count + filter, 0);
     }, [
@@ -619,7 +632,7 @@ const ProductsFilter = React.memo(
     ]);
 
     const isDefaultPriceRange = useMemo(
-      () => priceRange?.min === 0 && priceRange?.max === 1000000,
+      () => (priceRange?.min ?? 0) === 0 && (priceRange?.max ?? 50000) === 50000,
       [priceRange]
     );
 
@@ -885,10 +898,10 @@ const ProductsFilter = React.memo(
                 {!isDefaultPriceRange && (
                   <div className="bg-gray-900 text-white rounded-full px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800 transition-all duration-200">
                     <span className="text-xs font-medium">
-                      ₹{priceRange?.min ?? 0} - ₹{priceRange?.max ?? 10000}
+                      ₹{priceRange?.min ?? 0} - ₹{priceRange?.max ?? 50000}
                     </span>
                     <button
-                      onClick={() => setPriceRange({ min: 0, max: 10000 })}
+                      onClick={() => setPriceRange({ min: 0, max: 50000 })}
                       className="text-white hover:text-gray-200 transition-colors duration-200 text-sm leading-none font-bold"
                     >
                       ×
@@ -1326,13 +1339,17 @@ const ProductsFilter = React.memo(
               </div>
               <div className="px-2 mb-4 mt-4">
                 <RangeSlider
-                  value={[priceRange?.min ?? 0, priceRange?.max ?? 10000]}
+                  value={[priceRange?.min ?? 0, priceRange?.max ?? 50000]}
                   onInput={(values) => {
-                    setPriceRange({ min: values[0], max: values[1] });
+                    const newMin = values[0];
+                    const newMax = values[1];
+                    setMinInputText(String(newMin));
+                    setMaxInputText(String(newMax));
+                    setPriceRange({ min: newMin, max: newMax });
                   }}
                   min={0}
-                  max={10000}
-                  step={10}
+                  max={50000}
+                  step={100}
                   className="range-slider-black"
                 />
               </div>
@@ -1346,22 +1363,32 @@ const ProductsFilter = React.memo(
                       ₹
                     </span>
                     <input
-                      type="number"
-                      min="0"
-                      max="10000"
-                      step="10"
-                      value={priceRange?.min ?? 0}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={minInputText}
                       onChange={(e) => {
-                        const value =
-                          e.target.value === "" ? 0 : Number(e.target.value);
-                        const clampedValue = Math.max(
-                          0,
-                          Math.min(value, priceRange?.max ?? 10000)
-                        );
-                        setPriceRange((prev) => ({
-                          ...prev,
-                          min: clampedValue,
-                        }));
+                        let val = e.target.value.replace(/\D/g, "");
+                        if (val.length > 5) val = val.slice(0, 5);
+                        if (val !== "" && Number(val) > 50000) val = "50000";
+                        setMinInputText(val);
+                      }}
+                      onBlur={() => {
+                        let parsed = parseInt(minInputText, 10);
+                        if (isNaN(parsed) || parsed < 0) {
+                          parsed = 0;
+                        }
+                        const currentMax = priceRange?.max ?? 50000;
+                        if (parsed > currentMax) {
+                          parsed = currentMax;
+                        }
+                        setMinInputText(String(parsed));
+                        setPriceRange((prev) => ({ ...prev, min: parsed }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.target.blur();
+                        }
                       }}
                       className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-200"
                     />
@@ -1379,24 +1406,32 @@ const ProductsFilter = React.memo(
                       ₹
                     </span>
                     <input
-                      type="number"
-                      min="0"
-                      max="10000"
-                      step="10"
-                      value={priceRange?.max ?? 10000}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={maxInputText}
                       onChange={(e) => {
-                        const value =
-                          e.target.value === ""
-                            ? 10000
-                            : Number(e.target.value);
-                        const clampedValue = Math.min(
-                          10000,
-                          Math.max(value, priceRange?.min ?? 0)
-                        );
-                        setPriceRange((prev) => ({
-                          ...prev,
-                          max: clampedValue,
-                        }));
+                        let val = e.target.value.replace(/\D/g, "");
+                        if (val.length > 5) val = val.slice(0, 5);
+                        if (val !== "" && Number(val) > 50000) val = "50000";
+                        setMaxInputText(val);
+                      }}
+                      onBlur={() => {
+                        let parsed = parseInt(maxInputText, 10);
+                        if (isNaN(parsed) || parsed > 50000) {
+                          parsed = 50000;
+                        }
+                        const currentMin = priceRange?.min ?? 0;
+                        if (parsed < currentMin) {
+                          parsed = currentMin;
+                        }
+                        setMaxInputText(String(parsed));
+                        setPriceRange((prev) => ({ ...prev, max: parsed }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.target.blur();
+                        }
                       }}
                       className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-200"
                     />
@@ -1406,7 +1441,7 @@ const ProductsFilter = React.memo(
               <div className="flex justify-between items-center text-xs bg-gray-900 text-white px-4 py-2.5 rounded-lg">
                 <span className="font-semibold">Range:</span>
                 <span className="font-bold">
-                  ₹{priceRange?.min ?? 0} - ₹{priceRange?.max ?? 10000}
+                  ₹{priceRange?.min ?? 0} - ₹{priceRange?.max ?? 50000}
                 </span>
               </div>
             </div>

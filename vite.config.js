@@ -50,6 +50,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    allowedHosts: ["reentry-showcase-stood.ngrok-free.dev"],
   },
 });
 

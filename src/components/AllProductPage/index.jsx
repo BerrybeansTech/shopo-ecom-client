@@ -87,39 +87,49 @@ const parseColor = (colorStr) => {
   };
 };
 
-// Custom Component for Lazy Loading & Skeleton Loader
-const ProductImage = ({ src, alt, placeholder }) => {
+const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' fill='%239ca3af'%3ELoading...%3C/text%3E%3C/svg%3E";
+
+// Custom Component for Lazy Loading & Skeleton Shimmer Loader
+const ProductImage = ({ product, src, alt, placeholder }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
+  const imgRef = useRef(null);
 
-  const imageSrc = !src || isError ? placeholder : src;
+  // Safely derive image URL from product object if src is missing/invalid
+  const resolvedSrc = useMemo(() => {
+    if (src && typeof src === "string" && src.trim() !== "") return src;
+    if (product) return getProductImage(product);
+    return null;
+  }, [product, src]);
+
+  const imageSrc = !resolvedSrc || isError ? placeholder : resolvedSrc;
+
+  useEffect(() => {
+    // If the image is already cached or complete in memory, set isLoaded to true immediately
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setIsLoaded(true);
+      setIsError(false);
+    } else {
+      setIsLoaded(false);
+      setIsError(false);
+    }
+  }, [imageSrc]);
 
   return (
-    <div className="relative w-full h-full bg-gray-50 overflow-hidden">
+    <div className="relative w-full h-full bg-gray-50 flex items-center justify-center overflow-hidden">
       {!isLoaded && (
-        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-          <div className="w-10 h-10 text-gray-300">
-            <svg
-              className="w-full h-full"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse flex flex-col items-center justify-center z-10 p-2 text-center">
+          <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mb-2" />
+          <span className="text-xs font-medium text-gray-500 tracking-wider">Loading...</span>
         </div>
       )}
 
       <img
+        ref={imgRef}
         src={imageSrc}
-        alt={alt}
-        className={`w-full h-full object-cover transition-opacity duration-700 ease-out ${
+        alt={alt || product?.name || "Product"}
+        className={`w-full h-full object-cover transition-all duration-500 ease-out ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
         onLoad={() => setIsLoaded(true)}
@@ -381,7 +391,7 @@ export default function AllProductPage() {
 
   const [priceRange, setPriceRange] = useState({
     min: parseInt(searchParams.get("minPrice")) || 0,
-    max: parseInt(searchParams.get("maxPrice")) || 1000000,
+    max: parseInt(searchParams.get("maxPrice")) || 50000,
   });
   const [selectedColors, setSelectedColors] = useState(
     searchParams.getAll("productColor") || []
@@ -639,7 +649,7 @@ export default function AllProductPage() {
     setSelectedCategoryId(null);
     setSelectedSubCategories([]);
     setSelectedDetails([]);
-    setPriceRange({ min: 0, max: 1000000 });
+    setPriceRange({ min: 0, max: 50000 });
     setSelectedColors([]);
     setSelectedSizes([]);
     setSelectedOccasions([]);
@@ -738,9 +748,9 @@ export default function AllProductPage() {
         pushFilter(cat, () => setSelectedSubCategories([]))
       );
 
-    if (priceRange.min !== 0 || priceRange.max !== 1000000) {
+    if (Number(priceRange.min) !== 0 || Number(priceRange.max) !== 50000) {
       pushFilter(`Price ₹${priceRange.min}-₹${priceRange.max}`, () =>
-        setPriceRange({ min: 0, max: 1000000 })
+        setPriceRange({ min: 0, max: 50000 })
       );
     }
 
@@ -1062,9 +1072,10 @@ export default function AllProductPage() {
       selectedMaterials.length,
       selectedReviewThresholds.length,
       selectedAvailability.length,
-      priceRange.min !== 0 || priceRange.max !== 10000 ? 1 : 0,
+      (Number(priceRange.min) !== 0 || Number(priceRange.max) !== 50000) ? 1 : 0,
       searchQuery ? 1 : 0,
-      newArrival ? 1 : 0, // FIXED: Count newArrival as a filter
+      newArrival ? 1 : 0,
+      bestSeller ? 1 : 0,
     ].reduce((a, b) => a + b, 0);
   }, [
     selectedSubCategories,
@@ -1292,20 +1303,6 @@ export default function AllProductPage() {
     <Layout childrenClasses="pt-0 pb-0">
       <div className="products-page-wrapper w-full bg-gray-50 min-h-screen">
         <div className="container-x mx-auto p-10 px-3 sm:px-4 lg:px-6 max-w-[1920px]">
-          {/* Error Display */}
-          {(productsError || filtersError) && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-red-600 text-sm font-bold">!</span>
-                </div>
-                <p className="text-red-800 text-sm font-medium">
-                  {productsError || filtersError}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Cart Notification */}
           {cartNotification && (
             <div
@@ -1415,14 +1412,14 @@ export default function AllProductPage() {
             <div className="flex-1 min-w-0">
               <div className="rounded-xl sm:rounded-2xl shadow-sm border-gray-200 overflow-hidden mb-6 sm:mb-8">
                 {/* Breadcrumb */}
-                <div className="mt-4 sm:mt-6 px-3 sm:px-4 lg:px-6">
-                  <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 flex-wrap">
+                <div className="pt-12 sm:pt-14 pb-1 px-3.5 sm:px-5 lg:px-6 bg-gray-50/70 border-b border-gray-100">
+                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 flex-wrap">
                     {breadcrumb.map((crumb, idx) => (
-                      <div key={idx} className="flex items-center gap-1">
+                      <div key={idx} className="flex items-center gap-1.5">
                         {crumb.clear ? (
                           <button
                             onClick={crumb.clear}
-                            className="hover:text-gray-900 text-gray-700 font-medium bg-gray-100 hover:bg-gray-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1.5 group text-xs sm:text-sm"
+                            className="hover:text-gray-900 text-gray-800 font-medium bg-gray-200/80 hover:bg-gray-300 px-2.5 py-1 rounded-lg transition-all duration-200 flex items-center gap-1.5 group text-xs shadow-xs"
                           >
                             <span>{crumb.name}</span>
                             <X className="w-3 h-3 group-hover:scale-110 transition-transform" />
@@ -1430,17 +1427,17 @@ export default function AllProductPage() {
                         ) : (
                           <Link
                             to={crumb.path}
-                            className={`hover:text-gray-900 px-1.5 sm:px-2 py-1 rounded transition-colors ${
+                            className={`hover:text-gray-900 transition-colors ${
                               idx === breadcrumb.length - 1
                                 ? "text-gray-900 font-semibold"
-                                : "text-gray-600"
+                                : "text-gray-500 hover:underline"
                             }`}
                           >
                             {crumb.name}
                           </Link>
                         )}
                         {idx < breadcrumb.length - 1 && (
-                          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                         )}
                       </div>
                     ))}
@@ -1514,9 +1511,29 @@ export default function AllProductPage() {
                   </div>
                 </div>
 
-                {/* Product Grid Skeleton / Loading State */}
+                {/* Product Grid Skeleton / Loading / Error State */}
                 <div className="p-3 sm:p-4 lg:p-6 min-h-[50vh] sm:min-h-[80vh]">
-                  {productsLoading ? (
+                  {productsError || filtersError ? (
+                    <div className="p-8 sm:p-16 text-center bg-white rounded-2xl border border-gray-200 shadow-sm my-4">
+                      <div className="max-w-md mx-auto">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 font-bold text-2xl border border-gray-200 shadow-sm">
+                          !
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                          Unable to Connect to Server
+                        </h3>
+                        <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">
+                          {productsError || filtersError || "Unable to load products. Please check your connection or backend server."}
+                        </p>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gray-900 hover:bg-black text-white rounded-xl active:scale-95 transition-all duration-200 font-semibold shadow-md text-sm sm:text-base inline-flex items-center gap-2"
+                        >
+                          <span>Retry Connection</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : productsLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
                       {[...Array(6)].map((_, i) => (
                         <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
@@ -1582,7 +1599,8 @@ export default function AllProductPage() {
                               <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
                                 <Link to={`/single-product/${product.id}`} className="block w-full h-full">
                                   <ProductImage
-                                    src={product.image}
+                                    product={product}
+                                    src={product.thumbnailImage || product.image || getProductImage(product)}
                                     alt={product.name}
                                     placeholder={PLACEHOLDER_IMAGE}
                                   />
