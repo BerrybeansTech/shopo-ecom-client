@@ -587,7 +587,13 @@ export default function AllProductPage() {
   // Handler for pagination changes - with scroll to top
   const handlePageChange = useCallback((page) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
-  }, []);
+    
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", page.toString());
+    setSearchParams(newParams, { replace: true });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [searchParams, setSearchParams]);
 
   // Handler for filter changes
   const handleFilterChange = (setter) => (value) => {
