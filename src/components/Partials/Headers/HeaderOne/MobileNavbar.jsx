@@ -780,9 +780,10 @@ const MobileNavbar = ({
 
       lastScrollYRef.current = currentScrollY;
 
-      // Set timeout to show ONLY the top navbar when scrolling stops
+      // Set timeout to show top and bottom navbars when scrolling stops
       scrollTimeoutRef.current = setTimeout(() => {
         setShowTopNav(true);
+        setShowBottomNav(true);
       }, 150); // Show 150ms after scrolling stops
     };
 
