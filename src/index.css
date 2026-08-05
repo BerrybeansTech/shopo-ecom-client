@@ -503,3 +503,19 @@ body {
 .items-wrapper-bank-payment .items li:last-child {
   border-bottom: none;
 }
+
+/* ========== NECTOR REWARDS FLOATING WIDGET MOBILE ADJUSTMENT ========== */
+@media (max-width: 1023px) {
+  :root,
+  html,
+  body {
+    --nector-mobile-btn-container-bottom: 85px !important;
+  }
+
+  /* Target Nector floating widget container elements */
+  #nector-widget-root,
+  div[class*="nector"],
+  div[id*="nector"] {
+    margin-bottom: 20px;
+  }
+}
