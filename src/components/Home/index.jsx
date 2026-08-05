@@ -37,21 +37,19 @@ export default function Home() {
           seeMoreUrl="/all-products"
           categoryTitle="Top Selling Products"
         />
-        <ProductsAds
+        {/* <ProductsAds
           ads={[
             "assets/images/banner1.jpg",
           ]}
-          sectionHeight="sm:h-[440px] h-auto"
           className="products-ads-section"
-        />
+        /> */}
         <NewArrivals />
-        <ProductsAd
+        {/* <ProductsAd
           ads={[
             "assets/images/banner1.jpg",
           ]}
-          sectionHeight="sm:h-[440px] h-auto"
           className="products-ads-section"
-        />
+        /> */}
         <Accessories
           className="accessories"
           seeMoreUrl="/all-products"
