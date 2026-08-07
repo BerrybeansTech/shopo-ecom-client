@@ -465,30 +465,40 @@ export const productUtils = {
       console.log('📍 Adding categoryId to query params:', selectedCategoryId);
     }
 
-    // Subcategories - convert names to IDs
+    // Subcategories - convert names or IDs to IDs
     if (selectedSubCategories.length > 0) {
       const subCategoryIds = [];
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
-          if (selectedSubCategories.includes(subCategory.name)) {
+          if (
+            selectedSubCategories.includes(subCategory.name) ||
+            selectedSubCategories.includes(String(subCategory.id))
+          ) {
             subCategoryIds.push(subCategory.id);
           }
         });
       });
       if (subCategoryIds.length > 0) {
         queryParams.subCategory = subCategoryIds;
+      } else {
+        // Fallback if categories are not loaded yet but numeric IDs exist
+        const rawIds = selectedSubCategories.map(Number).filter((n) => !isNaN(n));
+        if (rawIds.length > 0) queryParams.subCategory = rawIds;
       }
     }
 
-    // Child categories - convert names to IDs
+    // Child categories - convert names or IDs to IDs
     if (selectedDetails.length > 0) {
       const childCategoryIds = [];
       categories.forEach(category => {
         category.ProductSubCategories?.forEach(subCategory => {
           subCategory.ProductChildCategories?.forEach(childCategory => {
             selectedDetails.forEach(detailKey => {
-              const [, detailName] = detailKey.split("||");
-              if (childCategory.name === detailName) {
+              const detailName = detailKey.includes("||") ? detailKey.split("||")[1] : detailKey;
+              if (
+                childCategory.name === detailName ||
+                String(childCategory.id) === String(detailName)
+              ) {
                 childCategoryIds.push(childCategory.id);
               }
             });
@@ -497,6 +507,13 @@ export const productUtils = {
       });
       if (childCategoryIds.length > 0) {
         queryParams.childCategory = childCategoryIds;
+      } else {
+        // Fallback if categories are not loaded yet but numeric IDs exist
+        const rawIds = selectedDetails
+          .map((k) => (k.includes("||") ? k.split("||")[1] : k))
+          .map(Number)
+          .filter((n) => !isNaN(n));
+        if (rawIds.length > 0) queryParams.childCategory = rawIds;
       }
     }
 
@@ -600,9 +617,12 @@ export const productUtils = {
     // Category filters
     if (selectedSubCategories.length > 0) {
       filtered = filtered.filter(product =>
-        selectedSubCategories.some(subCat =>
-          product.subCategory?.name?.toLowerCase().includes(subCat.toLowerCase())
-        )
+        selectedSubCategories.some(subCat => {
+          const subName = product.subCategory?.name?.toLowerCase();
+          const subId = String(product.subCategoryId || product.subCategory?.id || "");
+          const target = subCat.toLowerCase();
+          return (subName && subName.includes(target)) || subId === target;
+        })
       );
     }
 
@@ -610,11 +630,25 @@ export const productUtils = {
     if (selectedDetails.length > 0) {
       filtered = filtered.filter(product => {
         return selectedDetails.some(detailKey => {
-          const [subCategory, detail] = detailKey.split("||");
-          return (
-            product.subCategory?.name?.toLowerCase().includes(subCategory.toLowerCase()) &&
-            product.childCategory?.name?.toLowerCase().includes(detail.toLowerCase())
-          );
+          const [subCategory, detail] = detailKey.includes("||")
+            ? detailKey.split("||")
+            : ["", detailKey];
+
+          const subName = product.subCategory?.name?.toLowerCase();
+          const subId = String(product.subCategoryId || product.subCategory?.id || "");
+          const childName = product.childCategory?.name?.toLowerCase();
+          const childId = String(product.childCategoryId || product.childCategory?.id || "");
+
+          const matchSub =
+            !subCategory ||
+            (subName && subName.includes(subCategory.toLowerCase())) ||
+            subId === subCategory.toLowerCase();
+
+          const targetChild = detail.toLowerCase();
+          const matchChild =
+            (childName && childName.includes(targetChild)) || childId === targetChild;
+
+          return matchSub && matchChild;
         });
       });
     }

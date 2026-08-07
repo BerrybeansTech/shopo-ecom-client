@@ -307,7 +307,7 @@ export default function AllProductPage() {
     ].filter(Boolean);
 
     if (!categories || categories.length === 0) {
-      return raw.filter((item) => isNaN(Number(item)));
+      return raw;
     }
 
     const resolved = new Set();
@@ -321,7 +321,7 @@ export default function AllProductPage() {
       });
     });
 
-    return Array.from(resolved);
+    return resolved.size > 0 ? Array.from(resolved) : raw;
   }, [searchParams, categories]);
 
   const setSelectedSubCategories = useCallback(
@@ -349,7 +349,7 @@ export default function AllProductPage() {
     ].filter(Boolean);
 
     if (!categories || categories.length === 0) {
-      return raw.filter((item) => isNaN(Number(item)));
+      return raw;
     }
 
     const resolved = new Set();
@@ -365,7 +365,7 @@ export default function AllProductPage() {
       });
     });
 
-    return Array.from(resolved);
+    return resolved.size > 0 ? Array.from(resolved) : raw;
   }, [searchParams, categories]);
 
   const setSelectedDetails = useCallback(
@@ -710,18 +710,119 @@ export default function AllProductPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const currentCategory = useMemo(() => {
-    if (!selectedCategoryId || !categories || categories.length === 0) return null;
-    return categories.find((c) => String(c.id) === String(selectedCategoryId));
-  }, [selectedCategoryId, categories]);
+  const resolvedCategoryHierarchy = useMemo(() => {
+    if (!categories || categories.length === 0) {
+      return { mainCategory: null, subCategory: null, childCategory: null };
+    }
 
-  const categoryHeaderTitle = currentCategory?.name || "Clothing And Accessories";
+    let mainCat = null;
+    let subCat = null;
+    let childCat = null;
+
+    // 1. Try resolving from childCategory / selectedDetails / searchParams
+    const rawChildParam = searchParams.get("childCategoryId") || searchParams.get("childCategory");
+    const activeChildTarget = selectedDetails.length > 0
+      ? (selectedDetails[0].includes("||") ? selectedDetails[0].split("||")[1] : selectedDetails[0])
+      : rawChildParam;
+
+    if (activeChildTarget) {
+      for (const cat of categories) {
+        for (const sc of cat.ProductSubCategories || []) {
+          for (const cc of sc.ProductChildCategories || []) {
+            if (
+              String(cc.id) === String(activeChildTarget) ||
+              cc.name.toLowerCase() === String(activeChildTarget).toLowerCase()
+            ) {
+              childCat = cc;
+              subCat = sc;
+              mainCat = cat;
+              break;
+            }
+          }
+          if (childCat) break;
+        }
+        if (childCat) break;
+      }
+    }
+
+    // 2. If subCat is not resolved yet, try subCategory / selectedSubCategories / searchParams
+    if (!subCat) {
+      const rawSubParam = searchParams.get("subcategoryId") || searchParams.get("subCategory");
+      const activeSubTarget = selectedSubCategories.length > 0 ? selectedSubCategories[0] : rawSubParam;
+
+      if (activeSubTarget) {
+        for (const cat of categories) {
+          for (const sc of cat.ProductSubCategories || []) {
+            if (
+              String(sc.id) === String(activeSubTarget) ||
+              sc.name.toLowerCase() === String(activeSubTarget).toLowerCase()
+            ) {
+              subCat = sc;
+              mainCat = cat;
+              break;
+            }
+          }
+          if (subCat) break;
+        }
+      }
+    }
+
+    // 3. If mainCat is not resolved yet, try selectedCategoryId
+    if (!mainCat && selectedCategoryId) {
+      mainCat = categories.find(
+        (c) =>
+          String(c.id) === String(selectedCategoryId) ||
+          c.name.toLowerCase() === String(selectedCategoryId).toLowerCase()
+      ) || null;
+    }
+
+    return { mainCategory: mainCat, subCategory: subCat, childCategory: childCat };
+  }, [categories, selectedCategoryId, selectedSubCategories, selectedDetails, searchParams]);
+
+  const categoryHeaderTitle = useMemo(() => {
+    if (resolvedCategoryHierarchy.childCategory) {
+      return resolvedCategoryHierarchy.childCategory.name;
+    }
+    if (resolvedCategoryHierarchy.subCategory) {
+      return resolvedCategoryHierarchy.subCategory.name;
+    }
+    if (resolvedCategoryHierarchy.mainCategory) {
+      return resolvedCategoryHierarchy.mainCategory.name;
+    }
+    if (searchQuery) {
+      return `Search: "${searchQuery}"`;
+    }
+    return "All Products";
+  }, [resolvedCategoryHierarchy, searchQuery]);
 
   const breadcrumb = useMemo(() => {
     const base = [
       { name: "Home", path: "/" },
-      { name: categoryHeaderTitle, path: "/all-products" },
+      { name: "All Products", path: "/all-products" },
     ];
+
+    const { mainCategory, subCategory, childCategory } = resolvedCategoryHierarchy;
+
+    if (mainCategory) {
+      base.push({
+        name: mainCategory.name,
+        path: `/all-products?categoryId=${mainCategory.id}`,
+      });
+    }
+
+    if (subCategory) {
+      base.push({
+        name: subCategory.name,
+        path: `/all-products?subcategoryId=${subCategory.id}`,
+      });
+    }
+
+    if (childCategory) {
+      base.push({
+        name: childCategory.name,
+        path: `/all-products?childCategoryId=${childCategory.id}`,
+      });
+    }
 
     const activeFilters = [];
 
@@ -740,19 +841,6 @@ export default function AllProductPage() {
         setSearchParams(newParams);
       });
     }
-
-    selectedDetails.forEach((detailKey) => {
-      const [, detail] = detailKey.split("||");
-      pushFilter(detail, () =>
-        setSelectedDetails((prev) => prev.filter((i) => i !== detailKey))
-      );
-    });
-
-    selectedSubCategories
-      .filter((cat) => isNaN(Number(cat)))
-      .forEach((cat) =>
-        pushFilter(cat, () => setSelectedSubCategories([]))
-      );
 
     if (Number(priceRange.min) !== 0 || Number(priceRange.max) !== 50000) {
       pushFilter(`Price ₹${priceRange.min}-₹${priceRange.max}`, () =>
@@ -784,7 +872,6 @@ export default function AllProductPage() {
       )
     );
 
-    // Availability breadcrumb
     selectedAvailability.forEach((a) =>
       pushFilter(
         a === "in" ? "In Stock" : "Out of Stock",
@@ -795,7 +882,6 @@ export default function AllProductPage() {
       )
     );
 
-    // Add review filter to breadcrumb
     if (selectedReviewThresholds.length > 0) {
       selectedReviewThresholds.forEach((threshold) => {
         pushFilter(`${threshold}★ & above`, () =>
@@ -806,11 +892,9 @@ export default function AllProductPage() {
       });
     }
 
-    // FIXED: Add New Arrivals to breadcrumb
     if (newArrival) {
       pushFilter("New Arrivals", () => {
         setNewArrival(false);
-        // Also reset sort option if it's set to New Arrivals
         if (sortOption === "New Arrivals") {
           setSortOption("default");
         }
@@ -820,7 +904,6 @@ export default function AllProductPage() {
     if (bestSeller) {
       pushFilter("Best Sellers", () => {
         setBestSeller(false);
-        // Also reset sort option if it's set to Best Sellers
         if (sortOption === "Best Sellers") {
           setSortOption("default");
         }
@@ -829,9 +912,8 @@ export default function AllProductPage() {
 
     return activeFilters.length ? [...base, ...activeFilters] : base;
   }, [
+    resolvedCategoryHierarchy,
     searchQuery,
-    selectedSubCategories,
-    selectedDetails,
     priceRange,
     selectedColors,
     selectedSizes,
@@ -840,7 +922,10 @@ export default function AllProductPage() {
     selectedReviewThresholds,
     selectedAvailability,
     newArrival,
+    bestSeller,
     sortOption,
+    searchParams,
+    setSearchParams,
   ]);
 
   // Placeholder image URL
@@ -1461,8 +1546,8 @@ export default function AllProductPage() {
                         <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
                       ) : (
                         <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium border border-gray-300">
-                          {sortedProducts.length}{" "}
-                          {sortedProducts.length === 1 ? "Product" : "Products"}
+                          {pagination.totalItems || sortedProducts.length}{" "}
+                          {(pagination.totalItems || sortedProducts.length) === 1 ? "Product" : "Products"}
                         </span>
                       )}
                     </div>
