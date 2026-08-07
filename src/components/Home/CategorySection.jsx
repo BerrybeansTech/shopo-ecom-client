@@ -25,12 +25,22 @@ const STYLES = `
   .mini-card {
     position: relative; overflow: hidden; cursor: pointer;
     border-radius: 18px;
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 0.4s ease;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.3s ease;
     scroll-snap-align: center;
+    will-change: transform;
   }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide { 
+    -ms-overflow-style: none; 
+    scrollbar-width: none; 
+    -webkit-overflow-scrolling: touch;
+  }
+  .touch-carousel {
+    /* NO scroll-behavior:smooth here — it animates position teleports and causes jump */
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
   .mini-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
   .mini-card.ring-active {
     box-shadow: 0 0 0 3px #fff, 0 0 0 5px #000, 0 12px 32px rgba(0,0,0,0.2);
@@ -169,6 +179,7 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
   const scrollRef = useRef(null);
   const sectionRef = useRef(null);
   const isInternalScroll = useRef(false);
+  const scrollRafRef = useRef(null);
 
   /* Visibility Observer */
   useEffect(() => {
@@ -264,75 +275,129 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
     }
   }, [displayCategories.length]);
 
-  /* Infinite Scroll Sync for mobile - Smooth Edge Wrapping */
-  const handleScroll = (e) => {
-    const container = e.target;
-    const items = container.children;
+  /* ─────────────────────────────────────────────────────────────────────────
+   * MOBILE INFINITE CAROUSEL — clean middle-sector implementation
+   *
+   * Layout:  [ copy A (sector 0) ][ copy B (sector 1) ][ copy C (sector 2) ]
+   *           0…N-1               N…2N-1              2N…3N-1
+   *
+   * On mount → scroll to middle of sector 1 (copy B).
+   * On swipe → only update activeIdx highlight; NO position teleport mid-swipe.
+   * After finger lifts → if outside 25%–75% of total scroll width, silently
+   *   reassign scrollLeft to the equivalent position in sector 1 (invisible).
+   * ───────────────────────────────────────────────────────────────────────── */
+
+  const isTouchingRef   = useRef(false);
+  const wrapTimerRef    = useRef(null);
+  const rafHighlightRef = useRef(null);
+
+  /* Get pixel width of one sector (N items) */
+  const getSectorWidth = useCallback(() => {
+    const c = scrollRef.current;
+    if (!c || c.children.length < 2) return 0;
+    const a = c.children[0];
+    const b = c.children[1];
+    return (b.offsetLeft - a.offsetLeft) * displayCategories.length;
+  }, [displayCategories.length]);
+
+  /* Teleport to equivalent middle-sector position — called ONLY after finger lifts */
+  const wrapToMiddle = useCallback(() => {
+    const c = scrollRef.current;
+    if (!c || displayCategories.length === 0) return;
+    const sW = getSectorWidth();
+    if (sW <= 0) return;
+    const sl = c.scrollLeft;
+    if (sl < sW * 0.5) {
+      c.scrollLeft = sl + sW;          // jumped too far left → move right one sector
+    } else if (sl > sW * 1.5) {
+      c.scrollLeft = sl - sW;          // jumped too far right → move left one sector
+    }
+  }, [displayCategories.length, getSectorWidth]);
+
+  /* onScroll — only updates activeIdx highlight; never moves scrollLeft */
+  const handleScroll = useCallback((e) => {
+    const c = e.target;
     const total = displayCategories.length;
-    if (total === 0 || !items || items.length < total * 3) return;
+    if (total === 0 || isInternalScroll.current) return;
 
-    const firstItem = items[0];
-    const secondItem = items[1];
-    const itemW = firstItem && secondItem ? secondItem.offsetLeft - firstItem.offsetLeft : 150;
-    const sectorW = itemW * total;
-
-    // Silent seamless wrap when touching outer bounds
-    if (!isInternalScroll.current) {
-      if (container.scrollLeft <= 5) {
-        container.scrollLeft += sectorW;
-      } else if (container.scrollLeft >= sectorW * 2 - 5) {
-        container.scrollLeft -= sectorW;
+    if (rafHighlightRef.current) cancelAnimationFrame(rafHighlightRef.current);
+    rafHighlightRef.current = requestAnimationFrame(() => {
+      const items   = c.children;
+      const center  = c.scrollLeft + c.offsetWidth / 2;
+      let bestIdx   = 0;
+      let bestDist  = Infinity;
+      for (let i = 0; i < items.length; i++) {
+        const d = Math.abs(items[i].offsetLeft + items[i].offsetWidth / 2 - center);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
       }
-    }
+      const realIdx = bestIdx % total;
+      if (realIdx !== activeIdx) setActiveIdx(realIdx);
+    });
+  }, [displayCategories.length, activeIdx]);
 
-    if (isInternalScroll.current || !scrollRef.current) return;
-    
-    const center = container.scrollLeft + container.offsetWidth / 2;
-    let closestIdx = -1;
-    let minDistance = Infinity;
+  /* Touch start — freeze auto-advance, cancel any pending wrap */
+  const handleCarouselTouchStart = useCallback((e) => {
+    e.stopPropagation();                  // don't trigger section-level onTouchStart
+    isTouchingRef.current = true;
+    setIsHovered(true);                   // pause auto-advance
+    if (wrapTimerRef.current) clearTimeout(wrapTimerRef.current);
+  }, []);
 
-    for (let i = 0; i < items.length; i++) {
-      const itemCenter = items[i].offsetLeft + items[i].offsetWidth / 2;
-      const distance = Math.abs(center - itemCenter);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIdx = i;
-      }
-    }
+  /* Touch end — schedule wrap after momentum scroll settles */
+  const handleCarouselTouchEnd = useCallback((e) => {
+    e.stopPropagation();
+    isTouchingRef.current = false;
+    if (wrapTimerRef.current) clearTimeout(wrapTimerRef.current);
+    wrapTimerRef.current = setTimeout(() => {
+      wrapToMiddle();
+      setIsHovered(false);               // resume auto-advance
+    }, 450);
+  }, [wrapToMiddle]);
 
-    if (closestIdx !== -1) {
-      const realIdx = closestIdx % total;
-      if (realIdx !== activeIdx) {
-        setActiveIdx(realIdx);
-        setAnimKey((k) => k + 1);
-      }
-    }
-  };
+  /* goTo — programmatic scroll to a specific real index inside sector 1 */
+  const goToMobile = useCallback((idx) => {
+    const c = scrollRef.current;
+    if (!c || displayCategories.length === 0) return;
+    const sW   = getSectorWidth();
+    if (sW <= 0) return;
+    const total = displayCategories.length;
+    const items = c.children;
+    // target item is always in sector 1 (middle copy): offset N + idx
+    const targetItem = items[total + idx];
+    if (!targetItem) return;
+    const targetLeft = targetItem.offsetLeft + targetItem.offsetWidth / 2 - c.offsetWidth / 2;
+    isInternalScroll.current = true;
+    c.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    setTimeout(() => { isInternalScroll.current = false; }, 600);
+  }, [displayCategories.length, getSectorWidth]);
 
-  /* Initial center for mobile - robust mounting */
+  /* Mount: position at sector 1, index 0 centred */
   useEffect(() => {
+    if (displayCategories.length === 0) return;
     const timer = setTimeout(() => {
-      if (scrollRef.current && displayCategories.length > 0) {
-        const container = scrollRef.current;
-        const total = displayCategories.length;
-        const target = container.children[total + activeIdx];
-        if (target) {
-          const firstItem = container.children[0];
-          const secondItem = container.children[1];
-          const itemW = firstItem && secondItem ? secondItem.offsetLeft - firstItem.offsetLeft : 150;
-          const sectorW = itemW * total;
-          container.scrollLeft = sectorW + (target.offsetLeft - container.children[total].offsetLeft);
-        }
-      }
-    }, 200);
+      const c = scrollRef.current;
+      if (!c) return;
+      const total = displayCategories.length;
+      const items = c.children;
+      const target = items[total];        // sector-1, item 0
+      if (!target) return;
+      const left = target.offsetLeft + target.offsetWidth / 2 - c.offsetWidth / 2;
+      c.scrollLeft = left;
+    }, 150);
     return () => clearTimeout(timer);
   }, [displayCategories.length]);
 
+  /* Auto-advance */
   useEffect(() => {
     if (displayCategories.length <= 1 || !isVisible || isHovered) return;
-    const t = setTimeout(() => goTo((activeIdx + 1) % displayCategories.length), AUTO_MS);
+    const t = setTimeout(() => {
+      const next = (activeIdx + 1) % displayCategories.length;
+      setActiveIdx(next);
+      setAnimKey((k) => k + 1);
+      goToMobile(next);
+    }, AUTO_MS);
     return () => clearTimeout(t);
-  }, [activeIdx, displayCategories.length, goTo, isVisible, isHovered]);
+  }, [activeIdx, displayCategories.length, isVisible, isHovered, goToMobile]);
 
   /* ── Skeleton ────────────────────────────────────────────────────────── */
   if (categoriesLoading) {
@@ -385,8 +450,6 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
       ref={sectionRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onTouchStart={() => setIsHovered(true)}
-      onTouchEnd={() => setIsHovered(false)}
       className={`py-12 lg:py-20 overflow-x-hidden ${className || ""}`}
     >
       <style>{STYLES}</style>
@@ -458,62 +521,82 @@ export default function CategorySection({ className, sectionTitle = "Shop by Cat
             </div>
           </Link>
 
-          {/* Minis – infinite horizontal scroll sync */}
+          {/* Minis – infinite horizontal scroll (3× clone loop) */}
           {displayCategories.length > 1 && (
             <div
               ref={scrollRef}
               onScroll={handleScroll}
-              className="flex gap-5 overflow-x-auto pt-4 pb-8 snap-x snap-mandatory scrollbar-hide no-scrollbar"
-              style={{ 
-                paddingLeft: 'calc(50% - 65px)', 
-                paddingRight: 'calc(50% - 65px)', 
-                scrollPadding: '0 calc(50% - 65px)' 
+              onTouchStart={handleCarouselTouchStart}
+              onTouchEnd={handleCarouselTouchEnd}
+              className="flex gap-4 overflow-x-auto pt-4 pb-6 scrollbar-hide no-scrollbar touch-carousel"
+              style={{
+                /* centre first visible item */
+                paddingLeft:  'calc(50% - 60px)',
+                paddingRight: 'calc(50% - 60px)',
               }}
             >
-              {[...displayCategories, ...displayCategories, ...displayCategories].map((cat, i) => (
-                <Link
-                  key={`${cat.id}-${i}`}
-                  to={cat.link}
-                  className={`mini-card flex-shrink-0 snap-center ${cat.colorIdx === activeIdx ? "ring-active" : ""}`}
-                  style={{ width: "130px", height: "110px" }}
-                >
-                  <div className="absolute inset-0 bg-gray-100 overflow-hidden">
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      className="cat-img w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = placeholderUrl(cat.name);
-                      }}
-                    />
-                  </div>
-                  <div className="mini-hover-layer">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                    <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
-                  </div>
-                </Link>
-              ))}
+              {[...displayCategories, ...displayCategories, ...displayCategories].map((cat, i) => {
+                const realIdx = i % displayCategories.length;
+                return (
+                  <Link
+                    key={`${cat.id}-clone-${i}`}
+                    to={cat.link}
+                    onClick={(e) => {
+                      // On tap: switch spotlight to this category; Link navigates on second tap
+                      if (realIdx !== activeIdx) {
+                        e.preventDefault();
+                        setActiveIdx(realIdx);
+                        setAnimKey((k) => k + 1);
+                        goToMobile(realIdx);
+                      }
+                    }}
+                    className={`mini-card flex-shrink-0 ${realIdx === activeIdx ? 'ring-active' : ''}`}
+                    style={{ width: '120px', height: '110px' }}
+                    draggable={false}
+                  >
+                    <div className="absolute inset-0 bg-gray-100 overflow-hidden">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className="cat-img w-full h-full object-cover"
+                        loading="lazy"
+                        draggable={false}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = placeholderUrl(cat.name);
+                        }}
+                      />
+                    </div>
+                    <div className="mini-hover-layer">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                      <p className="relative w-full px-3 py-2.5 text-white text-[12px] font-bold leading-tight line-clamp-2 z-10">{cat.name}</p>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* ── Dot Navigation ───────────────────────────────────────── */}
         {displayCategories.length > 1 && (
-          <div className="mt-7 flex flex-col items-center gap-3">
+          <div className="mt-6 flex flex-col items-center gap-3">
 
             {/* Dots */}
             <div className="flex items-center gap-2">
               {displayCategories.map((cat, i) => (
                 <button
                   key={cat.id}
-                  onClick={() => goTo(i, true)}
+                  onClick={() => {
+                    setActiveIdx(i);
+                    setAnimKey((k) => k + 1);
+                    goToMobile(i);
+                  }}
                   aria-label={`Go to ${cat.name}`}
                   className={`rounded-full transition-all duration-300 cursor-pointer ${
                     i === activeIdx
-                      ? "w-7 h-2.5 bg-gray-900"
-                      : "w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400"
+                      ? 'w-7 h-2.5 bg-gray-900'
+                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
                   }`}
                 />
               ))}
